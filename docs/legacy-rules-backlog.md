@@ -77,6 +77,40 @@ mais un bug d'interface (positionnement CSS des modales par-dessus le
 contenu joueur, bloquant la montée de niveau) : à ne pas reproduire dans les
 futurs écrans, pas à porter dans le moteur.
 
+## 3. Extractions faites — `src/domain/spellcasting-progression.ts`
+
+Première extraction réelle de tables d'`App.jsx` (`SLOTS_FULL`, `SLOTS_HALF`,
+`PACT`, `CANTRIPS_BASE`), avec vérification indépendante contre le PHB 2024
+(pas seulement rejouées via les plugins — aucun plugin ne les touchait) :
+
+- **Emplacements de sort** (lanceurs complets, lanceurs partiels, Magie du
+  Pacte) et **sorts mineurs connus** : vérifiés, portés tels quels.
+  Confirmation notable au passage : les lanceurs partiels (Paladin, Rôdeur)
+  gagnent la Magie dès le niveau 1 en 2024 (2 emplacements de rang 1), pas au
+  niveau 2 comme en 2014 — la table de l'ancienne app avait déjà le bon
+  décalage.
+- **Grimoire du Magicien** (`6 + 2×(niveau-1)`) : vérifié, inchangé depuis 2014.
+- **Sorts préparés (Clerc, Druide, Paladin, Magicien) — bug de fond corrigé.**
+  L'ancienne table `PREPARED` plafonnait ce nombre par une table figée par
+  niveau, sans jamais lire le modificateur de caractéristique du personnage.
+  Or c'est la règle de base, inchangée depuis 2014 : *sorts préparés =
+  modificateur d'incantation + niveau de classe (minimum 1)*. Deux Druides de
+  même niveau mais de Sagesse différente n'ont pas le même nombre de sorts
+  préparés — la table de l'ancienne app ne pouvait pas le représenter. Elle
+  n'a pas été reportée ; `preparedSpellCount(modificateur, niveau)` calcule
+  maintenant la vraie valeur.
+- **Sorts connus (Barde, Ensorceleur, Occultiste, Rôdeur)** : l'Occultiste est
+  vérifié indépendamment (table Magie occulte, inchangée depuis 2014). Le
+  Rôdeur est repris tel quel de l'ancienne app — cohérent avec le décalage
+  2024 ci-dessus, mais pas revérifié terme à terme contre le PHB papier.
+  Barde et Ensorceleur n'ont **pas** été repris : dans l'ancienne app, leurs
+  lignes étaient structurellement identiques à celles de Clerc/Druide (une
+  seule table `PREPARED` pour les quatre), ce qui n'a pas de sens pour des
+  classes à sorts *connus* — signe que la table source mélangeait déjà les
+  deux mécaniques. Comme aucun de tes joueurs actuels ne joue barde ou
+  ensorceleur, mieux vaut les laisser à `null` (avec un test qui le vérifie)
+  que copier une valeur suspecte.
+
 ## Comment vérifier une règle depuis l'ancien dépôt
 
 `App.jsx` seul ne dit rien de fiable : il faut rejouer la chaîne de plugins
