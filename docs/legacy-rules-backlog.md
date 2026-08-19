@@ -34,12 +34,12 @@ exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrai
 
 - **Emplacements et magie** : ✅ `SLOTS_FULL`, ✅ `SLOTS_HALF`, ✅ `PACT`,
   ✅ `CANTRIPS_BASE`, `THIRD_CASTER_PREPARED` (pas nos classes), ✅ `PREPARED`
-  (corrigée, cf. §3), `SUBCLASS_ALWAYS_SPELLS`, `CLASS_ALWAYS_SPELLS`,
-  `TERRAIN_ALWAYS_SPELLS`
-- **Classes et sous-classes** : `CLASS_FEATURES`, `CLASS_FEATURE_DESCRIPTIONS`,
+  (corrigée, cf. §3), ✅ `SUBCLASS_ALWAYS_SPELLS`, ✅ `CLASS_ALWAYS_SPELLS`,
+  ✅ `TERRAIN_ALWAYS_SPELLS` (§4decimo — les trois depuis la sortie construite)
+- **Classes et sous-classes** : ✅ `CLASS_FEATURES`, ✅ `CLASS_FEATURE_DESCRIPTIONS`,
   ✅ `CLASS_RESOURCES` (druide/rôdeur/occultiste), ✅ `SUBCLASS_RESOURCES`
-  (patrons occultiste), `SUBCLASSES`, `SUBCLASS_PROFICIENCIES`,
-  `SUBCLASS_SRC`, `CLASS_CHOICES`, `CLASS_CODE`
+  (patrons occultiste, corrigée §4nono), ✅ `SUBCLASSES` (48), `SUBCLASS_PROFICIENCIES`,
+  ✅ `SUBCLASS_SRC` (porté dans le champ `src` des sous-classes), `CLASS_CHOICES`, `CLASS_CODE`
 - **Combat** : ✅ `MASTERIES`, ✅ `WEAPONS`, ✅ `WEAPON_PRICES`, `COMBAT_ACTIONS`,
   ✅ `FIGHTING_STYLES`, ✅ `RANGER_FIGHTING_STYLES`, ✅ `DRUIDIC_WARRIOR`,
   `BATTLE_MASTER_MANEUVERS`, `METAMAGIC`, `DIVINE_ORDER`, `PRIMAL_ORDER`,
@@ -51,11 +51,11 @@ exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrai
   `CRAFT_IDS_BY_TOOL`, `FAST_CRAFT_IDS_BY_TOOL`, `ARTISAN_TOOLS`,
   `ARTISAN_TOOL_OPTIONS`, `FAST_CRAFT_TOOLS`, `MUSICAL_INSTRUMENTS`,
   `GAMING_SETS`, `OTHER_TOOLS`, `ALL_TOOL_PROFICIENCIES`
-- **Création de personnage** : ✅ `SPECIES`, ✅ `CLASSES`, ✅ `BACKGROUNDS`, `FEATS`,
+- **Création de personnage** : ✅ `SPECIES`, ✅ `CLASSES`, ✅ `BACKGROUNDS`, ✅ `FEATS` (dons d'origine),
   `FEAT_ENERGY_TYPES`, `FEAT_ELEMENTAL_TYPES`, `KNOWLEDGE_SKILLS`,
   `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`, ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`,
   ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
-- **Règles génériques** : ✅ `CONDITIONS` (les 14 états officiels ; les
+- **Règles génériques** : ✅ `CONDITIONS` (corrigée §4nono ; les 14 états officiels, les
   étiquettes de suivi supplémentaires de la table d'origine restent à
   traiter au niveau du modèle de personnage, pas comme règles à part),
   ✅ `DAMAGE_TYPES`, ✅ `SCHOOLS`, ✅ `RECHARGE`, `AUTOMATION`
@@ -139,6 +139,23 @@ cohérent avec la version construite — rien à corriger, mais mon diagnostic
 
 Détail de règle relevé au passage dans la sortie construite : l'Infatigable
 2024 se déclenche par une **action de Magie**, pas une action bonus.
+
+## 4undecimo. Extractions faites — capacités de classe, 48 sous-classes, dons d'origine
+
+Toutes depuis la sortie construite (les trois tables sont réécrites par la
+chaîne) :
+
+- `src/content/class-features.ts` — capacités du tronc commun par niveau pour
+  les douze classes, et leurs 103 descriptions. Un test vérifie que **toute**
+  capacité de nos trois classes jouées a bien une description.
+- `src/content/subclasses.ts` — les 48 sous-classes avec leurs capacités par
+  niveau. Recoupement satisfaisant : le compte de 48 correspond exactement à
+  celui annoncé par `rules-coverage.ts`, repris intact à l'étape 1 et écrit
+  par quelqu'un d'autre — deux sources indépendantes qui concordent. Tests :
+  noms uniques dans tout le jeu (ils servent de clé sur la fiche), niveaux
+  entre 3 et 20, choix au niveau 3 pour toutes.
+- `src/content/origin-feats.ts` — les dix dons d'origine. Test d'intégrité
+  croisée : chaque origine de `backgrounds.ts` référence un don qui existe.
 
 ## 4nono. Audit systématique source vs sortie construite — trois modules corrigés
 
