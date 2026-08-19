@@ -133,6 +133,32 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
 
+## 4ter. Extractions faites — les quatre Patrons de l'Occultiste
+
+`src/domain/warlock-patron-resources.ts` — ressource propre à chaque patron
+(Céleste, Fiélon, Grand Ancien, Archifée), repêchées de
+`SUBCLASS_RESOURCES`. **Pas encore confrontées page à page au PHB 2024
+papier**, contrairement au reste de cette section — à vérifier si tu joues
+un jour un patron autre que ceux déjà couverts ailleurs. Confiance par
+capacité :
+
+- **Fiélon** (Chance du Ténébreux, modificateur de Charisme minimum 1) :
+  motif identique à des capacités déjà vérifiées (Voile de la nature du
+  Rôdeur) et correspond à la règle connue *Dark One's Own Luck* — confiance
+  haute.
+- **Grand Ancien** et **Archifée** (Combattant clairvoyant, Pas des fées) :
+  leur table suit exactement le bonus de maîtrise à partir de leur niveau
+  d'entrée — motif interne cohérent, mais je ne connais pas ces deux
+  capacités avec assez de certitude pour confirmer le nom exact ou l'effet
+  complet. Portées telles quelles.
+- **Céleste** (Lumière guérisseuse, niveau + 1 dés) : motif simple et
+  plausible, non confirmé.
+
+Note au passage : le Rôdeur Vagabond féerique a *aussi* une capacité
+appelée « Pas des fées » (niveau 11, modificateur de Sagesse) — même nom
+français, mécanique différente de celle de l'Archifée. Les deux sont
+distinguées dans le code.
+
 ## 4bis. Extractions faites — Forme sauvage et Ruse magique (deux faux positifs)
 
 Deux tables que je pensais suspectes, vérifiées le 19/08/2026 contre le PHB
