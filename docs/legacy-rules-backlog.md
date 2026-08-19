@@ -111,6 +111,63 @@ Première extraction réelle de tables d'`App.jsx` (`SLOTS_FULL`, `SLOTS_HALF`,
   ensorceleur, mieux vaut les laisser à `null` (avec un test qui le vérifie)
   que copier une valeur suspecte.
 
+## 4. Extractions faites — bonus de maîtrise et ressources du Rôdeur
+
+- `src/domain/proficiency.ts` : bonus de maîtrise par niveau, vérifié,
+  inchangé depuis 2014. Repêché d'une fonction locale d'`App.jsx`
+  (`profByLevel`) jamais exportée mais utilisée partout.
+- `src/domain/ranger-resources.ts` : Marque du chasseur sans emplacement
+  (= bonus de maîtrise, vérifié) et Voile de la nature (= modificateur de
+  Sagesse, minimum 1, vérifié — n'existait dans aucun module portable
+  auparavant).
+
+**Bug de fond trouvé et déjà corrigé sans écrire de code** : l'Infatigable du
+Rôdeur (niveau 10). `App.jsx` la plafonne par une table figée par niveau
+(4 usages aux niveaux 10-12, 5 aux niveaux 13-16, 6 aux niveaux 17-20),
+totalement indépendante de la Sagesse du personnage. Or la règle réelle est
+*modificateur de Sagesse, minimum 1* — et `src/domain/ranger-core-2024.ts`
+(déjà repêché intact à l'étape 1, `tirelessMaxUses` /
+`applyRangerTirelessShortRest`) l'implémente déjà correctement, avec ses
+tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
+— aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
+code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
+dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+
+## 5. Question ouverte — le Pacte de l'Occultiste
+
+Investigation du problème de fond que tu avais signalé (« ma joueuse
+occultiste ne peut toujours pas choisir son pacte ») :
+
+Le **Pacte de la Lame**, **de la Chaîne** et **du Grimoire** existent bien
+dans `src/content/eldritch-invocations.ts`, modélisés comme des invocations
+occultes ordinaires (`minLevel: 1`), avec leur mécanique dans
+`src/domain/warlock-pacts-core.ts` — ces deux fichiers sont déjà dans ce
+dépôt. Mais **le Pacte du Talisman est absent partout** : ni dans le
+catalogue d'invocations, ni dans le moteur, ni dans `App.jsx`. Sur les
+quatre Pactes du PHB, un seul manque entièrement — ce n'est pas la cause
+principale du problème (trois choix sur quatre existent), mais c'en est une
+partie concrète et vérifiable.
+
+Deux points que je ne peux pas trancher sans le PHB 2024 papier :
+
+1. **Le Pacte du Talisman doit-il être ajouté**, et avec quel texte exact ?
+   Je peux écrire une version à partir de ma mémoire de la règle 2014
+   (« la porteuse ajoute 1d4 à un test de caractéristique raté, un nombre de
+   fois égal au bonus de maîtrise, récupéré à un repos long ») mais je ne
+   suis pas certain qu'elle soit restée inchangée en 2024 — je préfère te le
+   signaler plutôt que d'inventer avec une fausse confiance.
+2. **Les quatre Pactes doivent-ils exiger le niveau 3** au lieu du niveau 1
+   actuel ? Le commentaire du test `eldritch-invocations.test.ts` affirme que
+   le catalogue contient bien « les 28 options du Manuel » — un chiffre qui
+   semble avoir été vérifié sérieusement à l'époque — donc je ne veux pas non
+   plus corriger `minLevel` sans confirmation.
+
+Le vrai problème que tu décrivais (une fiche créée avant l'arrivée d'une
+fonctionnalité ne peut plus en profiter) reste de toute façon réglé par
+l'architecture du nouveau projet : le pacte choisi sera une décision stockée
+sur la fiche, ses effets dérivés à la lecture — ajoutable ou corrigible plus
+tard sans migration.
+
 ## Comment vérifier une règle depuis l'ancien dépôt
 
 `App.jsx` seul ne dit rien de fiable : il faut rejouer la chaîne de plugins
