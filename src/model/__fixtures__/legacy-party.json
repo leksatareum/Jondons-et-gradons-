@@ -1,0 +1,626 @@
+[
+  {
+    "id": "veya",
+    "name": "Veya",
+    "gold": 120,
+    "favorites": [
+      {
+        "kind": "attack",
+        "ref": "arc"
+      },
+      {
+        "kind": "spell",
+        "ref": "marque"
+      },
+      {
+        "kind": "item",
+        "ref": "i1"
+      }
+    ],
+    "speciesId": "elfe",
+    "darkvision": 36,
+    "hpPerLevel": 0,
+    "species": "Elfe (Drow)",
+    "classId": "rodeur",
+    "className": "Rôdeuse",
+    "subclass": "Chasseur",
+    "level": 5,
+    "background": "Guide",
+    "feat": "Initié à la magie (Druide)",
+    "featIds": [
+      "initie"
+    ],
+    "armorId": "cuirclou",
+    "shield": false,
+    "speed": "9 m",
+    "hitDie": 10,
+    "hp": 38,
+    "hpMax": 42,
+    "hpTemp": 5,
+    "hitDiceLeft": 5,
+    "inspiration": true,
+    "deathSaves": {
+      "success": 0,
+      "fail": 0
+    },
+    "exhaustion": 0,
+    "resistances": [],
+    "vulnerabilities": [],
+    "immunities": [],
+    "luck": null,
+    "abilities": {
+      "str": 12,
+      "dex": 18,
+      "con": 14,
+      "int": 10,
+      "wis": 16,
+      "cha": 8
+    },
+    "skillProfs": [
+      "discretion",
+      "survie",
+      "perception",
+      "nature"
+    ],
+    "expertise": [],
+    "conditions": [
+      {
+        "label": "Concentration",
+        "detail": "Marque du chasseur"
+      }
+    ],
+    "slots": [
+      {
+        "level": 1,
+        "current": 3,
+        "max": 4
+      },
+      {
+        "level": 2,
+        "current": 2,
+        "max": 2
+      }
+    ],
+    "saveProfs": [
+      "str",
+      "dex"
+    ],
+    "features": [
+      {
+        "id": "f1",
+        "name": "Explorateur aguerri",
+        "desc": "Expertise dans une compétence, deux langues supplémentaires, terrain difficile ignoré.",
+        "uses": null
+      },
+      {
+        "id": "f2",
+        "name": "Style de combat : Archerie",
+        "desc": "+2 aux jets d'attaque à distance (déjà compté dans le +7 à l'arc).",
+        "uses": null
+      },
+      {
+        "id": "f3",
+        "name": "Attaque supplémentaire",
+        "desc": "Deux attaques par action Attaquer.",
+        "uses": null
+      },
+      {
+        "id": "f4",
+        "name": "Ténacité du rôdeur",
+        "desc": "Une fois par repos long, relance un jet de sauvegarde raté.",
+        "uses": {
+          "current": 1,
+          "max": 1
+        }
+      },
+      {
+        "id": "f5",
+        "name": "Magie drow : Feu féerique",
+        "desc": "Une fois par repos long, lance Feu féerique sans emplacement.",
+        "uses": {
+          "current": 1,
+          "max": 1
+        }
+      }
+    ],
+    "attacks": [
+      {
+        "id": "arc",
+        "name": "Arc long",
+        "toHit": 7,
+        "dice": "1d8+4",
+        "type": "perforants",
+        "props": "Munitions (45/180), lourde, deux mains",
+        "mastery": "Ralentissement",
+        "abMod": 4,
+        "known": true
+      },
+      {
+        "id": "epee",
+        "name": "Épée courte",
+        "toHit": 7,
+        "dice": "1d6+4",
+        "type": "perforants",
+        "props": "Finesse, légère",
+        "mastery": "Harcèlement",
+        "abMod": 4,
+        "known": true
+      }
+    ],
+    "cantrips": [],
+    "spells": [
+      {
+        "id": "marque-chasseur",
+        "prepared": true,
+        "always": true
+      },
+      {
+        "id": "fouet-epineux",
+        "prepared": true
+      },
+      {
+        "id": "silence",
+        "prepared": true
+      }
+    ],
+    "inventory": [
+      {
+        "id": "i1",
+        "name": "Potion de soins",
+        "qty": 2,
+        "weight": 0.25,
+        "desc": "Restaure 2d4+2 PV.",
+        "consumable": true,
+        "heal": true
+      },
+      {
+        "id": "i2",
+        "name": "Corde de chanvre (15 m)",
+        "qty": 1,
+        "weight": 5,
+        "desc": "Solide et résistante."
+      },
+      {
+        "id": "i3",
+        "name": "Trousse de soins",
+        "qty": 1,
+        "weight": 1.5,
+        "desc": "10 utilisations restantes."
+      }
+    ]
+  },
+  {
+    "id": "thorin",
+    "name": "Thorin",
+    "gold": 85,
+    "favorites": [
+      {
+        "kind": "attack",
+        "ref": "a1"
+      }
+    ],
+    "speciesId": "nain",
+    "darkvision": 36,
+    "hpPerLevel": 1,
+    "species": "Nain",
+    "classId": "guerrier",
+    "className": "Guerrier",
+    "subclass": "Champion",
+    "level": 5,
+    "background": "Soldat",
+    "feat": "Attaquant sauvage",
+    "featIds": [
+      "sauvage"
+    ],
+    "armorId": "mailles",
+    "shield": true,
+    "speed": "9 m",
+    "hitDie": 10,
+    "hp": 49,
+    "hpMax": 54,
+    "hpTemp": 0,
+    "hitDiceLeft": 5,
+    "inspiration": false,
+    "deathSaves": {
+      "success": 0,
+      "fail": 0
+    },
+    "exhaustion": 0,
+    "resistances": [],
+    "vulnerabilities": [],
+    "immunities": [],
+    "luck": null,
+    "abilities": {
+      "str": 18,
+      "dex": 12,
+      "con": 16,
+      "int": 10,
+      "wis": 12,
+      "cha": 8
+    },
+    "skillProfs": [
+      "athletisme",
+      "intimidation"
+    ],
+    "expertise": [],
+    "conditions": [],
+    "slots": null,
+    "saveProfs": [
+      "str",
+      "con"
+    ],
+    "cantrips": [],
+    "features": [
+      {
+        "id": "t1",
+        "name": "Style de combat : Défense",
+        "desc": "+1 à ta CA tant que tu portes une armure.",
+        "uses": null
+      },
+      {
+        "id": "t2",
+        "name": "Second souffle",
+        "desc": "Action bonus : tu récupères 1d10 + 5 points de vie.",
+        "uses": {
+          "current": 2,
+          "max": 2
+        }
+      },
+      {
+        "id": "t3",
+        "name": "Attaque supplémentaire",
+        "desc": "Deux attaques au lieu d'une quand tu entreprends l'action Attaquer.",
+        "uses": null
+      },
+      {
+        "id": "t4",
+        "name": "Fougue guerrière",
+        "desc": "Une action supplémentaire, une fois par repos court.",
+        "uses": {
+          "current": 1,
+          "max": 1
+        }
+      }
+    ],
+    "attacks": [
+      {
+        "id": "a1",
+        "name": "Épée longue",
+        "toHit": 7,
+        "dice": "1d8+4",
+        "type": "tranchants",
+        "props": "Polyvalente (1d10)",
+        "mastery": "Affaiblissement",
+        "abMod": 4,
+        "known": true
+      }
+    ],
+    "spells": [],
+    "inventory": []
+  },
+  {
+    "id": "wrenna",
+    "name": "Wrenna",
+    "gold": 60,
+    "favorites": [
+      {
+        "kind": "cantrip",
+        "ref": "traitfeu"
+      },
+      {
+        "kind": "spell",
+        "ref": "wm4"
+      }
+    ],
+    "speciesId": "humain",
+    "darkvision": 0,
+    "hpPerLevel": 0,
+    "species": "Humaine",
+    "classId": "magicien",
+    "className": "Magicienne",
+    "subclass": "Évocatrice",
+    "level": 5,
+    "background": "Sage",
+    "feat": "Initié à la magie (Magicien)",
+    "featIds": [
+      "initie"
+    ],
+    "armorId": "none",
+    "shield": false,
+    "speed": "9 m",
+    "hitDie": 6,
+    "hp": 24,
+    "hpMax": 29,
+    "hpTemp": 0,
+    "hitDiceLeft": 5,
+    "inspiration": false,
+    "deathSaves": {
+      "success": 0,
+      "fail": 0
+    },
+    "exhaustion": 0,
+    "resistances": [],
+    "vulnerabilities": [],
+    "immunities": [],
+    "luck": null,
+    "abilities": {
+      "str": 8,
+      "dex": 14,
+      "con": 14,
+      "int": 18,
+      "wis": 12,
+      "cha": 10
+    },
+    "skillProfs": [
+      "arcanes",
+      "histoire"
+    ],
+    "expertise": [],
+    "conditions": [
+      {
+        "label": "Empoisonné"
+      }
+    ],
+    "slots": [
+      {
+        "level": 1,
+        "current": 2,
+        "max": 4
+      },
+      {
+        "level": 2,
+        "current": 3,
+        "max": 3
+      },
+      {
+        "level": 3,
+        "current": 2,
+        "max": 2
+      }
+    ],
+    "saveProfs": [
+      "int",
+      "wis"
+    ],
+    "features": [
+      {
+        "id": "w1",
+        "name": "Adepte des rituels",
+        "desc": "Tu peux lancer en rituel tout sort de ton grimoire portant la mention Rituel, sans l'avoir préparé.",
+        "uses": null
+      },
+      {
+        "id": "w2",
+        "name": "Récupération arcanique",
+        "desc": "Après un repos court, tu récupères des emplacements dont la somme des niveaux ne dépasse pas 3 (moitié de ton niveau arrondie au supérieur).",
+        "uses": {
+          "current": 1,
+          "max": 1
+        }
+      },
+      {
+        "id": "w3",
+        "name": "Érudite",
+        "desc": "Expertise en Arcanes.",
+        "uses": null
+      }
+    ],
+    "attacks": [
+      {
+        "id": "wd",
+        "name": "Dague",
+        "toHit": 5,
+        "dice": "1d4+2",
+        "type": "perforants",
+        "props": "Finesse, légère, lancer (6/18)",
+        "mastery": "Entaille",
+        "abMod": 2,
+        "known": false
+      }
+    ],
+    "cantrips": [
+      "trait-feu",
+      "rayon-givre",
+      "main-mage",
+      "prestidigitation"
+    ],
+    "spells": [
+      {
+        "id": "armure-mage",
+        "prepared": true
+      },
+      {
+        "id": "projectile-magique",
+        "prepared": true
+      },
+      {
+        "id": "image-miroir",
+        "prepared": true
+      },
+      {
+        "id": "boule-feu",
+        "prepared": true
+      },
+      {
+        "id": "contresort",
+        "prepared": false
+      },
+      {
+        "id": "bouclier",
+        "prepared": true
+      },
+      {
+        "id": "pas-brumeux",
+        "prepared": true
+      },
+      {
+        "id": "vol",
+        "prepared": true
+      },
+      {
+        "id": "toile-araignee",
+        "prepared": false
+      }
+    ],
+    "inventory": []
+  },
+  {
+    "id": "cassian",
+    "name": "Cassian",
+    "gold": 95,
+    "favorites": [
+      {
+        "kind": "spell",
+        "ref": "cs1"
+      },
+      {
+        "kind": "cantrip",
+        "ref": "flammesacree"
+      }
+    ],
+    "speciesId": "aasimar",
+    "darkvision": 18,
+    "hpPerLevel": 0,
+    "species": "Aasimar",
+    "classId": "clerc",
+    "className": "Clerc",
+    "subclass": "Domaine de la Vie",
+    "level": 5,
+    "background": "Acolyte",
+    "feat": "Initié à la magie (Clerc)",
+    "featIds": [
+      "initie"
+    ],
+    "armorId": "chemise",
+    "shield": true,
+    "speed": "9 m",
+    "hitDie": 8,
+    "hp": 33,
+    "hpMax": 36,
+    "hpTemp": 0,
+    "hitDiceLeft": 5,
+    "inspiration": true,
+    "deathSaves": {
+      "success": 0,
+      "fail": 0
+    },
+    "exhaustion": 0,
+    "resistances": [
+      "nécrotiques",
+      "radiants"
+    ],
+    "vulnerabilities": [],
+    "immunities": [],
+    "luck": null,
+    "abilities": {
+      "str": 12,
+      "dex": 10,
+      "con": 14,
+      "int": 10,
+      "wis": 18,
+      "cha": 14
+    },
+    "skillProfs": [
+      "medecine",
+      "religion"
+    ],
+    "expertise": [],
+    "conditions": [],
+    "slots": [
+      {
+        "level": 1,
+        "current": 4,
+        "max": 4
+      },
+      {
+        "level": 2,
+        "current": 3,
+        "max": 3
+      },
+      {
+        "level": 3,
+        "current": 2,
+        "max": 2
+      }
+    ],
+    "saveProfs": [
+      "wis",
+      "cha"
+    ],
+    "features": [
+      {
+        "id": "c1",
+        "name": "Ordre divin : Thaumaturge",
+        "desc": "Un sort mineur supplémentaire et un bonus égal à ton modificateur de Sagesse aux tests d'Arcanes et de Religion.",
+        "uses": null
+      },
+      {
+        "id": "c2",
+        "name": "Conduit divin",
+        "desc": "Étincelle divine ou Renvoi des morts-vivants, deux utilisations par repos court.",
+        "uses": {
+          "current": 2,
+          "max": 2
+        }
+      }
+    ],
+    "attacks": [
+      {
+        "id": "cm",
+        "name": "Masse d'armes",
+        "toHit": 4,
+        "dice": "1d6+1",
+        "type": "contondants",
+        "props": "—",
+        "mastery": "Affaiblissement",
+        "abMod": 1,
+        "known": false
+      }
+    ],
+    "cantrips": [
+      "flamme-sacree",
+      "lumiere",
+      "assistance",
+      "epargner-mourants"
+    ],
+    "spells": [
+      {
+        "id": "soins",
+        "prepared": true
+      },
+      {
+        "id": "benediction",
+        "prepared": true
+      },
+      {
+        "id": "trait-lumiere",
+        "prepared": true
+      },
+      {
+        "id": "restauration-partielle",
+        "prepared": true
+      },
+      {
+        "id": "esprit-lame",
+        "prepared": true
+      },
+      {
+        "id": "arme-spirituelle",
+        "prepared": true
+      },
+      {
+        "id": "mot-guerison",
+        "prepared": true
+      },
+      {
+        "id": "sanctuaire",
+        "prepared": false
+      },
+      {
+        "id": "immobilisation-personne",
+        "prepared": false
+      }
+    ],
+    "inventory": []
+  }
+]
