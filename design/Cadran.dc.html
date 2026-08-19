@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    a { color: #46607a; } a:hover { color: #2f4356; }
+    .lbl { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8a8782; }
+    .num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+    .tile { background: #fff; border: 1px solid #d8d5cf; border-radius: 10px; padding: 9px 10px; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f4f4f2; color: #1c1b19; display: flex; flex-direction: column; gap: 8px; padding: 10px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; gap: 8px">
+    <div style="font-size: 14px; font-weight: 700">Veya Umbrael</div>
+    <div class="lbl" style="flex-grow: 1">Occultiste 2 · maîtrise +2</div>
+    <div style="width: 8px; height: 8px; border-radius: 50%; background: #3f7d58"></div>
+  </div>
+
+  <!-- Bloc vital : PV manipulables, CA, tour en cours -->
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+    <div class="tile" style="grid-column: span 2; display: flex; align-items: center; gap: 6px; padding: 6px">
+      <div style="width: 46px; height: 52px; border-radius: 8px; background: #f1efe9; display: flex; align-items: center; justify-content: center; font-size: 26px">−</div>
+      <div style="flex-grow: 1; text-align: center">
+        <div class="num" style="font-size: 30px; font-weight: 700; line-height: 1">17<span style="font-size: 14px; color: #8a8782">/17</span></div>
+        <div class="lbl">points de vie</div>
+      </div>
+      <div style="width: 46px; height: 52px; border-radius: 8px; background: #f1efe9; display: flex; align-items: center; justify-content: center; font-size: 26px">+</div>
+    </div>
+    <div class="tile" style="display: flex; flex-direction: column; align-items: center; justify-content: center">
+      <div class="num" style="font-size: 26px; font-weight: 700; line-height: 1">11</div>
+      <div class="lbl">CA</div>
+    </div>
+  </div>
+
+  <!-- Économie d'action, en évidence -->
+  <div style="background: #1c1b19; color: #f4f4f2; border-radius: 10px; padding: 9px 11px; display: flex; align-items: center; gap: 8px">
+    <div style="font-size: 12px; font-weight: 700; flex-grow: 1">Ton tour</div>
+    <div style="display: flex; gap: 5px">
+      <div style="padding: 4px 8px; border: 1.5px solid #f4f4f2; border-radius: 20px; font-size: 10px; font-weight: 600">Action</div>
+      <div style="padding: 4px 8px; border: 1.5px solid #f4f4f2; border-radius: 20px; font-size: 10px; font-weight: 600">Bonus</div>
+      <div style="padding: 4px 8px; border: 1.5px solid #6b6862; border-radius: 20px; font-size: 10px; color: #6b6862; text-decoration: line-through">Réact.</div>
+    </div>
+  </div>
+
+  <!-- Caractéristiques et sauvegardes : lisibles d'un coup d'œil, jamais cherchées -->
+  <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px">
+    <div class="tile" style="padding: 6px 2px; text-align: center"><div class="lbl">FOR</div><div class="num" style="font-size: 15px; font-weight: 700">−1</div></div>
+    <div class="tile" style="padding: 6px 2px; text-align: center"><div class="lbl">DEX</div><div class="num" style="font-size: 15px; font-weight: 700">+0</div></div>
+    <div class="tile" style="padding: 6px 2px; text-align: center"><div class="lbl">CON</div><div class="num" style="font-size: 15px; font-weight: 700">+2</div></div>
+    <div class="tile" style="padding: 6px 2px; text-align: center"><div class="lbl">INT</div><div class="num" style="font-size: 15px; font-weight: 700">+2</div></div>
+    <div class="tile" style="padding: 6px 2px; text-align: center; border-color: #1c1b19; border-width: 2px"><div class="lbl">SAG</div><div class="num" style="font-size: 15px; font-weight: 700">+3</div></div>
+    <div class="tile" style="padding: 6px 2px; text-align: center; border-color: #1c1b19; border-width: 2px"><div class="lbl">CHA</div><div class="num" style="font-size: 15px; font-weight: 700">+4</div></div>
+  </div>
+  <div class="lbl" style="margin-top: -4px">cadre épais = maîtrise en sauvegarde</div>
+
+  <!-- Grille d'actions : tout tapable, rien à dérouler -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+    <div class="tile" style="min-height: 58px; display: flex; flex-direction: column; justify-content: center">
+      <div style="font-size: 13px; font-weight: 700">Explosion occulte</div>
+      <div class="num" style="font-size: 12px; color: #8a8782">+4 · 1d10 · 120 pi</div>
+    </div>
+    <div class="tile" style="min-height: 58px; display: flex; flex-direction: column; justify-content: center">
+      <div style="font-size: 13px; font-weight: 700">Dague</div>
+      <div class="num" style="font-size: 12px; color: #8a8782">+2 · 1d4</div>
+    </div>
+    <div class="tile" style="min-height: 58px; display: flex; flex-direction: column; justify-content: center">
+      <div style="font-size: 13px; font-weight: 700">Armure d'Agathys</div>
+      <div class="num" style="font-size: 12px; color: #8a8782">rang 1 · 5 PV temp.</div>
+    </div>
+    <div class="tile" style="min-height: 58px; display: flex; flex-direction: column; justify-content: center">
+      <div style="font-size: 13px; font-weight: 700">Maléfice</div>
+      <div class="num" style="font-size: 12px; color: #8a8782">rang 1 · concentration</div>
+    </div>
+  </div>
+
+  <!-- Réserves : pastilles tapables, jamais un sous-menu -->
+  <div style="display: flex; gap: 8px">
+    <div class="tile" style="flex-grow: 1; display: flex; align-items: center; gap: 8px">
+      <div style="flex-grow: 1; font-size: 12px; font-weight: 600">Emplacements de pacte</div>
+      <div style="display: flex; gap: 5px">
+        <div style="width: 16px; height: 16px; border-radius: 50%; background: #1c1b19"></div>
+        <div style="width: 16px; height: 16px; border-radius: 50%; background: #1c1b19"></div>
+      </div>
+    </div>
+    <div class="tile" style="display: flex; align-items: center; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600">Ruse</div>
+      <div style="width: 16px; height: 16px; border-radius: 50%; background: #1c1b19"></div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1"></div>
+
+  <!-- Poignée : le reste de la feuille remonte d'un glissement -->
+  <div style="background: #fffefb; border: 2px solid #1c1b19; border-radius: 12px; padding: 10px; text-align: center">
+    <div style="width: 42px; height: 4px; border-radius: 3px; background: #cfccc5; margin: 0 auto 7px"></div>
+    <div style="font-size: 12px; font-weight: 700">Compétences · Sac · Capacités · Repos</div>
+  </div>
+
+  <div style="display: flex; gap: 8px">
+    <div style="flex-grow: 1; text-align: center; padding: 13px 0; border-radius: 10px; background: #1c1b19; color: #f4f4f2; font-size: 13px; font-weight: 700">Fin du tour</div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

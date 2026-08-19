@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Parchemin" },
+    { "file": "Nuit.dc.html", "x": 460, "y": 0, "w": 390, "h": 844, "title": "Nuit" },
+    { "file": "Braise.dc.html", "x": 920, "y": 0, "w": 390, "h": 844, "title": "Braise" },
+    { "file": "HorsTour.dc.html", "x": 1470, "y": 0, "w": 390, "h": 844, "title": "Quand ce n'est PAS ton tour" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -230, "w": 460, "text": "Direction A retravaillée, en trois ambiances.\n\nTrois changements par rapport au premier jet :\n1. Les sauvegardes remontent dans la zone figée — « fais une sauvegarde de Sagesse » se lit sans rien ouvrir.\n2. Les cartes d'action portent leurs chiffres en gros et leur bouton directement.\n3. Le rouleau se réordonne selon le contexte (dernier écran).\n\nMême structure exacte dans les trois : seule la couleur change." },
+    { "id": "n-parchemin", "x": 0, "y": 880, "w": 390, "text": "PARCHEMIN\nLe plus proche d'une vraie feuille de perso — c'est ce que tu demandais. Rouge des Loups Rouges en accent, sur fond chaud.\n\nPour : familier, lisible en plein jour, l'objet a l'air d'un document de jeu.\nContre : un écran clair et grand ouvert dans une pièce sombre, c'est agressif — et vous jouez le soir." },
+    { "id": "n-nuit", "x": 460, "y": 880, "w": 390, "text": "NUIT\nFond charbon, texte crème, accent braise. Le rouge est réservé aux points de vie, pour qu'il veuille dire quelque chose.\n\nPour : confortable en soirée, économe sur écran OLED, et la couleur garde un sens précis.\nContre : moins « feuille de papier », plus « outil »." },
+    { "id": "n-braise", "x": 920, "y": 880, "w": 390, "text": "BRAISE\nLe rouge devient structurel, pas décoratif. Le plus typé « Loups Rouges ».\n\nPour : de la personnalité, on reconnaît la campagne au premier coup d'œil.\nContre : quand le rouge est partout, il ne signale plus le danger. À 3 PV, rien ne ressort." },
+    { "id": "n-horstour", "x": 1470, "y": 880, "w": 390, "text": "LE RÉORDONNANCEMENT\nMême écran, même personnage — mais ce n'est pas ton tour.\n\nTa réaction passe en tête avec son bouton, la concentration juste dessous (c'est le moment où tu risques de la perdre), et tes actions s'effacent sans disparaître.\n\n« Fin du tour » n'a plus de sens : il cède la place à l'ordre du combat." },
+    { "id": "reco", "x": 1930, "y": 0, "w": 320, "text": "MON AVIS\n\nNuit, sans hésiter — pour une raison pratique avant d'être esthétique : vous jouez le soir, autour d'une table, et trois téléphones en blanc éclatant dans une pièce tamisée, c'est désagréable pour tout le monde.\n\nEt surtout : en gardant le rouge pour les seuls points de vie, la couleur veut dire quelque chose. Sur Braise, à 3 PV, plus rien ne ressort — c'est joli mais ça dessert le jeu.\n\nSi Parchemin te tient à cœur, le vrai compromis est de les faire tous les deux : la structure est identique, seules les valeurs de couleur changent. C'est une bascule clair/sombre, pas deux designs." }
+  ],
+  "launch": { "view": "canvas" }
+}

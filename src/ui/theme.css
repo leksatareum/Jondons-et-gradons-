@@ -1,0 +1,79 @@
+/**
+ * Palette « Nuit » — pensée pour jouer le soir, autour d'une table.
+ *
+ * Deux règles de couleur, et elles ont une raison d'être :
+ *
+ * 1. Le rouge (`--vital`) est RÉSERVÉ aux points de vie. C'est ce qui lui
+ *    permet de vouloir dire quelque chose : à 3 PV, il ressort. Une palette
+ *    où le rouge est partout ne signale plus rien.
+ * 2. L'accent (`--accent`) marque ce qui est jouable maintenant, rien d'autre.
+ *
+ * Les thèmes par classe (Druide, Occultiste, Rôdeur) viendront plus tard : ils
+ * ne surchargeront que `--accent` et ses dérivés, jamais la structure ni les
+ * couleurs vitales. D'où ce découpage entre jetons « socle » et jetons
+ * « identité » — c'est ce qui rend l'ajout trivial le jour venu.
+ */
+:root {
+  /* Socle : commun à tous les thèmes */
+  --bg: #121417;
+  --surface: #1c1f24;
+  --surface-raised: #23272e;
+  --ink: #e9e6e0;
+  --muted: #878d96;
+  --line: #2b3037;
+  --raise: 0 1px 3px rgb(0 0 0 / 0.4);
+
+  /* Vital : jamais surchargé par un thème de classe */
+  --vital: #e07a6a;
+  --vital-wash: #2a1a17;
+  --ok: #6fae86;
+
+  /* Identité : le seul groupe qu'un thème de classe remplacera */
+  --accent: #e0a15a;
+  --accent-ink: #1c1f24;
+  --accent-wash: #2a2119;
+
+  --radius: 12px;
+  --radius-sm: 7px;
+  /* Cible tactile minimale — jamais en dessous, même quand la place manque. */
+  --tap: 44px;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Le rebond de défilement fait perdre la barre figée sur iOS. */
+  overscroll-behavior-y: none;
+}
+
+.ttl { font-family: 'Bitter', Georgia, serif; font-weight: 700; }
+.num { font-variant-numeric: tabular-nums; }
+.lbl {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  /* Supprime le délai de 300 ms et la surbrillance bleue sur mobile. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: opacity 140ms ease, border-color 140ms ease; }
+}

@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: __ACCENT__; } a:hover { color: __INK__; }
+    .sc { --bg: __BG__; --surface: __SURFACE__; --ink: __INK__; --muted: __MUTED__; --line: __LINE__;
+          --accent: __ACCENT__; --vital: __VITAL__; --ok: __OK__; --raise: __RAISE__;
+          font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif; }
+    .sc .ttl { font-family: 'Bitter', Georgia, serif; }
+    .lbl { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+    .num { font-variant-numeric: tabular-nums; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  </style>
+</helmet>
+
+<div class="sc" style="width: 390px; height: 844px; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; overflow: hidden">
+
+  <!-- ═══ ZONE FIGÉE : ne défile jamais ═══ -->
+  <div style="flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--raise); padding: 11px 14px 12px">
+
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 11px">
+      <div class="ttl" style="font-size: 16px; font-weight: 700">Veya Umbrael</div>
+      <div class="lbl" style="flex-grow: 1">Occultiste 2</div>
+      <div style="display: flex; align-items: center; gap: 5px">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: var(--ok)"></div>
+        <div class="lbl">à jour</div>
+      </div>
+    </div>
+
+    <!-- PV : l'interaction la plus fréquente de la soirée, donc la plus grosse cible -->
+    <div style="display: flex; align-items: stretch; gap: 9px; margin-bottom: 11px">
+      <div style="flex-grow: 1; display: flex; align-items: center; border: 1.5px solid var(--vital); border-radius: 12px; overflow: hidden">
+        <div style="width: 52px; height: 56px; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </div>
+        <div style="flex-grow: 1; text-align: center">
+          <div class="num" style="font-size: 29px; font-weight: 700; line-height: 1; color: var(--vital)">17<span style="font-size: 14px; color: var(--muted); font-weight: 500">/17</span></div>
+          <div class="lbl" style="margin-top: 2px">points de vie</div>
+        </div>
+        <div style="width: 52px; height: 56px; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--line)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+      </div>
+      <div style="width: 66px; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center">
+        <div class="num" style="font-size: 23px; font-weight: 700; line-height: 1">11</div>
+        <div class="lbl" style="margin-top: 3px">CA</div>
+      </div>
+    </div>
+
+    <!-- Sauvegardes : le trou de la version précédente. « Fais une sauvegarde de Sagesse » → +3, tout de suite. -->
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin-bottom: 11px">
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1px solid var(--line)"><div class="lbl" style="font-size: 9px">FOR</div><div class="num" style="font-size: 14px; font-weight: 600">−1</div></div>
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1px solid var(--line)"><div class="lbl" style="font-size: 9px">DEX</div><div class="num" style="font-size: 14px; font-weight: 600">+0</div></div>
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1px solid var(--line)"><div class="lbl" style="font-size: 9px">CON</div><div class="num" style="font-size: 14px; font-weight: 600">+2</div></div>
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1px solid var(--line)"><div class="lbl" style="font-size: 9px">INT</div><div class="num" style="font-size: 14px; font-weight: 600">+2</div></div>
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1.5px solid var(--accent); background: var(--accentwash)"><div class="lbl" style="font-size: 9px; color: var(--accent)">SAG</div><div class="num" style="font-size: 14px; font-weight: 700; color: var(--accent)">+3</div></div>
+      <div style="text-align: center; padding: 5px 0; border-radius: 7px; border: 1.5px solid var(--accent); background: var(--accentwash)"><div class="lbl" style="font-size: 9px; color: var(--accent)">CHA</div><div class="num" style="font-size: 14px; font-weight: 700; color: var(--accent)">+4</div></div>
+    </div>
+
+    <!-- Économie d'action : la question qu'aucune fiche papier ne répond -->
+    <div style="display: flex; align-items: center; gap: 7px">
+      <div class="ttl" style="font-size: 13px; font-weight: 700; color: var(--accent); flex-grow: 1">À toi de jouer</div>
+      <div style="padding: 5px 10px; border-radius: 20px; background: var(--accent); color: var(--surface); font-size: 11px; font-weight: 700">Action</div>
+      <div style="padding: 5px 10px; border-radius: 20px; background: var(--accent); color: var(--surface); font-size: 11px; font-weight: 700">Bonus</div>
+      <div style="padding: 5px 10px; border-radius: 20px; border: 1px solid var(--line); color: var(--muted); font-size: 11px; text-decoration: line-through">Réaction</div>
+    </div>
+  </div>
+
+  <!-- ═══ ROULEAU : réordonné par le contexte — à ton tour, tes actions d'abord ═══ -->
+  <div style="flex-grow: 1; overflow: hidden; padding: 13px 14px 0; display: flex; flex-direction: column; gap: 11px">
+
+    <div class="card" style="border-color: var(--accent); border-width: 1.5px; padding: 14px">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 11px">
+        <div class="ttl" style="font-size: 17px; font-weight: 700; flex-grow: 1">Explosion occulte</div>
+        <div class="lbl">action</div>
+      </div>
+      <div style="display: flex; align-items: flex-end; gap: 18px; margin-bottom: 13px">
+        <div><div class="num" style="font-size: 27px; font-weight: 700; line-height: 1; color: var(--accent)">+4</div><div class="lbl" style="margin-top: 3px">touche</div></div>
+        <div><div class="num" style="font-size: 27px; font-weight: 700; line-height: 1">1d10<span style="font-size: 15px">+4</span></div><div class="lbl" style="margin-top: 3px">force · 36 m</div></div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <div style="flex-grow: 1; text-align: center; padding: 13px 0; border-radius: 10px; background: var(--accent); color: var(--surface); font-size: 13px; font-weight: 700">Attaquer</div>
+        <div style="width: 74px; text-align: center; padding: 13px 0; border-radius: 10px; border: 1px solid var(--line); font-size: 13px; font-weight: 600">Détail</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 13px 14px; display: flex; align-items: center; gap: 12px">
+      <div style="flex-grow: 1">
+        <div class="ttl" style="font-size: 15px; font-weight: 700">Armure d'Agathys</div>
+        <div class="lbl" style="text-transform: none; margin-top: 2px">5 PV temporaires · représailles de froid</div>
+      </div>
+      <div style="text-align: center">
+        <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 3px">
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: var(--accent)"></div>
+          <div style="width: 11px; height: 11px; border-radius: 50%; background: var(--accent)"></div>
+        </div>
+        <div class="lbl" style="font-size: 9px">pacte</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 13px 14px; display: flex; align-items: center; gap: 12px; border-style: dashed">
+      <div style="flex-grow: 1">
+        <div class="ttl" style="font-size: 15px; font-weight: 700">Orbe chromatique</div>
+        <div class="lbl" style="text-transform: none; margin-top: 2px; color: var(--accent)">accordé par ton don · hors budget</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 9px; padding: 0 2px">
+      <div class="lbl">plus bas</div>
+      <div style="flex-grow: 1; height: 1px; background: var(--line)"></div>
+      <div class="lbl">réactions · ressources · sac</div>
+    </div>
+  </div>
+
+  <!-- Zone du pouce -->
+  <div style="flex-shrink: 0; padding: 11px 14px 14px; display: flex; gap: 9px">
+    <div style="flex-grow: 1; text-align: center; padding: 14px 0; border-radius: 11px; background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 700">Fin du tour</div>
+    <div style="width: 92px; text-align: center; padding: 14px 0; border-radius: 11px; border: 1.5px solid var(--ink); font-size: 13px; font-weight: 700">Fiche</div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

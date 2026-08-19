@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; }
+    a { color: #46607a; } a:hover { color: #2f4356; }
+    .lbl { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8a8782; }
+    .num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #f4f4f2; color: #1c1b19; display: flex; flex-direction: column; overflow: hidden">
+
+  <!-- Ce qui ne bouge jamais : identité, PV, CA, tour -->
+  <div style="flex-shrink: 0; background: #1c1b19; color: #f4f4f2; padding: 12px 14px 14px">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 11px">
+      <div style="font-size: 14px; font-weight: 700">Veya Umbrael</div>
+      <div class="lbl" style="flex-grow: 1; color: #9a968f">Occultiste 2</div>
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: #6fbf8f"></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <div style="width: 42px; height: 42px; border-radius: 10px; border: 1.5px solid #55524c; display: flex; align-items: center; justify-content: center; font-size: 24px">−</div>
+        <div style="text-align: center; min-width: 74px">
+          <div class="num" style="font-size: 32px; font-weight: 700; line-height: 1">17</div>
+          <div class="lbl" style="color: #9a968f">PV / 17</div>
+        </div>
+        <div style="width: 42px; height: 42px; border-radius: 10px; border: 1.5px solid #55524c; display: flex; align-items: center; justify-content: center; font-size: 24px">+</div>
+      </div>
+      <div style="flex-grow: 1"></div>
+      <div style="text-align: center">
+        <div class="num" style="font-size: 22px; font-weight: 700; line-height: 1">11</div>
+        <div class="lbl" style="color: #9a968f">CA</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 6px; margin-top: 12px">
+      <div style="padding: 5px 10px; border: 1.5px solid #f4f4f2; border-radius: 20px; font-size: 11px; font-weight: 600">Action</div>
+      <div style="padding: 5px 10px; border: 1.5px solid #f4f4f2; border-radius: 20px; font-size: 11px; font-weight: 600">Bonus</div>
+      <div style="padding: 5px 10px; border: 1.5px solid #55524c; border-radius: 20px; font-size: 11px; color: #6b6862; text-decoration: line-through">Réaction</div>
+      <div style="flex-grow: 1"></div>
+      <div style="font-size: 11px; font-weight: 700; align-self: center">à toi</div>
+    </div>
+  </div>
+
+  <!-- Sélecteur de pile -->
+  <div style="flex-shrink: 0; display: flex; gap: 0; background: #e9e6df; padding: 4px; margin: 12px 14px 0; border-radius: 10px">
+    <div style="flex-grow: 1; text-align: center; padding: 9px 0; border-radius: 7px; background: #fffefb; font-size: 12px; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.08)">Attaques</div>
+    <div style="flex-grow: 1; text-align: center; padding: 9px 0; font-size: 12px; color: #8a8782">Sorts</div>
+    <div style="flex-grow: 1; text-align: center; padding: 9px 0; font-size: 12px; color: #8a8782">Réserves</div>
+  </div>
+
+  <!-- La pile : grandes cartes, une seule catégorie à la fois -->
+  <div style="flex-grow: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+
+    <div style="background: #fffefb; border: 2px solid #1c1b19; border-radius: 14px; padding: 15px">
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <div style="font-size: 18px; font-weight: 700; flex-grow: 1">Explosion occulte</div>
+        <div class="lbl">sort mineur</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px; margin: 14px 0 12px">
+        <div><div class="num" style="font-size: 30px; font-weight: 700; line-height: 1">+4</div><div class="lbl">touche</div></div>
+        <div><div class="num" style="font-size: 30px; font-weight: 700; line-height: 1">1d10</div><div class="lbl">dégâts de force</div></div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <div style="flex-grow: 1; text-align: center; padding: 12px 0; border-radius: 9px; background: #1c1b19; color: #f4f4f2; font-size: 13px; font-weight: 700">Attaquer</div>
+        <div style="width: 78px; text-align: center; padding: 12px 0; border-radius: 9px; border: 1.5px solid #1c1b19; font-size: 13px; font-weight: 600">Détail</div>
+      </div>
+      <div class="lbl" style="text-transform: none; margin-top: 9px">Décharge agonisante : +4 aux dégâts</div>
+    </div>
+
+    <div style="background: #fffefb; border: 1px solid #d8d5cf; border-radius: 14px; padding: 15px">
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <div style="font-size: 16px; font-weight: 700; flex-grow: 1">Dague</div>
+        <div class="lbl">arme</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px; margin-top: 11px">
+        <div><div class="num" style="font-size: 24px; font-weight: 700; line-height: 1">+2</div><div class="lbl">touche</div></div>
+        <div><div class="num" style="font-size: 24px; font-weight: 700; line-height: 1">1d4</div><div class="lbl">perforants</div></div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; padding-top: 2px">
+      <div style="width: 20px; height: 5px; border-radius: 3px; background: #1c1b19"></div>
+      <div style="width: 5px; height: 5px; border-radius: 3px; background: #cfccc5"></div>
+      <div style="width: 5px; height: 5px; border-radius: 3px; background: #cfccc5"></div>
+    </div>
+  </div>
+
+  <div style="flex-shrink: 0; background: #fffefb; border-top: 2px solid #1c1b19; padding: 9px 14px; display: flex; gap: 8px">
+    <div style="flex-grow: 1; text-align: center; padding: 12px 0; border-radius: 9px; background: #1c1b19; color: #f4f4f2; font-size: 13px; font-weight: 700">Fin du tour</div>
+    <div style="width: 96px; text-align: center; padding: 12px 0; border-radius: 9px; border: 2px solid #1c1b19; font-size: 13px; font-weight: 700">Fiche</div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

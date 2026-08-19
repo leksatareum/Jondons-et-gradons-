@@ -14,6 +14,15 @@ export const ABILITY_NAMES: Record<AbilityId, string> = {
 
 export const ABILITY_ORDER: AbilityId[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
+/**
+ * Abréviations françaises, pour l'affichage. Les identifiants restent en
+ * anglais (`str`, `wis`) parce qu'ils sont des clés de données ; les mettre à
+ * l'écran tels quels affichait « STR » et « WIS » à des joueurs francophones.
+ */
+export const ABILITY_ABBREVIATIONS: Record<AbilityId, string> = {
+  str: 'FOR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'SAG', cha: 'CHA',
+};
+
 /** Tableau standard de répartition des caractéristiques. */
 export const STANDARD_ARRAY: readonly number[] = [15, 14, 13, 12, 10, 8];
 
