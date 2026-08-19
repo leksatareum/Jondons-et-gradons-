@@ -40,12 +40,13 @@ exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrai
   ✅ `CLASS_RESOURCES` (druide/rôdeur/occultiste), ✅ `SUBCLASS_RESOURCES`
   (patrons occultiste), `SUBCLASSES`, `SUBCLASS_PROFICIENCIES`,
   `SUBCLASS_SRC`, `CLASS_CHOICES`, `CLASS_CODE`
-- **Combat** : `MASTERIES`, `WEAPONS`, `WEAPON_PRICES`, `COMBAT_ACTIONS`,
+- **Combat** : ✅ `MASTERIES`, ✅ `WEAPONS`, ✅ `WEAPON_PRICES`, `COMBAT_ACTIONS`,
   ✅ `FIGHTING_STYLES`, ✅ `RANGER_FIGHTING_STYLES`, ✅ `DRUIDIC_WARRIOR`,
   `BATTLE_MASTER_MANEUVERS`, `METAMAGIC`, `DIVINE_ORDER`, `PRIMAL_ORDER`,
   `BLESSED_STRIKES`, `ELEMENTAL_FURY`, ✅ `HUNTER_PREY`, ✅ `HUNTER_DEFENSE`
-- **Équipement et vie de camp** : `ARMORS`, `ARMOR_PRICES`, `ARMOR_PROF`,
-  `SHIELD_CATALOG`, `SHOP_CATALOG`, `STARTING_KITS`,
+- **Équipement et vie de camp** : ✅ `ARMORS`, ✅ `ARMOR_PRICES`, `ARMOR_PROF`,
+  ✅ `SHIELD_CATALOG` (portée en version simplifiée, cf. §4sexto),
+  `SHOP_CATALOG`, `STARTING_KITS`,
   `STARTING_WEAPON_ALIASES`, `MOUNT_CREATURE_IDS`, `CRAFT_TOOL_ITEM_ID`,
   `CRAFT_IDS_BY_TOOL`, `FAST_CRAFT_IDS_BY_TOOL`, `ARTISAN_TOOLS`,
   `ARTISAN_TOOL_OPTIONS`, `FAST_CRAFT_TOOLS`, `MUSICAL_INSTRUMENTS`,
@@ -137,6 +138,26 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 — aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+
+## 4sexto. Extractions faites — armes et armures (SRD 5.2)
+
+- `src/content/weapons.ts` — trente-huit armes avec dégâts, propriétés et
+  maîtrise PHB 2024 (correction au passage : le décompte annoncé
+  initialement dans ce backlog disait « 37 », c'était une erreur
+  arithmétique de ma part en recopiant — 38 dans le code d'origine comme
+  ici). Les huit maîtrises correspondent exactement au type déjà posé dans
+  `src/domain/weapon-mastery.ts`.
+- `src/content/armor.ts` — treize armures (Sans armure incluse), plafonds de
+  Dextérité, temps pour enfiler/retirer par catégorie (vérifié PHB 2024 :
+  légère 1 min/1 min, intermédiaire 5 min/1 min, lourde 10 min/5 min), et
+  `armorClassFor()` qui calcule la CA effective au lieu de stocker un plafond
+  déjà appliqué.
+- Confiance haute pour l'ensemble : données du SRD 5.2 (licence CC-BY 4.0),
+  stables depuis 2014, revérifiées contre mes connaissances des tables
+  officielles.
+- Volontairement pas repris : `SHOP_CATALOG`/`WEAPON_CATALOG`/`ARMOR_CATALOG`
+  (mise en forme pour l'affichage boutique, pas une règle), `ARMOR_PROF`
+  (maîtrises d'armure par classe, à traiter avec `SUBCLASS_PROFICIENCIES`).
 
 ## 4quinto. Extractions faites — bases de personnage et états officiels
 
