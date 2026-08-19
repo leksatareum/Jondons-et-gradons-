@@ -133,6 +133,22 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
 
+## 4quater. Extractions faites — styles de combat et sous-classe Chasseur (Rôdeur)
+
+- `src/content/fighting-styles.ts` — les dix options du don de Style de
+  combat (2024 : c'est un don, pas une capacité de classe), plus le
+  Guerrier druidique, alternative réservée au Rôdeur. Confiance haute :
+  liste standard, inchangée depuis la sortie du PHB 2024.
+- `src/content/ranger-hunter-options.ts` — Proie du chasseur (niveau 3,
+  deux options) et Tactiques défensives (niveau 7, trois options) de la
+  sous-classe Chasseur. **Confiance modérée, pas confirmée page à page.** En
+  2014, Proie du chasseur avait une troisième option (Tueur de géants) et
+  Tactiques défensives une troisième option différente (Volonté de fer) qui
+  n'apparaissent pas ici. Soit le PHB 2024 a réduit ces choix, soit il en
+  manque une — à vérifier si un jour un Rôdeur de la table choisit le
+  Chasseur (c'était la sous-classe par défaut de l'ancienne app, donc
+  plausible).
+
 ## 4ter. Extractions faites — les quatre Patrons de l'Occultiste
 
 `src/domain/warlock-patron-resources.ts` — ressource propre à chaque patron
