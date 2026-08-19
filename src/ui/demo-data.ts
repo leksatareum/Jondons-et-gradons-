@@ -70,3 +70,27 @@ export const demoCards: PlayableCard[] = [
     resource: { key: 'pacte', remaining: 2, max: 2, label: 'Emplacement de pacte' },
   },
 ];
+
+import { withDistinctNames, type EncounterState } from '../domain/encounter';
+
+/**
+ * Rencontre d'exemple : le groupe face à une embuscade. Noms inventés, comme
+ * la fiche ci-dessus — aucune donnée de campagne ne vit dans le dépôt.
+ *
+ * Elle exerce volontairement les cas pénibles : des créatures homonymes à
+ * numéroter, un joueur à terre, un état en cours, et des points de vie
+ * temporaires.
+ */
+export const demoEncounter: EncounterState = {
+  round: 2,
+  turnIndex: 1,
+  combatants: withDistinctNames([
+    { id: 'p1', name: 'Sélène', side: 'joueur', initiative: 19, dexterity: 2, maxHp: 17, damageTaken: 4, temporaryHp: 5, armorClass: 12, conditions: [] },
+    { id: 'm1', name: 'Gobelin', side: 'creature', initiative: 16, dexterity: 2, maxHp: 7, damageTaken: 0, temporaryHp: 0, armorClass: 15, conditions: [] },
+    { id: 'm2', name: 'Gobelin', side: 'creature', initiative: 16, dexterity: 2, maxHp: 7, damageTaken: 5, temporaryHp: 0, armorClass: 15, conditions: ['Effrayé'] },
+    { id: 'p2', name: 'Brannoc', side: 'joueur', initiative: 14, dexterity: 1, maxHp: 19, damageTaken: 11, temporaryHp: 0, armorClass: 14, conditions: [] },
+    { id: 'm3', name: 'Chef gobelin', side: 'creature', initiative: 12, dexterity: 3, maxHp: 21, damageTaken: 3, temporaryHp: 0, armorClass: 17, conditions: [] },
+    { id: 'p3', name: 'Ysoria', side: 'joueur', initiative: 9, dexterity: 0, maxHp: 24, damageTaken: 24, temporaryHp: 0, armorClass: 15, conditions: ['Inconscient'] },
+    { id: 'm4', name: 'Gobelin', side: 'creature', initiative: 7, dexterity: 2, maxHp: 7, damageTaken: 0, temporaryHp: 0, armorClass: 15, conditions: [] },
+  ]),
+};
