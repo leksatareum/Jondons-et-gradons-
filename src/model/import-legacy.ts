@@ -3,6 +3,7 @@ import { normalizeClassLevels } from '../domain/multiclassing';
 import { classById } from '../content/classes';
 import { BACKGROUNDS } from '../content/backgrounds';
 import { alwaysPreparedSpellsFor } from '../content/always-prepared-spells';
+import { speciesMagicFor } from '../content/species';
 
 /**
  * Import d'une fiche de `table-connectee`.
@@ -46,7 +47,7 @@ export interface LegacyCharacter {
   shield?: boolean;
   gold?: number;
   cantrips?: string[] | null;
-  spells?: Array<{ id?: string; prepared?: boolean; always?: boolean; sourceClass?: string }> | null;
+  spells?: Array<{ id?: string; prepared?: boolean; always?: boolean; sourceClass?: string; source?: string; spellList?: string }> | null;
   inventory?: Array<Record<string, unknown>> | null;
   // Valeurs calculées de l'ancienne app — lues seulement pour vérification.
   hp?: number; hpMax?: number; hpTemp?: number; hitDiceLeft?: number;
@@ -65,6 +66,14 @@ export interface ImportReport {
 }
 
 const ABILITY_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
+
+/** Terrain du Cercle de la Terre, choisi et rechoisi à chaque repos long. */
+const terrainChoice = (legacy: LegacyCharacter, classId: string): string | null => {
+  const selections = legacy.classSelections?.[classId] as Record<string, unknown> | undefined;
+  const single = legacy.classId === classId ? (legacy.classChoices as Record<string, unknown> | null) : null;
+  const value = selections?.terrain ?? single?.terrain;
+  return typeof value === 'string' ? value : null;
+};
 
 const normalizeText = (value: unknown): string => String(value ?? '')
   .normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLocaleLowerCase('fr');
@@ -145,6 +154,7 @@ export function importLegacyCharacter(legacy: LegacyCharacter): ImportReport {
   });
   if (classLevels.length === 0) warnings.push('Aucune classe reconnue : la fiche est importée sans niveau de classe.');
   const classIds = classLevels.map((entry) => entry.classId);
+  const totalLevel = classLevels.reduce((sum, entry) => sum + entry.level, 0);
   const mainClass = classIds[0] ?? legacy.classId ?? '';
 
   const backgroundId = backgroundIdFrom(legacy);
@@ -156,26 +166,42 @@ export function importLegacyCharacter(legacy: LegacyCharacter): ImportReport {
     ABILITY_KEYS.map((key) => [key, legacy.abilities?.[key] ?? 10]),
   ) as CharacterSheet['abilities'];
 
-  // Les sorts accordés d'office ne sont plus stockés : ils se dérivent. On les
-  // retire à l'import, sinon ils occuperaient le budget de sorts choisis —
-  // c'est exactement le bug « Liste 9/6 » de l'ancienne app.
-  const granted = new Set(classLevels.flatMap((entry) => alwaysPreparedSpellsFor({
-    classId: entry.classId, subclass: entry.subclass,
-    terrain: null, level: entry.level,
-  })));
+  // Un sort accordé d'office n'est retiré de la fiche que si la dérivation le
+  // rend réellement — sinon on le perdrait. Cette prudence n'est pas
+  // théorique : sur les fiches réelles, un sort d'Initié à la magie et la
+  // magie innée d'un lignage Drow disparaissaient avec la version naïve.
+  const derivable = new Set([
+    ...classLevels.flatMap((entry) => alwaysPreparedSpellsFor({
+      classId: entry.classId, subclass: entry.subclass,
+      terrain: terrainChoice(legacy, entry.classId), level: entry.level,
+    })),
+    ...speciesMagicFor(legacy.speciesId, legacy.lineageId, totalLevel).spells,
+  ]);
+
   const spells: ChosenSpell[] = [];
   let droppedGranted = 0;
+  const keptGrants: string[] = [];
   for (const spell of legacy.spells ?? []) {
     if (!spell?.id) continue;
-    if (spell.always || granted.has(spell.id)) { droppedGranted += 1; continue; }
+    if (derivable.has(spell.id)) { droppedGranted += 1; continue; }
+    const grantedBy = spell.always ? String(spell.source ?? spell.sourceClass ?? 'inconnu') : null;
+    if (grantedBy) keptGrants.push(spell.id);
     spells.push({
       id: spell.id,
       sourceClass: spell.sourceClass ?? mainClass,
       ...(typeof spell.prepared === 'boolean' ? { prepared: spell.prepared } : {}),
+      ...(grantedBy ? { grantedBy } : {}),
     });
   }
   if (droppedGranted > 0) {
     warnings.push(`${droppedGranted} sort(s) accordé(s) d'office retiré(s) de la liste choisie : ils sont désormais dérivés et ne consomment plus le budget.`);
+  }
+  if (keptGrants.length > 0) {
+    warnings.push(
+      `${keptGrants.length} sort(s) accordé(s) par un don, une invocation ou une capacité (${keptGrants.join(', ')}) `
+      + 'conservé(s) sur la fiche : le moteur ne sait pas encore les dériver, et les perdre serait pire. '
+      + 'Ils ne consomment pas le budget de sorts préparés.',
+    );
   }
 
   const armorId = legacy.armorId && legacy.armorId !== 'none' ? legacy.armorId : null;

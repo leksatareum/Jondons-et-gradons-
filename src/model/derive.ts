@@ -14,7 +14,7 @@ import { subclassFeaturesUpTo } from '../content/subclasses';
 import { classById } from '../content/classes';
 import { backgroundById } from '../content/backgrounds';
 import { armorById, SHIELD } from '../content/armor';
-import { speciesById, speciesResistancesFor } from '../content/species';
+import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
 import { speciesResourcesFor } from '../domain/species-resources';
 import { wildShapeUses } from '../domain/druid-resources';
 import { hunterMarkFreeCastUses, natureVeilUses } from '../domain/ranger-resources';
@@ -243,12 +243,19 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     }
   }
 
-  const alwaysPrepared = [...new Set(sheet.classLevels.flatMap((entry) => alwaysPreparedSpellsFor({
-    classId: entry.classId,
-    subclass: entry.subclass,
-    terrain: choiceList(choicesFor(sheet, entry.classId), 'terrain')[0] ?? null,
-    level: entry.level,
-  })))];
+  // Les sorts accordés viennent de la classe, de la sous-classe, du terrain —
+  // et aussi de l'espèce ou du lignage (magie innée du Drow, du Tieffelin…),
+  // que l'ancienne app marquait `source: 'species'` sur la fiche.
+  const speciesMagic = speciesMagicFor(sheet.speciesId, sheet.lineageId, level);
+  const alwaysPrepared = [...new Set([
+    ...sheet.classLevels.flatMap((entry) => alwaysPreparedSpellsFor({
+      classId: entry.classId,
+      subclass: entry.subclass,
+      terrain: choiceList(choicesFor(sheet, entry.classId), 'terrain')[0] ?? null,
+      level: entry.level,
+    })),
+    ...speciesMagic.spells,
+  ])];
 
   const wizardLevel = levelInClass(sheet, 'magicien');
 

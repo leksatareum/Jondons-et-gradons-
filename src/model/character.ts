@@ -55,13 +55,23 @@ export interface InventoryItem {
  */
 export type ClassChoices = Record<string, string | string[] | null | undefined>;
 
-/** Un sort que le joueur a choisi. Les sorts *accordés* ne sont jamais stockés ici. */
+/**
+ * Un sort que le joueur a choisi. Un sort accordé d'office par la classe, la
+ * sous-classe, le terrain ou l'espèce n'est jamais stocké : il se dérive.
+ *
+ * `grantedBy` couvre le cas intermédiaire : un don ou une invocation accorde
+ * un sort, mais c'est le joueur qui a choisi LEQUEL (Initié à la magie, Pacte
+ * du Grimoire…). Ce choix est une décision, donc stockée — mais elle ne
+ * consomme pas le budget de sorts préparés.
+ */
 export interface ChosenSpell {
   id: string;
   /** Classe qui l'a fait apprendre — décisif en multiclasse. */
   sourceClass: string;
   /** Préparé ou non, pour les classes qui préparent. Sans objet pour les sorts connus. */
   prepared?: boolean;
+  /** Origine de l'octroi (`origin`, `class-feature`…) quand le sort est accordé mais choisi. */
+  grantedBy?: string;
 }
 
 /** État vivant : ce qui change en jeu et ne se dérive de rien. */
