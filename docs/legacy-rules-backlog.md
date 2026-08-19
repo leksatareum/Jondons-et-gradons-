@@ -133,34 +133,23 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
 
-## 5. Question ouverte — le Pacte de l'Occultiste
+## 5. Résolu — le Pacte de l'Occultiste
 
 Investigation du problème de fond que tu avais signalé (« ma joueuse
-occultiste ne peut toujours pas choisir son pacte ») :
+occultiste ne peut toujours pas choisir son pacte »), tranchée le 19/08/2026
+sur confirmation de ta part depuis le PHB 2024 papier :
 
-Le **Pacte de la Lame**, **de la Chaîne** et **du Grimoire** existent bien
-dans `src/content/eldritch-invocations.ts`, modélisés comme des invocations
-occultes ordinaires (`minLevel: 1`), avec leur mécanique dans
-`src/domain/warlock-pacts-core.ts` — ces deux fichiers sont déjà dans ce
-dépôt. Mais **le Pacte du Talisman est absent partout** : ni dans le
-catalogue d'invocations, ni dans le moteur, ni dans `App.jsx`. Sur les
-quatre Pactes du PHB, un seul manque entièrement — ce n'est pas la cause
-principale du problème (trois choix sur quatre existent), mais c'en est une
-partie concrète et vérifiable.
-
-Deux points que je ne peux pas trancher sans le PHB 2024 papier :
-
-1. **Le Pacte du Talisman doit-il être ajouté**, et avec quel texte exact ?
-   Je peux écrire une version à partir de ma mémoire de la règle 2014
-   (« la porteuse ajoute 1d4 à un test de caractéristique raté, un nombre de
-   fois égal au bonus de maîtrise, récupéré à un repos long ») mais je ne
-   suis pas certain qu'elle soit restée inchangée en 2024 — je préfère te le
-   signaler plutôt que d'inventer avec une fausse confiance.
-2. **Les quatre Pactes doivent-ils exiger le niveau 3** au lieu du niveau 1
-   actuel ? Le commentaire du test `eldritch-invocations.test.ts` affirme que
-   le catalogue contient bien « les 28 options du Manuel » — un chiffre qui
-   semble avoir été vérifié sérieusement à l'époque — donc je ne veux pas non
-   plus corriger `minLevel` sans confirmation.
+- **Pacte de la Lame, de la Chaîne, du Grimoire** : niveau 1, invocations
+  occultes ordinaires. Confirmé — c'est exactement ce que contenait déjà
+  `src/content/eldritch-invocations.ts` (`minLevel: 1`), repêché tel quel de
+  `table-connectee`. Aucune correction nécessaire.
+- **Pacte du Talisman** : n'existe pas dans le PHB 2024 (règle de
+  Tasha's Cauldron of Everything / 2014, non reconduite). Confirmé —
+  `table-connectee` ne le contenait déjà nulle part ; ce n'était donc pas une
+  lacune mais un état correct. Verrouillé par un test qui échoue si quelqu'un
+  l'ajoute par erreur un jour.
+- Le niveau 3 correspond au choix de la sous-classe (patron), pas au choix du
+  pacte — sans lien avec les Invocations occultes.
 
 Le vrai problème que tu décrivais (une fiche créée avant l'arrivée d'une
 fonctionnalité ne peut plus en profiter) reste de toute façon réglé par

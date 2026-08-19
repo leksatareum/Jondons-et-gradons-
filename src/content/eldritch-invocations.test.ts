@@ -10,6 +10,16 @@ describe('invocations occultes 2024', () => {
     expect(warlockInvocationCount(20)).toBe(10);
   });
 
+  it('les trois Pactes du PHB 2024 sont disponibles dès le niveau 1, et le Talisman (Tasha/2014) est absent', () => {
+    // Vérifié le 19/08/2026 contre le PHB 2024 papier de l'utilisateur : le
+    // Pacte du Talisman n'a pas été reconduit en 2024, et le niveau 3 est
+    // celui de la sous-classe (patron), pas celui des Pactes.
+    for (const id of ['pact-blade', 'pact-chain', 'pact-tome']) {
+      expect(ELDRITCH_INVOCATIONS.find((invocation) => invocation.id === id)?.minLevel).toBe(1);
+    }
+    expect(ELDRITCH_INVOCATIONS.find((invocation) => invocation.id === 'pact-talisman')).toBeUndefined();
+  });
+
   it('bloque les prérequis de niveau et de pacte', () => {
     const base = { level: 5, selectedIds: [], damageCantrips: [], rangedDamageCantrips: [], attackCantrips: [], originFeats: [] };
     const withoutPact = eligibleInvocationOptions(base).map((option) => option.id);
