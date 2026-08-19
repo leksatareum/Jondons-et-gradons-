@@ -51,14 +51,14 @@ exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrai
   `CRAFT_IDS_BY_TOOL`, `FAST_CRAFT_IDS_BY_TOOL`, `ARTISAN_TOOLS`,
   `ARTISAN_TOOL_OPTIONS`, `FAST_CRAFT_TOOLS`, `MUSICAL_INSTRUMENTS`,
   `GAMING_SETS`, `OTHER_TOOLS`, `ALL_TOOL_PROFICIENCIES`
-- **Création de personnage** : `SPECIES`, `CLASSES`, `BACKGROUNDS`, `FEATS`,
+- **Création de personnage** : ✅ `SPECIES`, `CLASSES`, `BACKGROUNDS`, `FEATS`,
   `FEAT_ENERGY_TYPES`, `FEAT_ELEMENTAL_TYPES`, `KNOWLEDGE_SKILLS`,
   `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`, ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`,
   ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
 - **Règles génériques** : ✅ `CONDITIONS` (les 14 états officiels ; les
   étiquettes de suivi supplémentaires de la table d'origine restent à
   traiter au niveau du modèle de personnage, pas comme règles à part),
-  `DAMAGE_TYPES`, `SCHOOLS`, `RECHARGE`, `AUTOMATION`
+  ✅ `DAMAGE_TYPES`, ✅ `SCHOOLS`, ✅ `RECHARGE`, `AUTOMATION`
 - **Campagne** : `INITIAL_PARTY`, `INITIAL_JOURNAL`, `SCENES`, `PORTRAITS`
 
 ## 2. Règles couvertes par des tests d'audit non repris
@@ -138,6 +138,25 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 — aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+
+## 4septo. Extractions faites — espèces et petites tables génériques
+
+- `src/content/reference-lists.ts` — treize types de dégâts, huit écoles de
+  magie. Confiance haute, listes standard inchangées depuis 2014.
+- `src/domain/recharge.ts` — vocabulaire interne de recharge des ressources
+  (pas une règle du PHB, juste un type partagé au lieu de chaînes libres).
+- `src/content/species.ts` — les dix espèces du PHB 2024, avec leurs
+  lignages (Elfe, Gnome, Tieffelin) et ascendances (Drakéide, Goliath).
+  Confiance haute mais pas confirmée page à page : cohérent avec la refonte
+  2024 que je connais (résistances liées à l'ascendance/au legs, Forme
+  imposante du Goliath au niveau 5, don d'origine supplémentaire pour
+  l'Humain), sur dix entrées un détail isolé peut m'avoir échappé.
+- `src/domain/species-resources.ts` — ressources dérivées de l'espèce
+  choisie (Souffle draconique, Mains guérisseuses, Ténacité implacable…),
+  avec une simplification assumée : le nom de la « Magie innée » utilise
+  l'id du sort plutôt que sa recherche dans `SPELLS`, pour ne pas coupler ce
+  module au contenu des sorts — à la charge de l'affichage de résoudre le
+  nom lisible.
 
 ## 4sexto. Extractions faites — armes et armures (SRD 5.2)
 
