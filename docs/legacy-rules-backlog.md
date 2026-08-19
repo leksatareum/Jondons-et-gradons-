@@ -29,18 +29,21 @@ réécrites à la compilation par la chaîne de plugins. Il faudra les rejouer
 état réel avant de les porter en données pures et dérivées.
 
 Relevé par sondage sur les déclarations `const` de premier niveau (liste non
-exhaustive — il y en a d'autres imbriquées dans les composants) :
+exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrait
+(détail dans les sections numérotées plus bas) :
 
-- **Emplacements et magie** : `SLOTS_FULL`, `SLOTS_HALF`, `PACT`,
-  `CANTRIPS_BASE`, `THIRD_CASTER_PREPARED`, `PREPARED`,
-  `SUBCLASS_ALWAYS_SPELLS`, `CLASS_ALWAYS_SPELLS`, `TERRAIN_ALWAYS_SPELLS`
+- **Emplacements et magie** : ✅ `SLOTS_FULL`, ✅ `SLOTS_HALF`, ✅ `PACT`,
+  ✅ `CANTRIPS_BASE`, `THIRD_CASTER_PREPARED` (pas nos classes), ✅ `PREPARED`
+  (corrigée, cf. §3), `SUBCLASS_ALWAYS_SPELLS`, `CLASS_ALWAYS_SPELLS`,
+  `TERRAIN_ALWAYS_SPELLS`
 - **Classes et sous-classes** : `CLASS_FEATURES`, `CLASS_FEATURE_DESCRIPTIONS`,
-  `CLASS_RESOURCES`, `SUBCLASS_RESOURCES`, `SUBCLASSES`,
-  `SUBCLASS_PROFICIENCIES`, `SUBCLASS_SRC`, `CLASS_CHOICES`, `CLASS_CODE`
+  ✅ `CLASS_RESOURCES` (druide/rôdeur/occultiste), ✅ `SUBCLASS_RESOURCES`
+  (patrons occultiste), `SUBCLASSES`, `SUBCLASS_PROFICIENCIES`,
+  `SUBCLASS_SRC`, `CLASS_CHOICES`, `CLASS_CODE`
 - **Combat** : `MASTERIES`, `WEAPONS`, `WEAPON_PRICES`, `COMBAT_ACTIONS`,
-  `FIGHTING_STYLES`, `RANGER_FIGHTING_STYLES`, `DRUIDIC_WARRIOR`,
+  ✅ `FIGHTING_STYLES`, ✅ `RANGER_FIGHTING_STYLES`, ✅ `DRUIDIC_WARRIOR`,
   `BATTLE_MASTER_MANEUVERS`, `METAMAGIC`, `DIVINE_ORDER`, `PRIMAL_ORDER`,
-  `BLESSED_STRIKES`, `ELEMENTAL_FURY`, `HUNTER_PREY`, `HUNTER_DEFENSE`
+  `BLESSED_STRIKES`, `ELEMENTAL_FURY`, ✅ `HUNTER_PREY`, ✅ `HUNTER_DEFENSE`
 - **Équipement et vie de camp** : `ARMORS`, `ARMOR_PRICES`, `ARMOR_PROF`,
   `SHIELD_CATALOG`, `SHOP_CATALOG`, `STARTING_KITS`,
   `STARTING_WEAPON_ALIASES`, `MOUNT_CREATURE_IDS`, `CRAFT_TOOL_ITEM_ID`,
@@ -49,10 +52,12 @@ exhaustive — il y en a d'autres imbriquées dans les composants) :
   `GAMING_SETS`, `OTHER_TOOLS`, `ALL_TOOL_PROFICIENCIES`
 - **Création de personnage** : `SPECIES`, `CLASSES`, `BACKGROUNDS`, `FEATS`,
   `FEAT_ENERGY_TYPES`, `FEAT_ELEMENTAL_TYPES`, `KNOWLEDGE_SKILLS`,
-  `OBSERVANT_SKILLS`, `SKILLS`, `ABIL`, `ABIL_ORDER`, `ALIGNMENTS`,
-  `STANDARD_ARRAY`, `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
-- **Règles génériques** : `CONDITIONS`, `DAMAGE_TYPES`, `SCHOOLS`, `RECHARGE`,
-  `AUTOMATION`
+  `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`, ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`,
+  ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
+- **Règles génériques** : ✅ `CONDITIONS` (les 14 états officiels ; les
+  étiquettes de suivi supplémentaires de la table d'origine restent à
+  traiter au niveau du modèle de personnage, pas comme règles à part),
+  `DAMAGE_TYPES`, `SCHOOLS`, `RECHARGE`, `AUTOMATION`
 - **Campagne** : `INITIAL_PARTY`, `INITIAL_JOURNAL`, `SCENES`, `PORTRAITS`
 
 ## 2. Règles couvertes par des tests d'audit non repris
@@ -132,6 +137,21 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 — aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+
+## 4quinto. Extractions faites — bases de personnage et états officiels
+
+- `src/content/character-basics.ts` — caractéristiques, tableau standard,
+  langues standard (dont l'ajout 2024, Langue des signes commune),
+  alignements, dix-huit compétences avec leur caractéristique. Confiance
+  haute : listes standard, inchangées depuis la sortie du PHB 2024.
+- `src/domain/conditions.ts` — les 14 états officiels (l'Épuisement est un
+  compteur numérique à part, déjà noté dans `rules-compendium.ts`).
+  Confiance haute pour l'ensemble. Une exception marquée dans le fichier :
+  Agrippé y désavantage les attaques contre une cible autre que
+  l'agrippeur, un effet que je ne retrouve pas dans la règle officielle
+  (qui se limite à réduire la vitesse à 0) — porté tel quel avec
+  l'avertissement, probablement un ajout maison délibéré plutôt qu'une
+  erreur, à trancher si ça devient gênant en jeu.
 
 ## 4quater. Extractions faites — styles de combat et sous-classe Chasseur (Rôdeur)
 
