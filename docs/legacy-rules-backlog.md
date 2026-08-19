@@ -51,7 +51,7 @@ exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrai
   `CRAFT_IDS_BY_TOOL`, `FAST_CRAFT_IDS_BY_TOOL`, `ARTISAN_TOOLS`,
   `ARTISAN_TOOL_OPTIONS`, `FAST_CRAFT_TOOLS`, `MUSICAL_INSTRUMENTS`,
   `GAMING_SETS`, `OTHER_TOOLS`, `ALL_TOOL_PROFICIENCIES`
-- **Création de personnage** : ✅ `SPECIES`, `CLASSES`, `BACKGROUNDS`, `FEATS`,
+- **Création de personnage** : ✅ `SPECIES`, ✅ `CLASSES`, ✅ `BACKGROUNDS`, `FEATS`,
   `FEAT_ENERGY_TYPES`, `FEAT_ELEMENTAL_TYPES`, `KNOWLEDGE_SKILLS`,
   `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`, ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`,
   ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
@@ -138,6 +138,21 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 — aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+
+## 4octo. Extractions faites — les douze classes et les seize origines
+
+- `src/content/classes.ts` — dé de vie, sauvegardes, type de lanceur,
+  armures/bouclier, compétences proposées, niveaux d'ASI, nombre de
+  maîtrises d'armes. Confiance haute sur les bases (inchangées depuis
+  2014), moyenne sur les spécificités 2024 (ASI supplémentaires du Guerrier
+  et du Roublard, nombre de maîtrises par classe) — pas confirmé page à
+  page. Le champ `sub` (sous-classe pré-remplie à la création dans
+  l'ancienne app) est marqué comme non canonique dans le fichier : ne pas
+  s'y fier comme LA sous-classe d'une classe.
+- `src/content/backgrounds.ts` — les seize origines, chacune avec ses trois
+  caractéristiques de Ligne de vie, deux compétences, une maîtrise d'outil,
+  un don d'origine et un kit de départ. Confiance haute sur la liste,
+  moyenne sur le détail objet par objet des kits.
 
 ## 4septo. Extractions faites — espèces et petites tables génériques
 
