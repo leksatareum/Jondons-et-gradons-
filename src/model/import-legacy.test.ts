@@ -168,3 +168,35 @@ describe('import — robustesse', () => {
     expect(warnings.join(' ')).toMatch(/Chasseur de primes/);
   });
 });
+
+describe('emplacements de pacte — l’ancienne app les rangeait ailleurs', () => {
+  /**
+   * Un occultiste pur a `slots: null` et ses emplacements dans `pactSlots`.
+   * Tant que l'import et la comparaison ne lisaient que `slots`, l'occultiste
+   * traversait le test d'acceptation sans qu'aucun emplacement soit vérifié.
+   */
+  const occultiste: LegacyCharacter = {
+    name: 'Fixture occultiste', classId: 'occultiste', level: 2,
+    abilities: { str: 8, dex: 10, con: 14, int: 15, wis: 13, cha: 15 },
+    slots: null,
+    pactSlots: [{ level: 1, max: 2, current: 1, pact: true }],
+  };
+
+  it('reprend l’emplacement de pacte dépensé', () => {
+    const { sheet } = importLegacyCharacter(occultiste);
+    expect(sheet.live.pactSlotsSpent).toBe(1);
+    expect(sheet.live.spellSlotsSpent).toEqual({});
+  });
+
+  it('confronte réellement les emplacements de pacte à la dérivation', () => {
+    const { sheet } = importLegacyCharacter(occultiste);
+    expect(compareWithLegacy(occultiste, deriveCharacter(sheet))).toEqual([]);
+  });
+
+  it('signale un écart de pacte au lieu de le laisser passer', () => {
+    const fausse = { ...occultiste, pactSlots: [{ level: 1, max: 5, current: 5, pact: true }] };
+    const { sheet } = importLegacyCharacter(fausse);
+    expect(compareWithLegacy(fausse, deriveCharacter(sheet)))
+      .toEqual([{ field: 'pactSlots[1]', legacy: 5, derived: 2 }]);
+  });
+});

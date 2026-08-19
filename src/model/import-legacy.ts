@@ -52,6 +52,8 @@ export interface LegacyCharacter {
   // Valeurs calculées de l'ancienne app — lues seulement pour vérification.
   hp?: number; hpMax?: number; hpTemp?: number; hitDiceLeft?: number;
   slots?: Array<{ level?: number; current?: number; max?: number; pact?: boolean }> | null;
+  /** L'occultiste range ses emplacements ici, jamais dans `slots`. */
+  pactSlots?: Array<{ level?: number; current?: number; max?: number; pact?: boolean }> | null;
   exhaustion?: number;
   deathSaves?: { success?: number; fail?: number } | null;
   inspiration?: boolean;
@@ -102,6 +104,19 @@ const choicesFrom = (legacy: LegacyCharacter, classIds: string[]): CharacterShee
   return result;
 };
 
+/**
+ * Tous les emplacements de l'ancienne fiche, de pacte compris.
+ *
+ * L'ancienne app rangeait les emplacements de pacte dans `pactSlots`, à côté
+ * de `slots` — qu'elle laissait à `null` pour un occultiste pur. Les lire
+ * séparément faisait que l'occultiste échappait entièrement à la comparaison,
+ * et qu'un emplacement de pacte dépensé était perdu à l'import.
+ */
+const legacySlotsOf = (legacy: LegacyCharacter): Array<{ level?: number; current?: number; max?: number; pact?: boolean }> => [
+  ...(legacy.slots ?? []),
+  ...(legacy.pactSlots ?? []).map((slot) => ({ ...slot, pact: true })),
+];
+
 const liveStateFrom = (legacy: LegacyCharacter, classIds: string[]): LiveState => {
   const live: LiveState = { ...EMPTY_LIVE_STATE, hitDiceSpent: {}, spellSlotsSpent: {}, resourcesSpent: {}, conditions: [] };
 
@@ -125,7 +140,7 @@ const liveStateFrom = (legacy: LegacyCharacter, classIds: string[]): LiveState =
     if (spent > 0) live.hitDiceSpent[classIds[0]] = spent;
   }
 
-  for (const slot of legacy.slots ?? []) {
+  for (const slot of legacySlotsOf(legacy)) {
     if (!slot?.level || typeof slot.max !== 'number' || typeof slot.current !== 'number') continue;
     const spent = Math.max(0, slot.max - slot.current);
     if (slot.pact) live.pactSlotsSpent = spent;
@@ -277,13 +292,14 @@ export function compareWithLegacy(
   if (typeof legacy.hpMax === 'number' && legacy.hpMax !== derived.maxHp) {
     diffs.push({ field: 'hpMax', legacy: legacy.hpMax, derived: derived.maxHp });
   }
-  for (const slot of legacy.slots ?? []) {
+  for (const slot of legacySlotsOf(legacy)) {
     if (!slot?.level || typeof slot.max !== 'number') continue;
     const match = derived.spellcasting.slots.find((candidate) => candidate.level === slot.level && Boolean(candidate.pact) === Boolean(slot.pact));
+    const field = slot.pact ? `pactSlots[${slot.level}]` : `slots[${slot.level}]`;
     if (!match) {
-      diffs.push({ field: `slots[${slot.level}]`, legacy: slot.max, derived: 'absent' });
+      diffs.push({ field, legacy: slot.max, derived: 'absent' });
     } else if (match.max !== slot.max) {
-      diffs.push({ field: `slots[${slot.level}]`, legacy: slot.max, derived: match.max });
+      diffs.push({ field, legacy: slot.max, derived: match.max });
     }
   }
   return diffs;
