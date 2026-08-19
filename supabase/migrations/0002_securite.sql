@@ -112,11 +112,26 @@ create policy jg_encounters_write on public.jg_encounters
 -- silencieusement sur la seule resynchronisation — soit exactement la panne
 -- de l'ancienne application.
 
+-- Rejouable : `add table` sur une table déjà publiée est une erreur, pas un
+-- no-op. Sans le test d'appartenance, une deuxième exécution de ce fichier
+-- échoue — et une migration qu'on ne peut pas rejouer est une migration qu'on
+-- n'ose plus lancer sur la production.
+
 do $$
+declare
+  cible text;
 begin
-  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    alter publication supabase_realtime add table public.jg_sheets;
-    alter publication supabase_realtime add table public.jg_encounters;
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    return;
   end if;
+
+  foreach cible in array array['jg_sheets', 'jg_encounters'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = cible
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', cible);
+    end if;
+  end loop;
 end;
 $$;
