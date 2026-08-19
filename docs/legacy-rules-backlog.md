@@ -133,6 +133,26 @@ tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
 code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
 dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
 
+## 4bis. Extractions faites — Forme sauvage et Ruse magique (deux faux positifs)
+
+Deux tables que je pensais suspectes, vérifiées le 19/08/2026 contre le PHB
+2024 papier de l'utilisateur — **les deux étaient déjà correctes dans
+`table-connectee`**, portées telles quelles sans aucune correction :
+
+- `src/domain/druid-resources.ts` — Forme sauvage : 2 utilisations aux
+  niveaux 2-5, 3 aux niveaux 6-16, 4 aux niveaux 17-20 (paliers confirmés).
+  Résurgence sauvage à partir du niveau 5.
+- `src/domain/warlock-resources.ts` — Ruse magique (niveau 2) : après un
+  rituel d'une minute, récupère au maximum la moitié (arrondie au supérieur)
+  de son nombre maximal d'emplacements de Magie de pacte, une fois par repos
+  long. Maître occulte (niveau 20) transforme cette récupération en totale.
+  Confirmation utile au passage : le niveau 9 de l'Occultiste est *Contact du
+  Patron*, sans lien avec Ruse magique — mon hypothèse de décalage de niveau
+  était fausse.
+
+Une vérification papier peut donc aussi bien *infirmer* une inquiétude que la
+confirmer — les deux sont un résultat utile de l'audit, pas seulement les bugs.
+
 ## 5. Résolu — le Pacte de l'Occultiste
 
 Investigation du problème de fond que tu avais signalé (« ma joueuse
