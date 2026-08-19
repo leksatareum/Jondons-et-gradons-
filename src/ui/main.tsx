@@ -1,64 +1,41 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './theme.css';
-import { CombatScreen } from './CombatScreen';
-import { demoCards, demoEncounter, demoSheet } from './demo-data';
-import { GmCombatScreen } from './GmCombatScreen';
+import { App } from './App';
+import { DemoScreens } from './DemoScreens';
+import { createJgClient, readConfig } from '../sync/supabase-client';
 
 /**
- * Point d'entrée provisoire : il monte l'écran de combat sur une fiche
- * d'exemple pour pouvoir le regarder et le manipuler. Il sera remplacé par la
- * vraie navigation et le branchement Supabase quand la couche de données
- * arrivera — la synchronisation est déjà écrite et testée dans `src/sync`.
+ * Point de montage.
+ *
+ * Sans configuration Supabase, on ne plante pas : on montre les écrans sur des
+ * données inventées, avec un bandeau qui dit pourquoi. Regarder une maquette
+ * ne doit pas exiger une base de données, et une erreur muette au démarrage
+ * est le pire accueil possible.
  */
-const switcher: React.CSSProperties = {
-  position: 'fixed', right: 10, bottom: 'calc(70px + env(safe-area-inset-bottom))',
-  padding: '7px 11px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-  background: 'var(--surface-raised)', border: '1px solid var(--line)', color: 'var(--muted)',
-};
-
-function App() {
-  const [sheet, setSheet] = useState(demoSheet);
-  const [turnLabel, setTurnLabel] = useState<'libre' | 'mon-tour' | 'autre-tour'>('libre');
-  const [view, setView] = useState<'joueur' | 'mj'>('joueur');
-
-  const changeHp = (delta: number) => setSheet((current: typeof demoSheet) => ({
-    ...current,
-    live: { ...current.live, damageTaken: Math.max(0, current.live.damageTaken - delta) },
-  }));
-
-  if (view === 'mj') {
+function racine() {
+  try {
+    const client = createJgClient(readConfig(import.meta.env as unknown as Record<string, unknown>));
+    return <App client={client} />;
+  } catch (cause) {
+    console.warn(cause);
     return (
       <>
-        <GmCombatScreen initial={demoEncounter} />
-        <button onClick={() => setView('joueur')} style={switcher}>vue joueur</button>
+        {/* Une ligne, pas cinq : ce bandeau vole de la hauteur à l'écran
+            qu'il sert justement à montrer. Le détail va dans la console. */}
+        <div style={bandeau}>Mode démonstration — aucune configuration Supabase</div>
+        <DemoScreens />
       </>
     );
   }
-
-  return (
-    <>
-      <CombatScreen
-        sheet={sheet}
-        cards={demoCards}
-        turn={
-          turnLabel === 'libre'
-            ? { mode: 'libre' }
-            : { mode: 'combat', isYourTurn: turnLabel === 'mon-tour', holder: 'Brannoc' }
-        }
-        onSpendHp={changeHp}
-      />
-      {/* Bascules de mise au point, le temps qu'il n'y ait pas de navigation. */}
-      <button
-        onClick={() => setTurnLabel((value) =>
-          value === 'libre' ? 'mon-tour' : value === 'mon-tour' ? 'autre-tour' : 'libre')}
-        style={{ ...switcher, right: 100 }}
-      >
-        {turnLabel === 'libre' ? 'hors combat' : turnLabel === 'mon-tour' ? 'à moi' : 'pas mon tour'}
-      </button>
-      <button onClick={() => setView('mj')} style={switcher}>vue MJ</button>
-    </>
-  );
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+const bandeau: React.CSSProperties = {
+  position: 'sticky', top: 0, zIndex: 30,
+  padding: '6px 12px', paddingTop: 'calc(6px + env(safe-area-inset-top))',
+  background: 'var(--accent-wash)', color: 'var(--accent)',
+  fontSize: 11, lineHeight: 1.4, textAlign: 'center',
+  borderBottom: '1px solid var(--line)',
+};
+
+createRoot(document.getElementById('root')!).render(<StrictMode>{racine()}</StrictMode>);

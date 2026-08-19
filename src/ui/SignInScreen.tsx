@@ -1,0 +1,134 @@
+import { useState, type FormEvent } from 'react';
+
+/**
+ * L'écran d'entrée.
+ *
+ * Deux champs, un bouton. Il n'a rien d'autre à faire, et surtout pas à
+ * distraire : on y passe une fois puis plus jamais, la session étant
+ * persistée et rafraîchie automatiquement.
+ *
+ * Le seul point de soin est l'erreur. Un message en anglais au moment où la
+ * partie commence est une petite humiliation ; `messageDeConnexion` les
+ * traduit, et cet écran se contente de les montrer là où l'œil est déjà —
+ * sous le bouton, pas en haut de page.
+ */
+
+interface Props {
+  onSubmit: (email: string, motDePasse: string) => Promise<void>;
+  /** Nom de la table, s'il est connu. Purement rassurant : on est au bon endroit. */
+  titre?: string;
+}
+
+export function SignInScreen({ onSubmit, titre = 'Jondons et gradons' }: Props) {
+  const [email, setEmail] = useState('');
+  const [motDePasse, setMotDePasse] = useState('');
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState(false);
+
+  const valide = email.trim().length > 0 && motDePasse.length > 0;
+
+  const envoyer = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!valide || enCours) return;
+    setEnCours(true);
+    setErreur(null);
+    try {
+      await onSubmit(email, motDePasse);
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : String(cause));
+      setEnCours(false);
+    }
+    // En cas de succès on ne relâche pas `enCours` : l'écran disparaît, et un
+    // bouton qui redevient actif juste avant de s'effacer clignote.
+  };
+
+  return (
+    <main style={page}>
+      <div style={bloc}>
+        <h1 className="ttl" style={titreStyle}>{titre}</h1>
+        <p style={sous}>Une fois connecté·e, tu le restes.</p>
+
+        <form onSubmit={envoyer} style={{ display: 'grid', gap: 12 }}>
+          <label style={champ}>
+            <span className="lbl">Adresse mail</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              style={saisie}
+            />
+          </label>
+
+          <label style={champ}>
+            <span className="lbl">Mot de passe</span>
+            <input
+              type="password"
+              value={motDePasse}
+              onChange={(event) => setMotDePasse(event.target.value)}
+              autoComplete="current-password"
+              style={saisie}
+            />
+          </label>
+
+          <button type="submit" disabled={!valide || enCours} style={bouton(valide && !enCours)}>
+            {enCours ? 'Connexion…' : 'Entrer'}
+          </button>
+
+          {/* `role="alert"` : l'erreur est annoncée, pas seulement affichée. */}
+          {erreur && <p role="alert" style={alerte}>{erreur}</p>}
+        </form>
+      </div>
+    </main>
+  );
+}
+
+const page: React.CSSProperties = {
+  minHeight: '100dvh',
+  display: 'grid',
+  placeItems: 'center',
+  padding: '24px max(20px, env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom))',
+};
+
+const bloc: React.CSSProperties = { width: '100%', maxWidth: 340 };
+
+const titreStyle: React.CSSProperties = { margin: 0, fontSize: 26, letterSpacing: '-0.01em' };
+
+const sous: React.CSSProperties = { margin: '6px 0 26px', color: 'var(--muted)', fontSize: 13 };
+
+const champ: React.CSSProperties = { display: 'grid', gap: 6 };
+
+const saisie: React.CSSProperties = {
+  height: 'var(--tap)',
+  padding: '0 12px',
+  borderRadius: 'var(--radius-sm)',
+  border: '1px solid var(--line)',
+  background: 'var(--surface)',
+  color: 'var(--ink)',
+  // 16px ou plus : en dessous, iOS zoome sur le champ à la mise au point.
+  fontSize: 16,
+};
+
+const bouton = (actif: boolean): React.CSSProperties => ({
+  height: 'var(--tap)',
+  marginTop: 6,
+  borderRadius: 'var(--radius-sm)',
+  fontWeight: 700,
+  fontSize: 15,
+  background: actif ? 'var(--accent)' : 'var(--surface-raised)',
+  color: actif ? 'var(--accent-ink)' : 'var(--muted)',
+  border: actif ? 'none' : '1px solid var(--line)',
+});
+
+const alerte: React.CSSProperties = {
+  margin: 0,
+  padding: '10px 12px',
+  borderRadius: 'var(--radius-sm)',
+  background: 'var(--vital-wash)',
+  color: 'var(--vital)',
+  fontSize: 13,
+};
