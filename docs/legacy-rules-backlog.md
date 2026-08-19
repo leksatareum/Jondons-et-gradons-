@@ -21,45 +21,62 @@
 Deux catégories de dette héritée de l'ancienne app, à traiter au fil de la
 construction du moteur de règles — rien de tout ça n'a été copié tel quel.
 
-## 1. Tables encore prisonnières d'`App.jsx`
+## 1. Tables d'`App.jsx` — inventaire, terminé
 
-`App.jsx` n'exporte rien : ces tables n'existent que comme constantes locales,
-réécrites à la compilation par la chaîne de plugins. Il faudra les rejouer
-(comme le faisaient les anciens tests d'audit, voir §2) pour connaître leur
-état réel avant de les porter en données pures et dérivées.
+`App.jsx` n'exporte rien : ces tables n'existaient que comme constantes
+locales, dont 8 réécrites à la compilation par la chaîne de plugins. Toutes
+ont depuis été rejouées puis portées (ou écartées) — voir §4nono pour la
+méthode, qui a fini par être appliquée systématiquement.
 
 Relevé par sondage sur les déclarations `const` de premier niveau (liste non
 exhaustive — il y en a d'autres imbriquées dans les composants). ✅ = extrait
 (détail dans les sections numérotées plus bas) :
 
+Relevé par sondage sur les déclarations `const` de premier niveau. ✅ = extrait
+(détail dans les sections numérotées plus bas) ; ⊘ = délibérément non repris.
+
 - **Emplacements et magie** : ✅ `SLOTS_FULL`, ✅ `SLOTS_HALF`, ✅ `PACT`,
-  ✅ `CANTRIPS_BASE`, `THIRD_CASTER_PREPARED` (pas nos classes), ✅ `PREPARED`
-  (corrigée, cf. §3), ✅ `SUBCLASS_ALWAYS_SPELLS`, ✅ `CLASS_ALWAYS_SPELLS`,
-  ✅ `TERRAIN_ALWAYS_SPELLS` (§4decimo — les trois depuis la sortie construite)
-- **Classes et sous-classes** : ✅ `CLASS_FEATURES`, ✅ `CLASS_FEATURE_DESCRIPTIONS`,
-  ✅ `CLASS_RESOURCES` (druide/rôdeur/occultiste), ✅ `SUBCLASS_RESOURCES`
-  (patrons occultiste, corrigée §4nono), ✅ `SUBCLASSES` (48), `SUBCLASS_PROFICIENCIES`,
-  ✅ `SUBCLASS_SRC` (porté dans le champ `src` des sous-classes), `CLASS_CHOICES`, `CLASS_CODE`
-- **Combat** : ✅ `MASTERIES`, ✅ `WEAPONS`, ✅ `WEAPON_PRICES`, `COMBAT_ACTIONS`,
+  ✅ `CANTRIPS_BASE`, ✅ `PREPARED` (corrigée, §3), ✅ `SUBCLASS_ALWAYS_SPELLS`,
+  ✅ `CLASS_ALWAYS_SPELLS`, ✅ `TERRAIN_ALWAYS_SPELLS` (§4decimo),
+  ⊘ `THIRD_CASTER_PREPARED` (tiers-lanceurs : ni Guerrier Chevalier occulte ni
+  Roublard Filou arcanique ne sont joués à cette table ; à reprendre le jour où
+  ça change)
+- **Classes et sous-classes** : ✅ `CLASS_FEATURES`,
+  ✅ `CLASS_FEATURE_DESCRIPTIONS`, ✅ `CLASS_RESOURCES`, ✅ `SUBCLASS_RESOURCES`
+  (corrigée §4nono), ✅ `SUBCLASSES` (48), ✅ `SUBCLASS_PROFICIENCIES`,
+  ✅ `SUBCLASS_SRC` (dans le champ `src` des sous-classes), ✅ `CLASS_CHOICES`
+  (§4duodecimo), ✅ `CLASS_CODE` (→ `SPELL_LIST_CODE`)
+- **Combat** : ✅ `MASTERIES`, ✅ `WEAPONS`, ✅ `WEAPON_PRICES`,
   ✅ `FIGHTING_STYLES`, ✅ `RANGER_FIGHTING_STYLES`, ✅ `DRUIDIC_WARRIOR`,
-  `BATTLE_MASTER_MANEUVERS`, `METAMAGIC`, `DIVINE_ORDER`, `PRIMAL_ORDER`,
-  `BLESSED_STRIKES`, `ELEMENTAL_FURY`, ✅ `HUNTER_PREY`, ✅ `HUNTER_DEFENSE`
-- **Équipement et vie de camp** : ✅ `ARMORS`, ✅ `ARMOR_PRICES`, `ARMOR_PROF`,
-  ✅ `SHIELD_CATALOG` (portée en version simplifiée, cf. §4sexto),
-  `SHOP_CATALOG`, `STARTING_KITS`,
-  `STARTING_WEAPON_ALIASES`, `MOUNT_CREATURE_IDS`, `CRAFT_TOOL_ITEM_ID`,
-  `CRAFT_IDS_BY_TOOL`, `FAST_CRAFT_IDS_BY_TOOL`, `ARTISAN_TOOLS`,
-  `ARTISAN_TOOL_OPTIONS`, `FAST_CRAFT_TOOLS`, `MUSICAL_INSTRUMENTS`,
-  `GAMING_SETS`, `OTHER_TOOLS`, `ALL_TOOL_PROFICIENCIES`
-- **Création de personnage** : ✅ `SPECIES`, ✅ `CLASSES`, ✅ `BACKGROUNDS`, ✅ `FEATS` (dons d'origine),
-  `FEAT_ENERGY_TYPES`, `FEAT_ELEMENTAL_TYPES`, `KNOWLEDGE_SKILLS`,
-  `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`, ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`,
-  ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`, `WILD_HEART_ASPECTS`
-- **Règles génériques** : ✅ `CONDITIONS` (corrigée §4nono ; les 14 états officiels, les
-  étiquettes de suivi supplémentaires de la table d'origine restent à
-  traiter au niveau du modèle de personnage, pas comme règles à part),
-  ✅ `DAMAGE_TYPES`, ✅ `SCHOOLS`, ✅ `RECHARGE`, `AUTOMATION`
-- **Campagne** : `INITIAL_PARTY`, `INITIAL_JOURNAL`, `SCENES`, `PORTRAITS`
+  ✅ `BATTLE_MASTER_MANEUVERS`, ✅ `METAMAGIC`, ✅ `DIVINE_ORDER`,
+  ✅ `PRIMAL_ORDER` (version construite), ✅ `BLESSED_STRIKES`,
+  ✅ `ELEMENTAL_FURY`, ✅ `HUNTER_PREY`, ✅ `HUNTER_DEFENSE`,
+  ⊘ `COMBAT_ACTIONS` (tuiles d'interface : icônes React et libellés courts —
+  les règles correspondantes sont déjà dans `rules-compendium.ts`)
+- **Équipement et vie de camp** : ✅ `ARMORS`, ✅ `ARMOR_PRICES`,
+  ✅ `ARMOR_PROF`, ✅ `SHIELD_CATALOG`, ✅ `STARTING_KITS`,
+  ✅ `STARTING_WEAPON_ALIASES`, ✅ `CRAFT_TOOL_ITEM_ID`, ✅ `CRAFT_IDS_BY_TOOL`,
+  ✅ `FAST_CRAFT_IDS_BY_TOOL`, ✅ `ARTISAN_TOOLS`, ✅ `FAST_CRAFT_TOOLS`,
+  ✅ `MUSICAL_INSTRUMENTS`, ✅ `GAMING_SETS`, ✅ `OTHER_TOOLS`,
+  ✅ `ALL_TOOL_PROFICIENCIES`, ✅ `ARTISAN_TOOL_OPTIONS` (= `ARTISAN_TOOLS`),
+  ⊘ `SHOP_CATALOG` (mise en forme boutique, dérivée des trois catalogues),
+  ⊘ `MOUNT_CREATURE_IDS` (montures : lie des ids de créatures à des objets,
+  à refaire avec le modèle de personnage plutôt qu'à copier)
+- **Création de personnage** : ✅ `SPECIES`, ✅ `CLASSES`, ✅ `BACKGROUNDS`,
+  ✅ `FEATS` (dons d'origine), ✅ `FEAT_ENERGY_TYPES`, ✅ `FEAT_ELEMENTAL_TYPES`,
+  ✅ `KNOWLEDGE_SKILLS`, ✅ `OBSERVANT_SKILLS`, ✅ `SKILLS`, ✅ `ABIL`,
+  ✅ `ABIL_ORDER`, ✅ `ALIGNMENTS`, ✅ `STANDARD_ARRAY`, ✅ `STANDARD_LANGUAGES`,
+  ✅ `WILD_HEART_ASPECTS`
+- **Règles génériques** : ✅ `CONDITIONS` (corrigée §4nono), ✅ `DAMAGE_TYPES`,
+  ✅ `SCHOOLS`, ✅ `RECHARGE`, ⊘ `AUTOMATION` (libellés d'interface indiquant
+  le degré d'automatisation d'un effet — à redécider avec les écrans)
+- **Campagne** : ⊘ `INITIAL_PARTY`, ⊘ `INITIAL_JOURNAL`, ⊘ `SCENES`,
+  ⊘ `PORTRAITS` — ce sont tes données de partie (personnages, journal, scènes
+  des Loups Rouges), pas des règles. Elles arriveront par l'import de
+  l'étape 2, depuis ta base Supabase, pas par recopie de code.
+
+**Extraction terminée.** Toutes les tables de règles d'`App.jsx` sont soit
+portées, soit délibérément écartées avec sa raison ci-dessus.
 
 ## 2. Règles couvertes par des tests d'audit non repris
 
@@ -156,6 +173,26 @@ chaîne) :
   entre 3 et 20, choix au niveau 3 pour toutes.
 - `src/content/origin-feats.ts` — les dix dons d'origine. Test d'intégrité
   croisée : chaque origine de `backgrounds.ts` référence un don qui existe.
+
+## 4duodecimo. Extractions faites — choix de classe, outils, kits et artisanat
+
+- `src/content/class-choices.ts` — manœuvres de Maître de guerre (20),
+  métamagies (10, avec leur coût), Ordre divin, Ordre primordial, Frappes
+  bénies, Furie élémentaire, aspects de Cœur sauvage, maîtrises d'armure par
+  classe et maîtrises supplémentaires de sous-classe, ainsi que les quatre
+  catégories d'outils. `PRIMAL_ORDER` est pris dans sa version construite :
+  l'Ordre « Mage » ajoute le modificateur de Sagesse aux tests d'Arcanes et de
+  Nature, là où le source ne parlait que d'une maîtrise — c'est exactement le
+  bug que relevait l'ancien test d'audit `druid-core-2024` (§2), donc corrigé
+  et verrouillé par un test.
+- `src/content/starting-equipment.ts` — kits de départ des douze classes,
+  alias d'armes, et tables d'artisanat. Tests croisés : tout outil fabricant
+  est une maîtrise d'outil réelle et a son objet associé.
+- `src/content/reference-lists.ts` (complété) — sous-ensembles de types de
+  dégâts et de compétences utilisés par les dons, et codes de liste de sorts.
+  Tests croisés : les types cités sont de vrais types de dégâts, les
+  compétences de connaissance sont bien toutes fondées sur l'Intelligence, et
+  chaque code de classe apparaît réellement dans le catalogue de sorts.
 
 ## 4nono. Audit systématique source vs sortie construite — trois modules corrigés
 
