@@ -3,6 +3,7 @@ import {
   archfeyFeyStepUses,
   celestialHealingLightDice,
   fiendDarkOnesLuckUses,
+  GREAT_OLD_ONE_CLAIRVOYANT_RECHARGE,
   greatOldOneClairvoyantCombatantUses,
 } from './warlock-patron-resources';
 
@@ -22,23 +23,23 @@ describe('Patron Fiélon — Chance du Ténébreux', () => {
   });
 });
 
-describe('Patron Grand Ancien — Combattant clairvoyant', () => {
-  it('suit le bonus de maîtrise à partir du niveau 6', () => {
+describe('Patron Grand Ancien — Combattant clairvoyant (corrigé depuis la sortie construite)', () => {
+  it('une seule utilisation à partir du niveau 6, pas une table calquée sur la maîtrise', () => {
     expect(greatOldOneClairvoyantCombatantUses(5)).toBe(0);
-    expect(greatOldOneClairvoyantCombatantUses(6)).toBe(3);
-    expect(greatOldOneClairvoyantCombatantUses(9)).toBe(4);
-    expect(greatOldOneClairvoyantCombatantUses(13)).toBe(5);
-    expect(greatOldOneClairvoyantCombatantUses(17)).toBe(6);
+    expect(greatOldOneClairvoyantCombatantUses(6)).toBe(1);
+    expect(greatOldOneClairvoyantCombatantUses(20)).toBe(1);
+  });
+
+  it('se recharge au repos court, pas au repos long', () => {
+    expect(GREAT_OLD_ONE_CLAIRVOYANT_RECHARGE).toBe('court');
   });
 });
 
-describe('Patron Archifée — Pas des fées', () => {
-  it('suit le bonus de maîtrise à partir du niveau 3', () => {
-    expect(archfeyFeyStepUses(2)).toBe(0);
-    expect(archfeyFeyStepUses(3)).toBe(2);
-    expect(archfeyFeyStepUses(5)).toBe(3);
-    expect(archfeyFeyStepUses(9)).toBe(4);
-    expect(archfeyFeyStepUses(13)).toBe(5);
-    expect(archfeyFeyStepUses(17)).toBe(6);
+describe('Patron Archifée — Pas des fées (corrigé depuis la sortie construite)', () => {
+  it('suit le modificateur de Charisme (minimum 1) à partir du niveau 3', () => {
+    expect(archfeyFeyStepUses(2, 4)).toBe(0);
+    expect(archfeyFeyStepUses(3, 4)).toBe(4);
+    expect(archfeyFeyStepUses(3, 0)).toBe(1);
+    expect(archfeyFeyStepUses(20, -1)).toBe(1);
   });
 });

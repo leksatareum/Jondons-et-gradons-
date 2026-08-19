@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { hasWildResurgence, wildShapeShortRestRecovery, wildShapeUses } from './druid-resources';
+import {
+  hasNatureMagician,
+  hasWildResurgence,
+  natureMagicianSlotLevelFrom,
+  wildShapeShortRestRecovery,
+  wildShapeUses,
+} from './druid-resources';
 
 describe('Forme sauvage — paliers confirmés PHB 2024', () => {
   it('aucune utilisation avant le niveau 2', () => {
@@ -26,5 +32,18 @@ describe('Résurgence sauvage', () => {
   it('disponible à partir du niveau 5', () => {
     expect(hasWildResurgence(4)).toBe(false);
     expect(hasWildResurgence(5)).toBe(true);
+  });
+});
+
+describe('Magicien de la nature (Archidruide, niveau 20)', () => {
+  it('n’apparaît qu’au niveau 20', () => {
+    expect(hasNatureMagician(19)).toBe(false);
+    expect(hasNatureMagician(20)).toBe(true);
+  });
+
+  it('convertit deux niveaux de sort par utilisation de Forme sauvage', () => {
+    expect(natureMagicianSlotLevelFrom(1)).toBe(2);
+    expect(natureMagicianSlotLevelFrom(3)).toBe(6);
+    expect(natureMagicianSlotLevelFrom(0)).toBe(0);
   });
 });

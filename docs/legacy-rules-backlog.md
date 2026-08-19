@@ -127,17 +127,57 @@ Première extraction réelle de tables d'`App.jsx` (`SLOTS_FULL`, `SLOTS_HALF`,
   Sagesse, minimum 1, vérifié — n'existait dans aucun module portable
   auparavant).
 
-**Bug de fond trouvé et déjà corrigé sans écrire de code** : l'Infatigable du
-Rôdeur (niveau 10). `App.jsx` la plafonne par une table figée par niveau
-(4 usages aux niveaux 10-12, 5 aux niveaux 13-16, 6 aux niveaux 17-20),
-totalement indépendante de la Sagesse du personnage. Or la règle réelle est
-*modificateur de Sagesse, minimum 1* — et `src/domain/ranger-core-2024.ts`
-(déjà repêché intact à l'étape 1, `tirelessMaxUses` /
-`applyRangerTirelessShortRest`) l'implémente déjà correctement, avec ses
-tests. Ce code n'était simplement **câblé nulle part** dans `table-connectee`
-— aucun plugin ne l'importait, aucune trace dans `App.jsx`. C'est donc du
-code mort dans l'ancienne app, mais déjà juste et déjà présent dans ce
-dépôt : rien à refaire, seulement à documenter et à ne pas régresser.
+**Correction d'une affirmation que j'avais faite ici à tort.** J'avais écrit
+que `App.jsx` plafonnait l'Infatigable du Rôdeur par une table figée ignorant
+la Sagesse, et présenté ça comme un bug de l'ancienne app. C'est vrai du
+*texte source*, mais faux de l'app réellement exécutée : la chaîne de plugins
+réécrit cette entrée en `ability: 'wis', byAbility: true`, soit exactement la
+bonne règle (modificateur de Sagesse, minimum 1). `table-connectee` n'avait
+donc pas ce bug. `src/domain/ranger-core-2024.ts` (`tirelessMaxUses`) est
+cohérent avec la version construite — rien à corriger, mais mon diagnostic
+était faux et le rester aurait été trompeur.
+
+Détail de règle relevé au passage dans la sortie construite : l'Infatigable
+2024 se déclenche par une **action de Magie**, pas une action bonus.
+
+## 4nono. Audit systématique source vs sortie construite — trois modules corrigés
+
+Après avoir découvert que la chaîne de plugins ajoutait les tables de sorts
+des Patrons (§4decimo), j'ai comparé **table par table** le texte source et la
+sortie construite d'`App.jsx`, au lieu de continuer à extraire au jugé.
+Résultat : sur 23 tables vérifiées, 8 sont réécrites par la chaîne
+(`CLASS_FEATURES`, `CLASS_FEATURE_DESCRIPTIONS`, `SUBCLASSES`, `FEATS`,
+`PRIMAL_ORDER`, `CLASS_RESOURCES`, `SUBCLASS_RESOURCES`, `CONDITIONS`) et 15
+sont identiques — dont `SPECIES`, `CLASSES`, `BACKGROUNDS`, `STARTING_KITS`,
+`ARMOR_PROF`, `METAMAGIC`, `COMBAT_ACTIONS`, qui valident après coup les
+extractions des sections précédentes.
+
+Trois modules déjà livrés dans ce dépôt étaient donc **faux**, extraits du
+source pour des tables que la chaîne réécrit. Corrigés :
+
+- `src/domain/conditions.ts` — trois erreurs de règle, toutes du même genre
+  (un effet conditionnel encodé comme inconditionnel) :
+  - **Étourdi** ne réduit pas la vitesse à 0 en 2024 ; le source posait
+    `speed0: true`.
+  - **Agrippé** n'impose pas de désavantage général aux attaques (seulement
+    contre une cible autre que l'agrippeur). C'était précisément le point que
+    j'avais signalé comme suspect en le portant quand même : la sortie
+    construite confirme qu'il ne devait pas y être.
+  - **Invisible** n'accorde avantage à tes attaques et désavantage à celles
+    contre toi que face à une créature *qui ne peut pas te voir* — le source
+    les donnait inconditionnellement.
+  Les trois sont désormais verrouillés par des tests nommés qui échouent si
+  quelqu'un « re-simplifie » vers l'ancienne version.
+- `src/domain/warlock-patron-resources.ts` — deux patrons sur quatre étaient
+  faux : **Grand Ancien** (1 utilisation par repos *court*, pas 3 à 6 par repos
+  long) et **Archifée** (modificateur de Charisme, pas une table calquée sur
+  le bonus de maîtrise). Céleste et Fiélon étaient corrects.
+- `src/domain/druid-resources.ts` — ajout de **Magicien de la nature**
+  (Archidruide, niveau 20), absent du source, ajouté par la chaîne. Les
+  paliers de Forme sauvage, eux, étaient bien identiques.
+
+Leçon appliquée pour la suite : pour toute table d'`App.jsx`, comparer source
+et sortie construite **avant** d'extraire, jamais après.
 
 ## 4octo. Extractions faites — les douze classes et les seize origines
 

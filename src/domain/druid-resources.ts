@@ -30,3 +30,17 @@ export const wildShapeShortRestRecovery = 1;
  * ou l'inverse.
  */
 export const hasWildResurgence = (level: number): boolean => clampLevel(level) >= 5;
+
+/**
+ * Magicien de la nature (Archidruide, niveau 20) : sans action, convertit des
+ * utilisations de Forme sauvage non dépensées en un seul emplacement de sort,
+ * à raison de deux niveaux de sort par utilisation. Une fois par repos long.
+ *
+ * Absent du texte source d'App.jsx : ajouté par la chaîne de plugins, donc
+ * repêché de la sortie construite.
+ */
+export const hasNatureMagician = (level: number): boolean => clampLevel(level) >= 20;
+
+/** Deux niveaux de sort par utilisation de Forme sauvage convertie. */
+export const natureMagicianSlotLevelFrom = (wildShapeUsesSpent: number): number =>
+  Math.max(0, Math.floor(wildShapeUsesSpent)) * 2;

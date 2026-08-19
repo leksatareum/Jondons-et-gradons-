@@ -1,23 +1,21 @@
 /**
  * Les 14 états officiels du PHB 2024 (l'Épuisement est un compteur numérique
  * à part, pas un état booléen — voir `rules-compendium.ts`, entrée
- * `health-exhaustion`). Repêché de `table-connectee/src/App.jsx`
- * (`CONDITIONS`) — seuls les états canoniques sont repris ici ; les autres
- * entrées de la table d'origine (Rage, Forme sauvage, Sorcellerie innée…)
- * sont des étiquettes de suivi d'affichage pour des mécaniques déjà
- * couvertes ailleurs dans ce dépôt, pas des règles à extraire séparément.
+ * `health-exhaustion`).
  *
- * `attack`/`check` : effet sur tes propres jets. `incoming` : ce que
- * gagnent ceux qui t'attaquent. `autoFail` : sauvegardes ratées d'office.
- * Confiance haute pour les 14 états — sémantique stable depuis 2014.
+ * ⚠️ Repêché de la SORTIE CONSTRUITE de `table-connectee/src/App.jsx`. Une
+ * première version de ce fichier avait été extraite du texte source et
+ * comportait trois erreurs, corrigées ici (cf. `docs/legacy-rules-backlog.md`,
+ * §4nono) :
+ *   - Étourdi ne réduit PAS la vitesse à 0 en 2024 ;
+ *   - Agrippé n'impose pas de désavantage général aux attaques ;
+ *   - Invisible n'accorde avantage/désavantage que face à une créature qui ne
+ *     peut pas te voir, pas de façon inconditionnelle.
  *
- * ⚠️ Une exception, à vérifier : le code d'origine donne à Agrippé un
- * désavantage sur les attaques contre une cible autre que le agrippeur
- * (`attack: 'dis'`). Je ne retrouve pas cet effet dans la règle officielle
- * du PHB (Agrippé se limite normalement à réduire la vitesse à 0) — ça
- * ressemble à un ajout maison plausible, pas à une erreur évidente. Porté
- * tel quel, mais marqué : à confirmer si tu veux la jouer stricte RAW ou
- * garder l'ajout.
+ * `attack`/`check` : effet sur tes propres jets. `incoming` : ce que gagnent
+ * ceux qui t'attaquent. `autoFail` : sauvegardes ratées d'office. Un effet
+ * conditionnel n'est jamais posé dans ces champs structurés — il vit dans
+ * `note`, pour que le moteur n'applique jamais un modificateur à tort.
  */
 export type ConditionId =
   | 'aveugle' | 'charme' | 'effraye' | 'empoisonne' | 'a-terre' | 'entrave' | 'etourdi'
@@ -32,27 +30,24 @@ export interface ConditionEffect {
   speed0?: boolean;
   prone?: boolean;
   resistAll?: boolean;
-  autoFail?: AbilitySaveShorthand[];
-  saveDis?: AbilitySaveShorthand[];
+  autoFail?: ('str' | 'dex')[];
+  saveDis?: ('str' | 'dex')[];
   note: string;
 }
 
-type AbilitySaveShorthand = 'str' | 'dex';
-
 export const CONDITIONS: Record<ConditionId, ConditionEffect> = {
   'aveugle': { name: 'Aveuglé', attack: 'dis', incoming: 'adv', note: 'Tu rates automatiquement tout test nécessitant la vue.' },
-  'charme': { name: 'Charmé', note: "Tu ne peux pas attaquer le charmeur, qui a l'avantage à ses tests sociaux contre toi." },
-  'effraye': { name: 'Effrayé', attack: 'dis', check: 'dis', note: "Tant que la source de ta peur est en vue. Tu ne peux pas t'en approcher." },
+  'charme': { name: 'Charmé', note: 'Tu ne peux pas attaquer le charmeur ni le cibler avec une capacité ou un effet magique qui lui inflige des dégâts. Le charmeur a l\'avantage à ses tests sociaux contre toi.' },
+  'effraye': { name: 'Effrayé', note: 'Tant que la source de ta peur est en vue : désavantage aux attaques et tests de caractéristique, et tu ne peux pas t\'en approcher.' },
   'empoisonne': { name: 'Empoisonné', attack: 'dis', check: 'dis', note: 'Désavantage aux attaques et aux tests de caractéristique.' },
-  'a-terre': { name: 'À terre', attack: 'dis', note: "Attaquants à 1,50 m : avantage. Attaquants à distance : désavantage. Te relever coûte la moitié de ton mouvement." },
+  'a-terre': { name: 'À terre', attack: 'dis', note: 'Attaquants à 1,50 m : avantage. Attaquants à distance : désavantage. Te relever coûte la moitié de ton mouvement.' },
   'entrave': { name: 'Entravé', attack: 'dis', incoming: 'adv', saveDis: ['dex'], note: 'Ta vitesse tombe à 0.' },
-  'etourdi': { name: 'Étourdi', incapacitated: true, speed0: true, incoming: 'adv', autoFail: ['str', 'dex'], note: "Tu es incapable d'agir et ne peux ni bouger ni parler normalement." },
-  'inconscient': { name: 'Inconscient', incapacitated: true, speed0: true, prone: true, incoming: 'adv', autoFail: ['str', 'dex'], note: 'Incapable d\'agir, à terre, vitesse 0. Les coups portés à 1,50 m sont des critiques automatiques.' },
-  // ⚠️ voir l'avertissement en tête de fichier : `attack: 'dis'` n'est pas dans la règle officielle.
-  'agrippe': { name: 'Agrippé', attack: 'dis', speed0: true, note: "Ta vitesse tombe à 0. Désavantage aux attaques contre une autre cible que celle qui t'agrippe." },
-  'assourdi': { name: 'Assourdi', note: "Tu n'entends rien et rates automatiquement tout test reposant sur l'ouïe." },
-  'incapable-agir': { name: "Incapable d'agir", incapacitated: true, note: "Ni action, ni action bonus, ni réaction. Tu ne peux pas parler et ta concentration est rompue. Désavantage à l'initiative." },
-  'invisible': { name: 'Invisible', attack: 'adv', incoming: 'dis', note: "Avantage à tes attaques, désavantage à celles qui te visent. Avantage à l'initiative si tu es invisible au moment de la lancer." },
-  'paralyse': { name: 'Paralysé', incapacitated: true, speed0: true, incoming: 'adv', autoFail: ['str', 'dex'], note: 'Incapable d\'agir, vitesse 0. Les coups portés à 1,50 m sont des critiques automatiques.' },
-  'petrifie': { name: 'Pétrifié', incapacitated: true, speed0: true, incoming: 'adv', autoFail: ['str', 'dex'], resistAll: true, note: "Incapable d'agir, vitesse 0, résistance à tous les dégâts, immunité à l'état Empoisonné. Tu cesses de vieillir." },
+  'etourdi': { name: 'Étourdi', incoming: 'adv', incapacitated: true, autoFail: ['str', 'dex'], note: 'Tu es Incapable d\'agir, rates automatiquement les sauvegardes de Force et de Dextérité, et les attaques contre toi ont l\'avantage. L\'état Étourdi ne réduit pas ta vitesse à 0 en 2024.' },
+  'inconscient': { name: 'Inconscient', incoming: 'adv', incapacitated: true, speed0: true, prone: true, autoFail: ['str', 'dex'], note: 'Incapable d\'agir, À terre, vitesse 0 : tu lâches ce que tu tiens. Quand l\'état prend fin, tu restes À terre. Une attaque qui touche à 1,50 m est un critique.' },
+  'agrippe': { name: 'Agrippé', speed0: true, note: 'Ta vitesse tombe à 0. Désavantage seulement aux attaques contre une autre cible que celle qui t\'agrippe.' },
+  'assourdi': { name: 'Assourdi', note: 'Tu n\'entends rien et rates automatiquement tout test reposant sur l\'ouïe.' },
+  'incapable-agir': { name: 'Incapable d\'agir', incapacitated: true, note: 'Ni action, ni action bonus, ni réaction. Tu ne peux pas parler et ta concentration est rompue. Désavantage à l\'initiative.' },
+  'invisible': { name: 'Invisible', note: 'Avantage à l\'initiative. Les effets qui exigent de te voir ne peuvent pas te cibler si leur créateur ne peut pas te voir. Avantage à tes attaques et désavantage aux attaques contre toi seulement contre une créature qui ne peut pas te voir.' },
+  'paralyse': { name: 'Paralysé', incoming: 'adv', incapacitated: true, speed0: true, autoFail: ['str', 'dex'], note: 'Incapable d\'agir, vitesse 0. Les coups portés à 1,50 m sont des critiques automatiques.' },
+  'petrifie': { name: 'Pétrifié', incoming: 'adv', incapacitated: true, speed0: true, resistAll: true, autoFail: ['str', 'dex'], note: 'Incapable d\'agir, vitesse 0, résistance à tous les dégâts, immunité à l\'état Empoisonné. Tu cesses de vieillir.' },
 };

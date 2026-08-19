@@ -1,9 +1,12 @@
 /**
  * Ressources propres à chaque Patron de l'Occultiste — dérivées du niveau ou
- * de la caractéristique, jamais stockées. Repêchées de
- * `table-connectee/src/App.jsx` (`SUBCLASS_RESOURCES`), pas encore
- * confrontées page à page au PHB 2024 papier — confiance détaillée par
- * capacité ci-dessous. Aucune n'a déclenché de plugin de correction.
+ * de la caractéristique, jamais stockées.
+ *
+ * ⚠️ Repêchées de la SORTIE CONSTRUITE de `table-connectee/src/App.jsx`
+ * (`SUBCLASS_RESOURCES`). Une première version de ce fichier avait été
+ * extraite du texte source : le Grand Ancien et l'Archifée y étaient faux,
+ * la chaîne de plugins réécrivant les deux entrées (cf.
+ * `docs/legacy-rules-backlog.md`, §4nono).
  *
  * `abilityModifier` est toujours le modificateur de Charisme (caractéristique
  * d'incantation de l'Occultiste), sauf mention contraire.
@@ -31,33 +34,30 @@ export const fiendDarkOnesLuckUses = (level: number, charismaModifier: number): 
   clampLevel(level) >= 6 ? Math.max(1, charismaModifier) : 0;
 
 /**
- * Patron Grand Ancien — Combattant clairvoyant (niveau 6+) : lien
- * psychique en action bonus. Progression identique au bonus de maîtrise à
- * partir du niveau 6 (3/4/5/6) — motif cohérent, pas confirmé page à page.
+ * Patron Grand Ancien — Combattant clairvoyant (niveau 6+) : à la formation
+ * d'Esprit éveillé, la cible fait une sauvegarde de Sagesse ; en cas d'échec,
+ * tu as l'avantage à tes attaques contre elle et elle a le désavantage contre
+ * toi.
+ *
+ * CORRIGÉ : une seule utilisation, rechargée au repos COURT (et restaurable
+ * en dépensant un emplacement de pacte) — et non trois à six utilisations par
+ * repos long comme l'indiquait le texte source d'App.jsx.
  */
-export const greatOldOneClairvoyantCombatantUses = (level: number): number => {
-  const lv = clampLevel(level);
-  if (lv < 6) return 0;
-  if (lv < 9) return 3;
-  if (lv < 13) return 4;
-  if (lv < 17) return 5;
-  return 6;
-};
+export const greatOldOneClairvoyantCombatantUses = (level: number): number =>
+  clampLevel(level) >= 6 ? 1 : 0;
+
+export const GREAT_OLD_ONE_CLAIRVOYANT_RECHARGE = 'court' as const;
 
 /**
- * Patron Archifée — Pas des fées (niveau 3+) : Pas brumeux sans emplacement
- * plus un effet féerique au choix. Progression identique au bonus de
- * maîtrise à partir du niveau 3 (2/3/4/5/6) — motif cohérent, pas confirmé
- * page à page. À ne pas confondre avec le « Pas des fées » du Rôdeur
- * Vagabond féerique (niveau 11, modificateur de Sagesse) : même nom
- * français, deux capacités différentes.
+ * Patron Archifée — Pas des fées (niveau 3+) : Pas brumeux sans emplacement,
+ * assorti d'un effet féerique au choix.
+ *
+ * CORRIGÉ : utilisations égales au modificateur de Charisme (minimum 1), et
+ * non une table par niveau calquée sur le bonus de maîtrise comme l'indiquait
+ * le texte source d'App.jsx.
+ *
+ * À ne pas confondre avec le « Pas des fées » du Rôdeur Vagabond féerique,
+ * qui est une capacité différente (voir `ranger-resources.ts`).
  */
-export const archfeyFeyStepUses = (level: number): number => {
-  const lv = clampLevel(level);
-  if (lv < 3) return 0;
-  if (lv < 5) return 2;
-  if (lv < 9) return 3;
-  if (lv < 13) return 4;
-  if (lv < 17) return 5;
-  return 6;
-};
+export const archfeyFeyStepUses = (level: number, charismaModifier: number): number =>
+  clampLevel(level) >= 3 ? Math.max(1, charismaModifier) : 0;
