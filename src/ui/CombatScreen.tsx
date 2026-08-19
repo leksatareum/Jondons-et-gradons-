@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CharacterSheet } from '../model/character';
 import { deriveCharacter } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
-import { layoutCombatCards, type Economy, type PlayableCard, type TurnContext } from './combat-layout';
+import { layoutCombatCards, type Economy, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
 
 /**
  * Écran de combat du joueur.
@@ -200,20 +200,21 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, isYourTurn, turnHolder, onSpendHp }: {
+export function CombatScreen({ sheet, cards, turn, onSpendHp }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
-  isYourTurn: boolean;
-  /** Nom de qui joue, quand ce n'est pas toi. */
-  turnHolder?: string;
+  /**
+   * Décidé par le MJ, jamais par cet écran : hors combat, ni économie
+   * d'action, ni réordonnancement, ni « Fin du tour ».
+   */
+  turn: TurnMode;
   onSpendHp?: (delta: number) => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
-  const layout = useMemo(
-    () => layoutCombatCards(cards, { isYourTurn, spent }),
-    [cards, isYourTurn, spent],
-  );
+  const layout = useMemo(() => layoutCombatCards(cards, { turn, spent }), [cards, turn, spent]);
+  const inCombat = turn.mode === 'combat';
+  const isYourTurn = turn.mode === 'combat' && turn.isYourTurn;
 
   const play = (card: PlayableCard) => setSpent((current) => ({ ...current, [card.economy]: true }));
   const className = sheet.classLevels[0]?.classId ?? '';
@@ -262,32 +263,36 @@ export function CombatScreen({ sheet, cards, isYourTurn, turnHolder, onSpendHp }
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <div style={{ flexGrow: 1 }}>
-            {isYourTurn ? (
-              <div className="ttl" style={{ fontSize: 13, color: 'var(--accent)' }}>À toi de jouer</div>
-            ) : (
-              <>
-                <div className="ttl" style={{ fontSize: 13 }}>Tour de {turnHolder ?? '…'}</div>
-                <div className="lbl" style={{ textTransform: 'none', marginTop: 1 }}>ta réaction reste disponible</div>
-              </>
-            )}
-          </div>
-          {(['action', 'bonus', 'reaction'] as const).map((economy) => (
-            <div
-              key={economy}
-              style={{
-                padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                background: layout.available[economy] ? 'var(--accent)' : 'transparent',
-                color: layout.available[economy] ? 'var(--accent-ink)' : 'var(--muted)',
-                border: layout.available[economy] ? 'none' : '1px solid var(--line)',
-                textDecoration: layout.available[economy] ? 'none' : 'line-through',
-              }}
-            >
-              {ECONOMY_LABEL[economy]}
+        {layout.showEconomy && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div style={{ flexGrow: 1 }}>
+              {isYourTurn ? (
+                <div className="ttl" style={{ fontSize: 13, color: 'var(--accent)' }}>À toi de jouer</div>
+              ) : (
+                <>
+                  <div className="ttl" style={{ fontSize: 13 }}>
+                    Tour de {turn.mode === 'combat' ? turn.holder ?? '…' : '…'}
+                  </div>
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 1 }}>ta réaction reste disponible</div>
+                </>
+              )}
             </div>
-          ))}
-        </div>
+            {(['action', 'bonus', 'reaction'] as const).map((economy) => (
+              <div
+                key={economy}
+                style={{
+                  padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  background: layout.available[economy] ? 'var(--accent)' : 'transparent',
+                  color: layout.available[economy] ? 'var(--accent-ink)' : 'var(--muted)',
+                  border: layout.available[economy] ? 'none' : '1px solid var(--line)',
+                  textDecoration: layout.available[economy] ? 'none' : 'line-through',
+                }}
+              >
+                {ECONOMY_LABEL[economy]}
+              </div>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* ───── Rouleau réordonné ───── */}
@@ -301,7 +306,9 @@ export function CombatScreen({ sheet, cards, isYourTurn, turnHolder, onSpendHp }
 
         {layout.muted.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '2px 2px 0' }}>
-            <div className="lbl">{isYourTurn ? 'plus tard dans le tour' : 'rangé pour l’instant'}</div>
+            <div className="lbl">
+              {!inCombat ? 'indisponible' : isYourTurn ? 'plus tard dans le tour' : 'rangé pour l’instant'}
+            </div>
             <div style={{ flexGrow: 1, height: 1, background: 'var(--line)' }} />
           </div>
         )}
@@ -325,7 +332,9 @@ export function CombatScreen({ sheet, cards, isYourTurn, turnHolder, onSpendHp }
             border: isYourTurn ? 'none' : '1px solid var(--line)',
           }}
         >
-          {isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
+          {/* Hors combat, ni fin de tour ni ordre d'initiative : on propose le repos,
+              qui est l'action de hors-combat la plus fréquente. */}
+          {!inCombat ? 'Repos' : isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
         </button>
         <button style={{
           width: 92, minHeight: 'var(--tap)', borderRadius: 11,

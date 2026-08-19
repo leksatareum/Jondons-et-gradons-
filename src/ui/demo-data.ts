@@ -82,8 +82,8 @@ import { withDistinctNames, type EncounterState } from '../domain/encounter';
  * temporaires.
  */
 export const demoEncounter: EncounterState = {
-  round: 2,
-  turnIndex: 1,
+  round: 0,
+  turnIndex: -1,
   combatants: withDistinctNames([
     { id: 'p1', name: 'Sélène', side: 'joueur', initiative: 19, dexterity: 2, maxHp: 17, damageTaken: 4, temporaryHp: 5, armorClass: 12, conditions: [] },
     { id: 'm1', name: 'Gobelin', side: 'creature', initiative: 16, dexterity: 2, maxHp: 7, damageTaken: 0, temporaryHp: 0, armorClass: 15, conditions: [] },

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
-  activeCombatant, applyDamage, applyHealing, isDown, nextTurn, orderedCombatants,
-  previousTurn, remainingHp, replaceCombatant,
+  activeCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
 
@@ -24,6 +24,11 @@ import {
  *    ordonne, mais visuellement distincts. Le MJ voit les points de vie des
  *    joueurs en direct : c'est ce qu'un écran connecté apporte de plus qu'une
  *    feuille de papier.
+ *
+ * Le tour par tour ne s'enclenche QUE lorsque le MJ lance le combat. Tant
+ * qu'il ne l'a pas fait, la liste sert de préparation : on ajuste les points
+ * de vie, on voit le groupe, mais aucun tour n'est actif et les écrans des
+ * joueurs restent en mode fiche.
  */
 
 function HpBar({ combatant }: { combatant: Combatant }) {
@@ -46,7 +51,9 @@ function HpBar({ combatant }: { combatant: Combatant }) {
 }
 
 function CombatantRow({ combatant, active, onTarget, onNext }: {
-  combatant: Combatant; active: boolean;
+  combatant: Combatant;
+  /** Vrai seulement quand le combat tourne ET que c'est son tour. */
+  active: boolean;
   onTarget: (combatant: Combatant) => void;
   onNext: () => void;
 }) {
@@ -211,6 +218,7 @@ export function GmCombatScreen({ initial }: { initial: EncounterState }) {
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const ordered = useMemo(() => orderedCombatants(state), [state]);
+  const running = isRunning(state);
   const active = activeCombatant(state);
   const target = ordered.find((combatant) => combatant.id === targetId) ?? null;
 
@@ -230,25 +238,56 @@ export function GmCombatScreen({ initial }: { initial: EncounterState }) {
         paddingTop: 'calc(11px + env(safe-area-inset-top))',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flexGrow: 1 }}>
-            <div className="lbl">Round {state.round}</div>
-            <div className="ttl" style={{ fontSize: 17, marginTop: 1 }}>
-              {active ? active.name : 'Combat non commencé'}
-            </div>
+          <div style={{ flexGrow: 1, minWidth: 0 }}>
+            {running ? (
+              <>
+                <div className="lbl">Round {state.round}</div>
+                <div className="ttl" style={{ fontSize: 17, marginTop: 1 }}>{active?.name}</div>
+              </>
+            ) : (
+              <>
+                <div className="lbl">Préparation</div>
+                <div className="ttl" style={{ fontSize: 17, marginTop: 1 }}>
+                  {state.combatants.length} combattants
+                </div>
+              </>
+            )}
           </div>
+
+          {running && (
+            <button
+              onClick={() => setState(previousTurn)}
+              aria-label="Tour précédent"
+              style={{
+                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+                display: 'grid', placeItems: 'center',
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+
+          {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour. */}
           <button
-            onClick={() => setState(previousTurn)}
-            aria-label="Tour précédent"
+            onClick={() => setState(running ? endEncounter : beginEncounter)}
             style={{
-              width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
-              display: 'grid', placeItems: 'center',
+              minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: running ? 'transparent' : 'var(--accent)',
+              color: running ? 'var(--muted)' : 'var(--accent-ink)',
+              border: running ? '1px solid var(--line)' : 'none',
             }}
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
+            {running ? 'Terminer' : 'Lancer'}
           </button>
         </div>
+
+        {!running && (
+          <div className="lbl" style={{ textTransform: 'none', marginTop: 9 }}>
+            Les joueurs restent sur leur fiche tant que le combat n'est pas lancé.
+          </div>
+        )}
       </header>
 
       <main style={{

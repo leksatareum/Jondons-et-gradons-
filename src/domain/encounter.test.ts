@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activeCombatant, applyDamage, applyHealing, beginEncounter, isDown, nextTurn,
-  orderedCombatants, previousTurn, remainingHp, replaceCombatant, withDistinctNames,
-  type Combatant, type EncounterState,
+  activeCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
+  withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
 
 const combattant = (id: string, initiative: number, extra: Partial<Combatant> = {}): Combatant => ({
@@ -134,5 +134,37 @@ describe('mise à jour', () => {
     const suivant = replaceCombatant(state, blesse);
     expect(suivant.combatants.map((c) => c.id)).toEqual(['a', 'b']);
     expect(remainingHp(suivant.combatants[1])).toBe(6);
+  });
+});
+
+describe('le tour par tour n’existe que si le MJ le lance', () => {
+  const state = rencontre([combattant('a', 20), combattant('b', 15)]);
+
+  it('une rencontre non lancée ne tourne pas', () => {
+    expect(isRunning(state)).toBe(false);
+    expect(activeCombatant(state)).toBeNull();
+  });
+
+  it('le MJ lance, et seulement alors il y a un tour actif et un round', () => {
+    const lance = beginEncounter(state);
+    expect(isRunning(lance)).toBe(true);
+    expect(lance.round).toBe(1);
+    expect(activeCombatant(lance)?.id).toBe('a');
+  });
+
+  it('arrêter le combat conserve les combattants et leurs blessures', () => {
+    let current = beginEncounter(state);
+    current = replaceCombatant(current, { ...current.combatants[0], damageTaken: 6 });
+    const arrete = endEncounter(current);
+    expect(isRunning(arrete)).toBe(false);
+    expect(activeCombatant(arrete)).toBeNull();
+    expect(arrete.combatants).toHaveLength(2);
+    expect(remainingHp(arrete.combatants[0])).toBe(4);
+  });
+
+  it('un combat arrêté par erreur se relance sans rien ressaisir', () => {
+    const relance = beginEncounter(endEncounter(beginEncounter(state)));
+    expect(isRunning(relance)).toBe(true);
+    expect(relance.combatants).toHaveLength(2);
   });
 });

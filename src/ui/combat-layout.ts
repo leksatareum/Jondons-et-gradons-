@@ -31,9 +31,24 @@ export interface PlayableCard {
   granted?: boolean;
 }
 
+/**
+ * Le tour par tour n'existe QUE lorsque le MJ l'a lancé.
+ *
+ * Hors combat, un personnage n'a ni action, ni action bonus, ni réaction à
+ * suivre : ces notions n'ont de sens que dans l'ordre d'initiative. Afficher
+ * une économie d'action en exploration, c'est inventer une contrainte que le
+ * jeu ne pose pas — et c'est ce que faisait la première version de cet écran.
+ *
+ * La source de vérité est la rencontre du MJ, qui se synchronise. L'écran du
+ * joueur ne fait que la refléter : il ne décide jamais d'entrer en combat.
+ */
+export type TurnMode =
+  | { mode: 'libre' }
+  | { mode: 'combat'; isYourTurn: boolean; holder?: string };
+
 export interface TurnContext {
-  isYourTurn: boolean;
-  /** Économies déjà dépensées ce tour. */
+  turn: TurnMode;
+  /** Économies déjà dépensées ce tour. Sans objet hors combat. */
   spent?: Partial<Record<Economy, boolean>>;
 }
 
@@ -43,19 +58,38 @@ export interface CombatLayout {
   /** Le reste, présent mais atténué. */
   muted: PlayableCard[];
   available: Record<Economy, boolean>;
+  /** Faux hors combat : il n'y a alors pas d'économie d'action à montrer. */
+  showEconomy: boolean;
 }
 
 const priority = (isYourTurn: boolean): Economy[] =>
   isYourTurn ? ['action', 'bonus', 'libre', 'reaction'] : ['reaction', 'libre', 'action', 'bonus'];
 
 export function isPlayableNow(card: PlayableCard, context: TurnContext): boolean {
-  if (context.spent?.[card.economy]) return false;
   if (card.resource && card.resource.remaining <= 0) return false;
-  return context.isYourTurn ? card.economy !== 'reaction' : card.economy === 'reaction';
+  // Hors combat, rien n'est contraint : seule une ressource épuisée bloque.
+  if (context.turn.mode === 'libre') return true;
+  if (context.spent?.[card.economy]) return false;
+  return context.turn.isYourTurn ? card.economy !== 'reaction' : card.economy === 'reaction';
 }
 
 export function layoutCombatCards(cards: PlayableCard[], context: TurnContext): CombatLayout {
-  const order = priority(context.isYourTurn);
+  // Hors combat, aucun réordonnancement : l'ordre naturel des cartes suffit,
+  // il n'y a pas de « moment » qui rendrait l'une plus pertinente qu'une autre.
+  if (context.turn.mode !== 'combat') {
+    const featured: PlayableCard[] = [];
+    const muted: PlayableCard[] = [];
+    for (const card of cards) (isPlayableNow(card, context) ? featured : muted).push(card);
+    return {
+      featured,
+      muted,
+      available: { action: true, bonus: true, reaction: true, libre: true },
+      showEconomy: false,
+    };
+  }
+
+  const { isYourTurn } = context.turn;
+  const order = priority(isYourTurn);
   const rank = (card: PlayableCard) => order.indexOf(card.economy);
   const byRank = (a: PlayableCard, b: PlayableCard) => rank(a) - rank(b);
 
@@ -68,13 +102,14 @@ export function layoutCombatCards(cards: PlayableCard[], context: TurnContext): 
   return {
     featured,
     muted,
+    showEconomy: true,
     available: {
-      action: context.isYourTurn && !context.spent?.action,
-      bonus: context.isYourTurn && !context.spent?.bonus,
+      action: isYourTurn && !context.spent?.action,
+      bonus: isYourTurn && !context.spent?.bonus,
       // La réaction se garde d'un tour à l'autre : elle reste disponible hors
       // de ton tour, contrairement à l'action et à l'action bonus.
       reaction: !context.spent?.reaction,
-      libre: context.isYourTurn,
+      libre: isYourTurn,
     },
   };
 }

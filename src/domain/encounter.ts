@@ -67,9 +67,24 @@ export const remainingHp = (combatant: Combatant): number =>
 
 export const isDown = (combatant: Combatant): boolean => remainingHp(combatant) <= 0;
 
-/** Démarre le combat sur le premier de l'ordre. */
+/**
+ * Le tour par tour n'existe que lorsque le MJ le lance. Hors combat, il n'y a
+ * ni round, ni tour actif, ni économie d'action à suivre — et les écrans des
+ * joueurs le reflètent, sans jamais en décider eux-mêmes.
+ */
+export const isRunning = (state: EncounterState): boolean => state.turnIndex >= 0;
+
+/** Démarre le combat sur le premier de l'ordre. Décision du MJ, uniquement. */
 export const beginEncounter = (state: EncounterState): EncounterState =>
   ({ ...state, turnIndex: 0, round: 1 });
+
+/**
+ * Met fin au combat. Les combattants et leurs points de vie sont conservés :
+ * on sort du tour par tour, on ne perd pas l'état de la rencontre — un combat
+ * arrêté par erreur doit pouvoir être relancé sans rien ressaisir.
+ */
+export const endEncounter = (state: EncounterState): EncounterState =>
+  ({ ...state, turnIndex: -1, round: 0 });
 
 /**
  * Passe au suivant. Boucler en tête du tableau incrémente le round : c'est

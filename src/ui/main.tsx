@@ -19,7 +19,7 @@ const switcher: React.CSSProperties = {
 
 function App() {
   const [sheet, setSheet] = useState(demoSheet);
-  const [isYourTurn, setYourTurn] = useState(true);
+  const [turnLabel, setTurnLabel] = useState<'libre' | 'mon-tour' | 'autre-tour'>('libre');
   const [view, setView] = useState<'joueur' | 'mj'>('joueur');
 
   const changeHp = (delta: number) => setSheet((current: typeof demoSheet) => ({
@@ -41,13 +41,20 @@ function App() {
       <CombatScreen
         sheet={sheet}
         cards={demoCards}
-        isYourTurn={isYourTurn}
-        turnHolder="Brannoc"
+        turn={
+          turnLabel === 'libre'
+            ? { mode: 'libre' }
+            : { mode: 'combat', isYourTurn: turnLabel === 'mon-tour', holder: 'Brannoc' }
+        }
         onSpendHp={changeHp}
       />
       {/* Bascules de mise au point, le temps qu'il n'y ait pas de navigation. */}
-      <button onClick={() => setYourTurn((value) => !value)} style={{ ...switcher, right: 100 }}>
-        {isYourTurn ? 'pas mon tour' : 'à moi'}
+      <button
+        onClick={() => setTurnLabel((value) =>
+          value === 'libre' ? 'mon-tour' : value === 'mon-tour' ? 'autre-tour' : 'libre')}
+        style={{ ...switcher, right: 100 }}
+      >
+        {turnLabel === 'libre' ? 'hors combat' : turnLabel === 'mon-tour' ? 'à moi' : 'pas mon tour'}
       </button>
       <button onClick={() => setView('mj')} style={switcher}>vue MJ</button>
     </>
