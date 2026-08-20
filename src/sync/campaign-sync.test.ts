@@ -146,3 +146,39 @@ describe('instantané publié aux écrans', () => {
     expect(sync.getSnapshot().sheets).toEqual([]);
   });
 });
+
+describe('journal et notes dans l’instantané', () => {
+  const journalRow = (id: string, author: string, body: string, version = 1): SyncRow =>
+    ({ id, version, campaign_id: 'c1', author_id: author, title: null, body } as unknown as SyncRow);
+
+  const noteRow = (id: string, owner: string, body: string, version = 1): SyncRow =>
+    ({ id, version, campaign_id: 'c1', owner_id: owner, title: null, body } as unknown as SyncRow);
+
+  it('la resynchronisation initiale remplit le journal et les notes — la RLS a déjà trié ce qui revient', async () => {
+    const { sync } = await connected({
+      jg_journal_entries: [journalRow('j1', 'mj1', 'Séance 1')],
+      jg_notes: [noteRow('n1', 'u1', 'Se méfier du barman')],
+    });
+    const snapshot = sync.getSnapshot();
+    expect(snapshot.journalEntries.map((e) => e.body)).toEqual(['Séance 1']);
+    expect(snapshot.notes.map((n) => n.body)).toEqual(['Se méfier du barman']);
+  });
+
+  it('une nouvelle entrée de journal arrive par le canal sans rechargement', async () => {
+    const { fake, sync } = await connected();
+    fake.emit('jg_journal_entries', { eventType: 'INSERT', new: journalRow('j1', 'mj1', 'La table est arrivée') });
+    expect(sync.getSnapshot().journalEntries).toHaveLength(1);
+  });
+
+  it('une note supprimée par son auteur disparaît de l’instantané', async () => {
+    const { fake, sync } = await connected({ jg_notes: [noteRow('n1', 'u1', 'Secret')] });
+    fake.emit('jg_notes', { eventType: 'DELETE', old: { id: 'n1', version: 1 } });
+    expect(sync.getSnapshot().notes).toEqual([]);
+  });
+
+  it('ingestDelete retire une entrée sans attendre l’écho du canal', async () => {
+    const { sync } = await connected({ jg_journal_entries: [journalRow('j1', 'mj1', 'Séance 1')] });
+    sync.ingestDelete('jg_journal_entries', 'j1', 1);
+    expect(sync.getSnapshot().journalEntries).toEqual([]);
+  });
+});

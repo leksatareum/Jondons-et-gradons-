@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ENCOUNTERS_TABLE, SHEETS_TABLE, type CampaignSync } from './campaign-sync';
+import {
+  ENCOUNTERS_TABLE, JOURNAL_TABLE, NOTES_TABLE, SHEETS_TABLE, type CampaignSync,
+} from './campaign-sync';
 import type { SyncRow } from './supabase-transport';
 import type { CharacterSheet } from '../model/character';
 import type { EncounterState } from '../domain/encounter';
@@ -62,6 +64,93 @@ export const saveEncounter = (
   id: string,
   state: EncounterState,
 ): Promise<SyncRow> => writeRow(client, sync, ENCOUNTERS_TABLE, id, { state });
+
+/**
+ * Supprime une ligne et réinjecte l'absence dans la synchronisation.
+ *
+ * `.select().single()` sur un `delete` renvoie la ligne telle qu'elle était
+ * juste avant sa suppression : c'est ce qui donne sa version à
+ * `ingestDelete`, sans quoi l'auteur de la suppression attendrait l'écho du
+ * canal pour la voir disparaître de son propre écran.
+ */
+async function deleteRow(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  table: string,
+  id: string,
+): Promise<void> {
+  const { data, error } = await client.from(table).delete().eq('id', id).select().single();
+  if (error) throw new WriteError(table, error.message);
+  if (!data) throw new WriteError(table, 'suppression refusée ou ligne introuvable');
+  const row = data as SyncRow;
+  sync?.ingestDelete(table, row.id, row.version);
+}
+
+/**
+ * Le journal : public, mais seul le MJ y écrit — la RLS le rappelle à qui
+ * l'oublierait, cet écran ne fait que proposer ce qu'elle autorise.
+ */
+export async function createJournalEntry(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  campaignId: string,
+  authorId: string,
+  entry: { title?: string | null; body: string },
+): Promise<SyncRow> {
+  const { data, error } = await client
+    .from(JOURNAL_TABLE)
+    .insert({ campaign_id: campaignId, author_id: authorId, title: entry.title ?? null, body: entry.body })
+    .select()
+    .single();
+  if (error) throw new WriteError(JOURNAL_TABLE, error.message);
+  if (!data) throw new WriteError(JOURNAL_TABLE, 'création refusée');
+  const row = data as SyncRow;
+  sync?.ingest(JOURNAL_TABLE, row);
+  return row;
+}
+
+export const deleteJournalEntry = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+): Promise<void> => deleteRow(client, sync, JOURNAL_TABLE, id);
+
+/**
+ * Les notes : personnelles, jamais lues par personne d'autre — pas même le
+ * MJ. La RLS (`owner_id = auth.uid()`) est la seule garantie qui compte ;
+ * ces fonctions ne font que la solliciter dans le bon sens.
+ */
+export async function createNote(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  campaignId: string,
+  ownerId: string,
+  note: { title?: string | null; body: string },
+): Promise<SyncRow> {
+  const { data, error } = await client
+    .from(NOTES_TABLE)
+    .insert({ campaign_id: campaignId, owner_id: ownerId, title: note.title ?? null, body: note.body })
+    .select()
+    .single();
+  if (error) throw new WriteError(NOTES_TABLE, error.message);
+  if (!data) throw new WriteError(NOTES_TABLE, 'création refusée');
+  const row = data as SyncRow;
+  sync?.ingest(NOTES_TABLE, row);
+  return row;
+}
+
+export const saveNote = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+  note: { title?: string | null; body: string },
+): Promise<SyncRow> => writeRow(client, sync, NOTES_TABLE, id, note);
+
+export const deleteNote = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+): Promise<void> => deleteRow(client, sync, NOTES_TABLE, id);
 
 export async function createEncounter(
   client: SupabaseClient,

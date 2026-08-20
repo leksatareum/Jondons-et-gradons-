@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createEncounter, saveEncounter, saveSheet, WriteError } from './mutations';
+import {
+  createEncounter, createJournalEntry, createNote, deleteJournalEntry, deleteNote,
+  saveEncounter, saveNote, saveSheet, WriteError,
+} from './mutations';
 import type { CharacterSheet } from '../model/character';
 import type { EncounterState } from '../domain/encounter';
 
@@ -17,6 +20,7 @@ function fakeClient(result: { data: unknown; error: { message: string } | null }
     from: (table: string) => ({
       update: (payload: unknown) => { sent.push({ table, verb: 'update', payload }); return terminal; },
       insert: (payload: unknown) => { sent.push({ table, verb: 'insert', payload }); return terminal; },
+      delete: () => { sent.push({ table, verb: 'delete', payload: undefined }); return terminal; },
     }),
   };
   return { client, sent };
@@ -66,5 +70,39 @@ describe('la ligne renvoyée nourrit l’affichage', () => {
     const sync = { ingest: vi.fn() };
     await saveSheet(client, sync as never, 's1', sheet);
     expect(sync.ingest).toHaveBeenCalledWith('jg_sheets', expect.objectContaining({ id: 's1', version: 7 }));
+  });
+});
+
+describe('journal et notes', () => {
+  it('créer une entrée de journal envoie campagne, auteur et contenu — jamais la version', async () => {
+    const { client, sent } = fakeClient({ data: { id: 'j1', version: 1, body: 'La table est arrivée' }, error: null });
+    await createJournalEntry(client, null, 'c1', 'mj1', { title: 'Séance 1', body: 'La table est arrivée' });
+    expect(sent[0]?.payload).toEqual({
+      campaign_id: 'c1', author_id: 'mj1', title: 'Séance 1', body: 'La table est arrivée',
+    });
+  });
+
+  it('supprimer une entrée réinjecte l’absence avec sa version, pour ne pas attendre l’écho', async () => {
+    const { client } = fakeClient({ data: { id: 'j1', version: 3 }, error: null });
+    const sync = { ingestDelete: vi.fn() };
+    await deleteJournalEntry(client, sync as never, 'j1');
+    expect(sync.ingestDelete).toHaveBeenCalledWith('jg_journal_entries', 'j1', 3);
+  });
+
+  it('créer une note envoie campagne, propriétaire et contenu', async () => {
+    const { client, sent } = fakeClient({ data: { id: 'n1', version: 1, body: 'Secret' }, error: null });
+    await createNote(client, null, 'c1', 'joueur1', { body: 'Secret' });
+    expect(sent[0]?.payload).toEqual({ campaign_id: 'c1', owner_id: 'joueur1', title: null, body: 'Secret' });
+  });
+
+  it('sauvegarder une note n’envoie que titre et corps — jamais le propriétaire ni la version', async () => {
+    const { client, sent } = fakeClient({ data: { id: 'n1', version: 2, body: 'Secret modifié' }, error: null });
+    await saveNote(client, null, 'n1', { title: null, body: 'Secret modifié' });
+    expect(sent[0]?.payload).toEqual({ title: null, body: 'Secret modifié' });
+  });
+
+  it('un refus de suppression (RLS) remonte, nommé', async () => {
+    const { client } = fakeClient({ data: null, error: null });
+    await expect(deleteNote(client, null, 'n1')).rejects.toThrow(/refusée|introuvable/);
   });
 });

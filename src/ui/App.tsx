@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GmCombatScreen } from './GmCombatScreen';
 import { SheetView, type SheetTab } from './SheetView';
+import { JournalScreen } from './JournalScreen';
 import { SignInScreen } from './SignInScreen';
 import { SyncBanner } from './SyncBanner';
 import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { withParty } from './roster';
-import { createEncounter, saveEncounter } from '../sync/mutations';
+import { createEncounter, createJournalEntry, deleteJournalEntry, saveEncounter } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -89,6 +90,8 @@ function Table({ client, compte, campagne }: {
   const [onglet, setOnglet] = useState<SheetTab>('combat');
   /** Fiche que le MJ regarde. `null` : il est sur sa liste d'initiative. */
   const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
+  /** Écran principal du MJ, hors fiche ouverte : son combat, ou le journal. */
+  const [ecranMj, setEcranMj] = useState<'combat' | 'journal'>('combat');
 
   // La fiche du joueur, c'est la sienne — la propriété vient de la base, pas
   // d'un choix d'écran.
@@ -113,19 +116,34 @@ function Table({ client, compte, campagne }: {
           onOnglet={setOnglet}
           entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
           estMj
+          campaignId={campagne.campaignId}
+          userId={compte.userId}
+          journalEntries={snapshot.journalEntries}
+          notes={[]}
         />
       );
     }
     return (
       <>
         {bandeau}
-        <EcranMj
-          client={client}
-          sync={sync}
-          campaignId={campagne.campaignId}
-          snapshot={snapshot}
-          onOuvrirFiche={setFicheOuverte}
-        />
+        <MjOnglets valeur={ecranMj} onChanger={setEcranMj} />
+        {ecranMj === 'combat' ? (
+          <EcranMj
+            client={client}
+            sync={sync}
+            campaignId={campagne.campaignId}
+            snapshot={snapshot}
+            onOuvrirFiche={setFicheOuverte}
+          />
+        ) : (
+          <JournalScreen
+            entries={snapshot.journalEntries}
+            notes={[]}
+            estMj
+            onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
+            onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
+          />
+        )}
       </>
     );
   }
@@ -152,6 +170,10 @@ function Table({ client, compte, campagne }: {
       onglet={onglet}
       onOnglet={setOnglet}
       entete={bandeau}
+      campaignId={campagne.campaignId}
+      userId={compte.userId}
+      journalEntries={snapshot.journalEntries}
+      notes={snapshot.notes}
     />
   );
 }
@@ -186,6 +208,43 @@ function BandeauMj({ nom, onRetour }: { nom: string; onRetour: () => void }) {
         Tu modifies la fiche de <strong>{nom}</strong>
       </div>
     </div>
+  );
+}
+
+/**
+ * Le choix du MJ entre son combat et le journal, hors de toute fiche ouverte.
+ *
+ * En flux normal sous le bandeau, pas flottant : `GmCombatScreen` occupe déjà
+ * tout le bas de l'écran avec ses propres contrôles, et un onglet flottant
+ * posé par-dessus a déjà causé un recouvrement une fois (voir le correctif du
+ * pied de page de combat) — inutile de reproduire le même piège ici.
+ */
+function MjOnglets({ valeur, onChanger }: {
+  valeur: 'combat' | 'journal';
+  onChanger: (valeur: 'combat' | 'journal') => void;
+}) {
+  const items: ['combat' | 'journal', string][] = [['combat', 'Combat'], ['journal', 'Journal']];
+  return (
+    <nav style={{
+      display: 'flex', gap: 4, padding: '8px 14px',
+      borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+    }}>
+      {items.map(([clef, libelle]) => (
+        <button
+          key={clef}
+          onClick={() => onChanger(clef)}
+          className="lbl"
+          style={{
+            minHeight: 32, padding: '0 14px', borderRadius: 999,
+            background: valeur === clef ? 'var(--accent)' : 'transparent',
+            color: valeur === clef ? 'var(--accent-ink)' : 'var(--muted)',
+            fontWeight: 700,
+          }}
+        >
+          {libelle}
+        </button>
+      ))}
+    </nav>
   );
 }
 

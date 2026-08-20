@@ -2,9 +2,12 @@ import { useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
+import { JournalScreen } from './JournalScreen';
 import { cardsFromCharacter } from './spell-cards';
 import { deriveCharacter } from '../model/derive';
-import { saveSheet } from '../sync/mutations';
+import {
+  createJournalEntry, createNote, deleteJournalEntry, deleteNote, saveNote, saveSheet,
+} from '../sync/mutations';
 import { GrantSpellDialog } from './GrantSpellDialog';
 import { RestDialog } from './RestDialog';
 import { LevelUpDialog } from './LevelUpDialog';
@@ -15,7 +18,7 @@ import { AlliesScreen } from './AlliesScreen';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
-import type { CampaignSync, StoredSheet } from '../sync/campaign-sync';
+import type { CampaignSync, JournalEntry, Note, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
 /**
@@ -32,7 +35,7 @@ import type { EncounterState } from '../domain/encounter';
  * tranche.
  */
 
-export type SheetTab = 'combat' | 'grimoire' | 'allies';
+export type SheetTab = 'combat' | 'grimoire' | 'allies' | 'journal';
 
 /**
  * Hauteur du pied de page de `CombatScreen`, plus une marge de respiration.
@@ -40,7 +43,9 @@ export type SheetTab = 'combat' | 'grimoire' | 'allies';
  */
 const PIED_DE_PAGE_COMBAT = 'calc(83px + env(safe-area-inset-bottom))';
 
-export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj }: {
+export function SheetView({
+  client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj, campaignId, userId, journalEntries, notes,
+}: {
   client: SupabaseClient;
   sync: CampaignSync;
   fiche: StoredSheet;
@@ -51,6 +56,12 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
   entete?: React.ReactNode;
   /** Ouvre les pouvoirs qui n'appartiennent qu'au MJ : accorder, révoquer. */
   estMj?: boolean;
+  campaignId: string;
+  /** Qui regarde l'écran — pour signer une entrée de journal ou une note, jamais pour filtrer : la RLS s'en charge déjà. */
+  userId: string;
+  journalEntries: JournalEntry[];
+  /** Toujours celles de `userId` : la RLS ne renvoie jamais celles d'un autre. Absent côté MJ. */
+  notes: Note[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
   const [reposEnCours, setReposEnCours] = useState(false);
@@ -144,6 +155,20 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
   const detacherCompagnon = (companionId: string) =>
     void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
 
+  // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
+  // s'y essaierait sans l'être.
+  const ajouterEntreeJournal = (entree: { title: string | null; body: string }) =>
+    void createJournalEntry(client, sync, campaignId, userId, entree);
+  const supprimerEntreeJournal = (id: string) => void deleteJournalEntry(client, sync, id);
+
+  // Notes : toujours celles de qui regarde l'écran — jamais celles d'un
+  // joueur dont le MJ consulterait la fiche.
+  const ajouterNote = (note: { title: string | null; body: string }) =>
+    void createNote(client, sync, campaignId, userId, note);
+  const modifierNote = (id: string, note: { title: string | null; body: string }) =>
+    void saveNote(client, sync, id, note);
+  const supprimerNote = (id: string) => void deleteNote(client, sync, id);
+
   /**
    * Les pouvoirs du MJ, disponibles sur les deux onglets. Ils vivent ici et
    * non dans chaque écran : monter de niveau n'est ni une action de combat ni
@@ -182,6 +207,27 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
       )}
     </>
   );
+
+  if (onglet === 'journal') {
+    return (
+      <>
+        {entete}
+        <JournalScreen
+          entries={journalEntries}
+          notes={estMj ? [] : notes}
+          estMj={Boolean(estMj)}
+          onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}
+          onSupprimerEntree={estMj ? supprimerEntreeJournal : undefined}
+          onAjouterNote={estMj ? undefined : ajouterNote}
+          onModifierNote={estMj ? undefined : modifierNote}
+          onSupprimerNote={estMj ? undefined : supprimerNote}
+        />
+        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
+        {barreMj}
+        {dialogues}
+      </>
+    );
+  }
 
   if (onglet === 'allies') {
     return (
@@ -305,6 +351,7 @@ function Onglets({ onglet, onChanger, degagement, avecAllies }: {
 }) {
   const items: [SheetTab, string][] = [['combat', 'Combat'], ['grimoire', 'Sorts']];
   if (avecAllies) items.push(['allies', 'Formes']);
+  items.push(['journal', 'Journal']);
   return (
     <nav style={{
       position: 'fixed', zIndex: 10,

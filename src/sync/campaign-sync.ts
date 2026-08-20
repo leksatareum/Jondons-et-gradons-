@@ -22,6 +22,13 @@ export interface CampaignSnapshot {
    * sinon la plus récente. `null` si la campagne n'en a aucune.
    */
   encounter: StoredEncounter | null;
+  /** Journal public, écrit par le MJ. Visible de tous — la RLS s'en charge. */
+  journalEntries: JournalEntry[];
+  /**
+   * Notes personnelles. La RLS ne renvoie jamais que les siennes : ce tableau
+   * contient déjà exactement ce qu'un client a le droit de voir, jamais plus.
+   */
+  notes: Note[];
 }
 
 export interface StoredSheet {
@@ -37,8 +44,28 @@ export interface StoredEncounter {
   state: EncounterState;
 }
 
+export interface JournalEntry {
+  id: string;
+  authorId: string;
+  title: string | null;
+  body: string;
+  version: number;
+  createdAt: string;
+}
+
+export interface Note {
+  id: string;
+  ownerId: string;
+  title: string | null;
+  body: string;
+  version: number;
+  createdAt: string;
+}
+
 export const SHEETS_TABLE = 'jg_sheets';
 export const ENCOUNTERS_TABLE = 'jg_encounters';
+export const JOURNAL_TABLE = 'jg_journal_entries';
+export const NOTES_TABLE = 'jg_notes';
 
 /**
  * Choisit la rencontre courante. Une campagne accumule ses rencontres passées ;
@@ -68,6 +95,24 @@ const toEncounter = (row: SyncRow): StoredEncounter => ({
   state: row.state as EncounterState,
 });
 
+const toJournalEntry = (row: SyncRow): JournalEntry => ({
+  id: row.id,
+  authorId: String(row.author_id ?? ''),
+  title: (row.title as string | null) ?? null,
+  body: String(row.body ?? ''),
+  version: row.version,
+  createdAt: String(row.created_at ?? ''),
+});
+
+const toNote = (row: SyncRow): Note => ({
+  id: row.id,
+  ownerId: String(row.owner_id ?? ''),
+  title: (row.title as string | null) ?? null,
+  body: String(row.body ?? ''),
+  version: row.version,
+  createdAt: String(row.created_at ?? ''),
+});
+
 export interface CampaignSyncOptions {
   client: SupabaseClient;
   campaignId: string;
@@ -85,16 +130,24 @@ export class CampaignSync {
 
   private readonly encounters = new VersionedStore<SyncRow>();
 
+  private readonly journal = new VersionedStore<SyncRow>();
+
+  private readonly notes = new VersionedStore<SyncRow>();
+
   private readonly listeners = new Set<() => void>();
 
   private readonly connection: SyncConnection<SyncEvent>;
 
-  private snapshot: CampaignSnapshot = { status: 'idle', sheets: [], encounter: null };
+  private snapshot: CampaignSnapshot = {
+    status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [],
+  };
 
   constructor(options: CampaignSyncOptions) {
     const tables = [
       { name: SHEETS_TABLE, store: this.sheets },
       { name: ENCOUNTERS_TABLE, store: this.encounters },
+      { name: JOURNAL_TABLE, store: this.journal },
+      { name: NOTES_TABLE, store: this.notes },
     ];
 
     const transport = createSupabaseTransport({
@@ -134,10 +187,30 @@ export class CampaignSync {
    * n'importe quel événement. Un écho plus ancien arrivé après sera ignoré.
    */
   ingest(table: string, row: SyncRow): void {
-    const store = table === SHEETS_TABLE ? this.sheets
-      : table === ENCOUNTERS_TABLE ? this.encounters : null;
+    const store = this.storeFor(table);
     if (!store) return;
     if (store.applyUpsert(row).kind !== 'ignored') this.publish();
+  }
+
+  /**
+   * Même chose que `ingest`, côté suppression : l'auteur d'une suppression
+   * n'attend pas non plus l'écho du canal pour voir sa note ou son entrée de
+   * journal disparaître.
+   */
+  ingestDelete(table: string, id: string, version: number): void {
+    const store = this.storeFor(table);
+    if (!store) return;
+    if (store.applyDelete(id, version).kind !== 'ignored') this.publish();
+  }
+
+  private storeFor(table: string): VersionedStore<SyncRow> | null {
+    switch (table) {
+      case SHEETS_TABLE: return this.sheets;
+      case ENCOUNTERS_TABLE: return this.encounters;
+      case JOURNAL_TABLE: return this.journal;
+      case NOTES_TABLE: return this.notes;
+      default: return null;
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -150,6 +223,8 @@ export class CampaignSync {
       status: this.connection.getStatus(),
       sheets: this.sheets.all().map(toSheet),
       encounter: currentEncounter(this.encounters.all().map(toEncounter)),
+      journalEntries: this.journal.all().map(toJournalEntry),
+      notes: this.notes.all().map(toNote),
     };
     // `useSyncExternalStore` compare par identité : republier un instantané
     // identique ferait re-rendre tous les écrans à chaque battement de canal.
@@ -165,11 +240,18 @@ export class CampaignSync {
  * version, donc versions égales veut dire contenus égaux, et la comparaison
  * reste bornée quelle que soit la taille des fiches.
  */
+/** Deux listes versionnées sont équivalentes si chaque ligne y a la même version. */
+function sameVersions(a: { id: string; version: number }[], b: { id: string; version: number }[]): boolean {
+  if (a.length !== b.length) return false;
+  const previous = new Map(a.map((row) => [row.id, row.version]));
+  return b.every((row) => previous.get(row.id) === row.version);
+}
+
 function sameSnapshot(a: CampaignSnapshot, b: CampaignSnapshot): boolean {
   if (a.status !== b.status) return false;
   if (a.encounter?.id !== b.encounter?.id) return false;
   if (a.encounter?.version !== b.encounter?.version) return false;
-  if (a.sheets.length !== b.sheets.length) return false;
-  const previous = new Map(a.sheets.map((sheet) => [sheet.id, sheet.version]));
-  return b.sheets.every((sheet) => previous.get(sheet.id) === sheet.version);
+  return sameVersions(a.sheets, b.sheets)
+    && sameVersions(a.journalEntries, b.journalEntries)
+    && sameVersions(a.notes, b.notes);
 }
