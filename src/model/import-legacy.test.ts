@@ -200,3 +200,45 @@ describe('emplacements de pacte — l’ancienne app les rangeait ailleurs', () 
       .toEqual([{ field: 'pactSlots[1]', legacy: 5, derived: 2 }]);
   });
 });
+
+describe('sorts mineurs — la provenance ne doit pas se perdre', () => {
+  /**
+   * Cas réel : une occultiste avec Initié à la magie et un lignage Drow porte
+   * cinq sorts mineurs pour un quota de classe de deux. Les rattacher tous à
+   * sa classe ferait afficher « 5/2 » sans qu'aucune règle soit enfreinte.
+   */
+  const occultiste: LegacyCharacter = {
+    name: 'Veya', classId: 'occultiste', level: 2, speciesId: 'elfe', lineageId: 'drow',
+    abilities: { str: 8, dex: 10, con: 14, int: 15, wis: 13, cha: 15 },
+    cantrips: ['explosion-occulte', 'glas', 'lumieres-dansantes', 'illusion-mineure', 'eclat-mental'],
+    cantripSources: {
+      'explosion-occulte': ['occultiste'],
+      glas: ['occultiste'],
+      'lumieres-dansantes': ['species'],
+      'illusion-mineure': ['origin:background'],
+      'eclat-mental': ['origin:background'],
+    },
+  };
+
+  it('rattache chaque sort mineur à sa vraie source', () => {
+    const { sheet } = importLegacyCharacter(occultiste);
+    const par = Object.fromEntries(sheet.cantrips.map((c) => [c.id, c.sourceClass]));
+    expect(par['explosion-occulte']).toBe('occultiste');
+    expect(par['lumieres-dansantes']).toBe('species');
+    expect(par['illusion-mineure']).toBe('origin:background');
+  });
+
+  it('deux seulement relèvent de la classe, les trois autres sont accordés', () => {
+    const { sheet } = importLegacyCharacter(occultiste);
+    const deLaClasse = sheet.cantrips.filter((c) => c.sourceClass === 'occultiste');
+    expect(deLaClasse).toHaveLength(2);
+  });
+
+  it('sans provenance connue, la classe principale reste le défaut', () => {
+    const { sheet } = importLegacyCharacter({
+      name: 'Thorin', classId: 'druide', level: 2,
+      cantrips: ['assistance'], cantripSources: {},
+    });
+    expect(sheet.cantrips[0].sourceClass).toBe('druide');
+  });
+});

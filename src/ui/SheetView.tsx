@@ -56,6 +56,20 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
    * dans le modèle ; l'écran ne fait que proposer ce qu'elle autorise.
    */
   const basculerSort = (spellId: string, classId: string) => {
+    // Un sort mineur n'a pas de rang et ne se prépare pas : il vit dans
+    // `cantrips`, avec son propre quota. Le ranger dans `spells` le ferait
+    // compter dans le budget des sorts préparés et disparaître de sa section.
+    const estMineur = spellById(spellId)?.level === 0;
+    if (estMineur) {
+      const present = fiche.data.cantrips.some((mineur) => mineur.id === spellId);
+      void saveSheet(client, sync, fiche.id, {
+        ...fiche.data,
+        cantrips: present
+          ? fiche.data.cantrips.filter((mineur) => mineur.id !== spellId)
+          : [...fiche.data.cantrips, { id: spellId, sourceClass: classId }],
+      });
+      return;
+    }
     const present = fiche.data.spells.some((sort) => sort.id === spellId);
     void saveSheet(client, sync, fiche.id, {
       ...fiche.data,

@@ -47,6 +47,8 @@ export interface LegacyCharacter {
   shield?: boolean;
   gold?: number;
   cantrips?: string[] | null;
+  /** Provenance de chaque sort mineur : classe, espèce, don d'origine. */
+  cantripSources?: Record<string, string[]> | null;
   spells?: Array<{ id?: string; prepared?: boolean; always?: boolean; sourceClass?: string; source?: string; spellList?: string }> | null;
   inventory?: Array<Record<string, unknown>> | null;
   // Valeurs calculées de l'ancienne app — lues seulement pour vérification.
@@ -242,7 +244,14 @@ export function importLegacyCharacter(legacy: LegacyCharacter): ImportReport {
     // augmentations reçues : `abilities` y est déjà le total. On les reprend
     // telles quelles, sans augmentation séparée, pour ne pas les compter deux fois.
     abilityImprovements: [],
-    cantrips: (legacy.cantrips ?? []).map((id) => ({ id, sourceClass: mainClass })),
+    // La provenance vient de `cantripSources` quand l'ancienne fiche la connaît.
+    // Tout rattacher à la classe principale ferait compter dans son quota les
+    // sorts mineurs d'un don ou d'un lignage — un occultiste avec Initié à la
+    // magie affichait ainsi cinq sorts mineurs pour un quota de deux.
+    cantrips: (legacy.cantrips ?? []).map((id) => ({
+      id,
+      sourceClass: legacy.cantripSources?.[id]?.[0] ?? mainClass,
+    })),
     spells,
     inventory: (legacy.inventory ?? []).map((item, index) => ({
       id: String(item.id ?? `item-${index}`),

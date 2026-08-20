@@ -190,3 +190,68 @@ export function spellChoices(
     return { spell, state: plein ? { kind: 'budget-plein' } : { kind: 'disponible' } };
   });
 }
+
+export interface CantripBudget {
+  classId: string;
+  /** Sorts mineurs qui relèvent du quota de la classe. */
+  known: number;
+  max: number;
+  /** Sorts mineurs présents sans consommer le quota — don, lignage, espèce. */
+  free: number;
+  room: boolean;
+}
+
+/**
+ * Le quota de sorts mineurs, classe par classe.
+ *
+ * Même règle que pour les sorts préparés : seul ce qui vient de la classe
+ * compte. Un sort mineur accordé par un don ou un lignage s'ajoute à la fiche
+ * sans jamais rapprocher du plafond — sans quoi une occultiste avec Initié à
+ * la magie afficherait « 5/2 » sans enfreindre la moindre règle.
+ */
+export function cantripBudget(sheet: CharacterSheet, derived: DerivedCharacter): CantripBudget[] {
+  return sheet.classLevels
+    .filter((entry) => derived.spellcasting.cantripsKnown[entry.classId] !== undefined)
+    .map((entry) => {
+      const max = derived.spellcasting.cantripsKnown[entry.classId];
+      const known = sheet.cantrips.filter((cantrip) => cantrip.sourceClass === entry.classId).length;
+      return { classId: entry.classId, known, max, free: sheet.cantrips.length - known, room: known < max };
+    });
+}
+
+/** Sorts mineurs accordés d'ailleurs que par une classe du personnage. */
+export function grantedCantrips(sheet: CharacterSheet): { spell: Spell; source: string }[] {
+  const classes = new Set<string>(sheet.classLevels.map((entry) => entry.classId));
+  return sheet.cantrips.flatMap(({ id, sourceClass }) => {
+    if (classes.has(sourceClass)) return [];
+    const spell = spellById(id);
+    return spell ? [{ spell, source: sourceClass }] : [];
+  });
+}
+
+/**
+ * Le catalogue des sorts mineurs d'une classe, chacun avec son état.
+ *
+ * Identique en esprit à `spellChoices`, mais sur la liste des rangs 0 : les
+ * sorts mineurs n'ont ni rang ni emplacement, et leur quota est distinct de
+ * celui des sorts préparés.
+ */
+export function cantripChoices(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  classId: string,
+): SpellChoice[] {
+  const liste = allowedSpells(sheet, derived).find((entry) => entry.classId === classId);
+  if (!liste) return [];
+
+  const choisis = new Map(sheet.cantrips.map((cantrip) => [cantrip.id, cantrip.sourceClass]));
+  const budget = cantripBudget(sheet, derived).find((entry) => entry.classId === classId);
+  const plein = budget ? !budget.room : false;
+
+  return liste.cantrips.map((spell): SpellChoice => {
+    const source = choisis.get(spell.id);
+    if (source === classId) return { spell, state: { kind: 'prepare' } };
+    if (source) return { spell, state: { kind: 'accorde', par: source } };
+    return { spell, state: plein ? { kind: 'budget-plein' } : { kind: 'disponible' } };
+  });
+}

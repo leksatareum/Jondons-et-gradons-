@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { allowedSpells, maxCastableRank, preparedBudget, spellbookOf, spellChoices } from './spellbook';
+import {
+  allowedSpells, cantripBudget, cantripChoices, grantedCantrips,
+  maxCastableRank, preparedBudget, spellbookOf, spellChoices,
+} from './spellbook';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
@@ -176,5 +179,60 @@ describe('le catalogue autorisé, sort par sort', () => {
   it('ne propose rien pour une classe qui n’est pas celle du personnage', () => {
     const { sheet, derived } = avec(fiche());
     expect(spellChoices(sheet, derived, 'occultiste')).toEqual([]);
+  });
+});
+
+describe('sorts mineurs — un quota à part, et des accordés hors quota', () => {
+  const occultiste = (cantrips: { id: string; sourceClass: string }[]) => avec(fiche({
+    classLevels: [{ classId: 'occultiste', level: 2, subclass: null, subclassId: null }],
+    cantrips,
+  }));
+
+  it('ne compte que les sorts mineurs de la classe', () => {
+    const { sheet, derived } = occultiste([
+      { id: 'explosion-occulte', sourceClass: 'occultiste' },
+      { id: 'glas', sourceClass: 'occultiste' },
+      { id: 'lumieres-dansantes', sourceClass: 'species' },
+      { id: 'illusion-mineure', sourceClass: 'origin:background' },
+      { id: 'eclat-mental', sourceClass: 'origin:background' },
+    ]);
+    const [budget] = cantripBudget(sheet, derived);
+    // Deux au quota de l'occultiste de niveau 2 ; les trois autres s'ajoutent.
+    expect(budget).toMatchObject({ classId: 'occultiste', known: 2, max: 2, free: 3, room: false });
+  });
+
+  it('sans la provenance, le quota déborderait', () => {
+    const { sheet, derived } = occultiste(
+      ['explosion-occulte', 'glas', 'lumieres-dansantes', 'illusion-mineure', 'eclat-mental']
+        .map((id) => ({ id, sourceClass: 'occultiste' })),
+    );
+    // C'est exactement ce que produisait l'import avant correction.
+    expect(cantripBudget(sheet, derived)[0].known).toBe(5);
+  });
+
+  it('liste les sorts mineurs accordés avec leur source', () => {
+    const { sheet } = occultiste([
+      { id: 'explosion-occulte', sourceClass: 'occultiste' },
+      { id: 'lumieres-dansantes', sourceClass: 'species' },
+    ]);
+    const accordes = grantedCantrips(sheet);
+    expect(accordes).toHaveLength(1);
+    expect(accordes[0].source).toBe('species');
+    expect(accordes[0].spell.name).toBe('Lumières dansantes');
+  });
+
+  it('marque l’état de chaque sort mineur de la liste', () => {
+    const { sheet, derived } = occultiste([{ id: 'glas', sourceClass: 'occultiste' }]);
+    const choix = cantripChoices(sheet, derived, 'occultiste');
+    expect(choix.every((entry) => entry.spell.level === 0)).toBe(true);
+    expect(choix.find((c) => c.spell.id === 'glas')?.state.kind).toBe('prepare');
+    expect(choix.some((c) => c.state.kind === 'disponible')).toBe(true);
+  });
+
+  it('un rôdeur n’a pas de sorts mineurs, donc pas de quota', () => {
+    const { sheet, derived } = avec(fiche({
+      classLevels: [{ classId: 'rodeur', level: 2, subclass: null, subclassId: null }],
+    }));
+    expect(cantripBudget(sheet, derived)).toEqual([]);
   });
 });

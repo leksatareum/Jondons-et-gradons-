@@ -21,6 +21,18 @@ import type { Economy, PlayableCard } from './combat-layout';
  * le texte du sort, et le DD est affiché une fois pour toutes en en-tête.
  */
 
+/**
+ * Les provenances internes, dites en français — mêmes clés que le grimoire.
+ * Un joueur n'a pas à connaître le vocabulaire du modèle.
+ */
+const SOURCE_LISIBLE: Record<string, string> = {
+  species: 'ton lignage',
+  'origin:background': 'ton don d’origine',
+  origin: 'ton don d’origine',
+};
+
+export const sourceLisible = (source: string): string => SOURCE_LISIBLE[source] ?? source;
+
 /** « 1 action bonus » → l'économie d'action que l'écran connaît. */
 export function economyOf(spell: Spell): Economy {
   const t = spell.castingTime.toLocaleLowerCase('fr');
@@ -80,7 +92,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       detail: detailOf(spell),
-      ...(standing.kind === 'accorde' ? { granted: true, grantedBy: standing.par } : {}),
+      ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(slot ? {
         resource: {
           key: slot.pact ? 'pacte' : `emplacement-${slot.level}`,

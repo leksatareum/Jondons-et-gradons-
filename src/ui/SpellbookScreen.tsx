@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { preparedBudget, spellbookOf, spellChoices, type BookEntry, type ChoiceState, type ClassBudget } from '../model/spellbook';
-import { detailOf, economyOf } from './spell-cards';
+import { detailOf, economyOf, sourceLisible } from './spell-cards';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
+import { cantripBudget, cantripChoices, grantedCantrips } from '../model/spellbook';
 import type { Spell } from '../content/spell-catalogue';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
@@ -133,7 +134,7 @@ function Ligne({ spell, etat, onOuvrir, onBasculer }: {
             : economyOf(spell) === 'action' ? 'action' : spell.castingTime.toLocaleLowerCase('fr')}
         </div>
         <div className="lbl" style={{ color: COULEUR[etat.kind], marginTop: 3 }}>
-          {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` · ${etat.par}` : ''}
+          {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` par ${sourceLisible(etat.par)}` : ''}
         </div>
       </button>
 
@@ -206,6 +207,11 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
   }
 
   const accordes = grantedSpells(sheet, derived);
+  const mineurs = cantripBudget(sheet, derived).find((entry) => entry.classId === classId) ?? null;
+  const choixMineurs = classId ? cantripChoices(sheet, derived, classId) : [];
+  const mineursPris = choixMineurs.filter((entry) => entry.state.kind === 'prepare' || entry.state.kind === 'accorde');
+  const mineursLibres = choixMineurs.filter((entry) => entry.state.kind === 'disponible' || entry.state.kind === 'budget-plein');
+  const mineursAccordes = grantedCantrips(sheet);
   const prets = choix.filter((entry) => entry.state.kind !== 'disponible' && entry.state.kind !== 'budget-plein');
   const reste = choix.filter((entry) => entry.state.kind === 'disponible' || entry.state.kind === 'budget-plein');
 
@@ -275,9 +281,81 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
       </header>
 
       <main style={{
-        flexGrow: 1, padding: '12px 14px calc(20px + env(safe-area-inset-bottom))',
+        flexGrow: 1,
+        // La barre d'onglets flotte au-dessus du contenu : sans cette marge,
+        // le dernier sort de la liste passe dessous et devient illisible.
+        padding: '12px 14px calc(76px + env(safe-area-inset-bottom))',
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
+        {/* ─── Sorts mineurs ───
+            Ils vivent dans la même page que les sorts, et non dans un écran à
+            part : l'écran de combat les mêle déjà aux autres cartes, et les
+            séparer ici ferait chercher où sont passés les cinq sorts qu'on
+            vient d'y voir. Leur quota est distinct, il est donc annoncé
+            distinctement. */}
+        {mineurs && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
+              <div className="lbl" style={{ flexGrow: 1 }}>Sorts mineurs</div>
+              <div className="num lbl" style={{ color: mineurs.room ? 'var(--muted)' : 'var(--accent)' }}>
+                {mineurs.known}/{mineurs.max}
+              </div>
+              {mineurs.free > 0 && (
+                <div className="lbl" style={{ color: 'var(--ok)', textTransform: 'none' }}>
+                  +{mineurs.free} hors quota
+                </div>
+              )}
+            </div>
+
+            {mineursPris.map((entry) => (
+              <Ligne
+                key={entry.spell.id}
+                spell={entry.spell}
+                etat={entry.state}
+                onOuvrir={() => setOuvert(entry.spell)}
+                onBasculer={onToggle && entry.state.kind === 'prepare'
+                  ? () => onToggle(entry.spell.id, classId) : null}
+              />
+            ))}
+
+            {mineursAccordes
+              .filter((accorde) => !mineursPris.some((pris) => pris.spell.id === accorde.spell.id))
+              .map(({ spell, source }) => (
+                <Ligne
+                  key={spell.id}
+                  spell={spell}
+                  etat={{ kind: 'accorde', par: source }}
+                  onOuvrir={() => setOuvert(spell)}
+                  onBasculer={null}
+                />
+              ))}
+
+            {mineursLibres.length > 0 && (
+              <details style={{ marginTop: 2 }}>
+                <summary className="lbl" style={{ cursor: 'pointer', minHeight: 34, display: 'flex', alignItems: 'center' }}>
+                  {mineurs.room
+                    ? `En apprendre un — ${mineursLibres.length} au choix`
+                    : `Quota atteint — voir les ${mineursLibres.length} autres`}
+                </summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                  {mineursLibres.map((entry) => (
+                    <Ligne
+                      key={entry.spell.id}
+                      spell={entry.spell}
+                      etat={entry.state}
+                      onOuvrir={() => setOuvert(entry.spell)}
+                      onBasculer={onToggle && entry.state.kind === 'disponible'
+                        ? () => onToggle(entry.spell.id, classId) : null}
+                    />
+                  ))}
+                </div>
+              </details>
+            )}
+
+            <div className="lbl" style={{ marginTop: 14 }}>Sorts</div>
+          </>
+        )}
+
         {prets.map((entry) => (
           <Ligne
             key={entry.spell.id}
