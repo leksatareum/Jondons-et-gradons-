@@ -20,6 +20,8 @@ export function DemoScreens() {
   const [sheet, setSheet] = useState(demoSheet);
   const [turnLabel, setTurnLabel] = useState<'libre' | 'mon-tour' | 'autre-tour'>('libre');
   const [view, setView] = useState<'joueur' | 'mj'>('joueur');
+  // La démo n'a pas de base derrière elle : c'est elle qui détient la rencontre.
+  const [rencontre, setRencontre] = useState(demoEncounter);
 
   const changeHp = (delta: number) => setSheet((current: typeof demoSheet) => ({
     ...current,
@@ -29,7 +31,7 @@ export function DemoScreens() {
   if (view === 'mj') {
     return (
       <>
-        <GmCombatScreen initial={demoEncounter} />
+        <GmCombatScreen state={rencontre} onChange={setRencontre} />
         <button onClick={() => setView('joueur')} style={switcher}>vue joueur</button>
       </>
     );

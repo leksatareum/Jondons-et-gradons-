@@ -213,9 +213,19 @@ function DamagePad({ target, onApply, onClose }: {
   );
 }
 
-export function GmCombatScreen({ initial }: { initial: EncounterState }) {
-  const [state, setState] = useState(initial);
+/**
+ * L'écran ne détient pas la rencontre : il la reçoit et signale ce que le MJ
+ * en fait. C'est ce qui permet à `App` de l'écrire en base — un `useState`
+ * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
+ * ne basculaient jamais.
+ */
+export function GmCombatScreen({ state, onChange }: {
+  state: EncounterState;
+  onChange: (suivant: EncounterState) => void;
+}) {
   const [targetId, setTargetId] = useState<string | null>(null);
+  const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
+    onChange(typeof suivant === 'function' ? suivant(state) : suivant);
 
   const ordered = useMemo(() => orderedCombatants(state), [state]);
   const running = isRunning(state);

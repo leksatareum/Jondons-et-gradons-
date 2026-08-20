@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CombatScreen } from './CombatScreen';
 import { GmCombatScreen } from './GmCombatScreen';
@@ -8,6 +8,9 @@ import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { demoCards } from './demo-data';
+import { withParty } from './roster';
+import { createEncounter, saveEncounter } from '../sync/mutations';
+import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
 /**
@@ -98,7 +101,12 @@ function Table({ client, compte, campagne }: {
     return (
       <>
         {bandeau}
-        <GmCombatScreen initial={snapshot.encounter?.state ?? vide} />
+        <EcranMj
+          client={client}
+          sync={sync}
+          campaignId={campagne.campaignId}
+          snapshot={snapshot}
+        />
       </>
     );
   }
@@ -145,6 +153,81 @@ function Table({ client, compte, campagne }: {
 
 /** Rencontre par défaut : le combat n'est pas lancé, personne n'est en tour par tour. */
 const vide: EncounterState = { turnIndex: -1, round: 0, combatants: [] };
+
+/**
+ * L'écran du MJ, branché sur la base.
+ *
+ * Deux choses s'y jouent, qu'il vaut mieux ne pas confondre :
+ *
+ * · **Ce qui s'affiche** vient de la base, complété par le groupe — le MJ voit
+ *   ses joueurs dans la liste avant même qu'une rencontre existe, sans qu'on
+ *   ait rien écrit pour autant. Rien n'est créé tant qu'il n'a rien fait.
+ * · **Ce qu'il fait** part aussitôt en base. Le brouillon local n'existe que
+ *   le temps de l'aller-retour : l'écran répond au doigt sans attendre le
+ *   réseau, puis la ligne renvoyée par la base reprend la main. Sans lui, tenir
+ *   « Suivant » deux fois de suite perdrait le premier appui.
+ */
+function EcranMj({ client, sync, campaignId, snapshot }: {
+  client: SupabaseClient;
+  sync: CampaignSync;
+  campaignId: string;
+  snapshot: CampaignSnapshot;
+}) {
+  const [brouillon, setBrouillon] = useState<EncounterState | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  // Deux appuis rapprochés avant que la première création réponde créeraient
+  // deux rencontres pour la même table.
+  const creation = useRef<Promise<string> | null>(null);
+
+  const stocke = snapshot.encounter;
+
+  // Le brouillon ne survit pas à l'écho de la base : une fois la ligne revenue,
+  // c'est elle qui fait foi, sinon l'écran du MJ divergerait en silence.
+  useEffect(() => { setBrouillon(null); }, [stocke?.version]);
+
+  const affiche = useMemo(
+    () => withParty(brouillon ?? stocke?.state ?? vide, snapshot.sheets),
+    [brouillon, stocke?.state, snapshot.sheets],
+  );
+
+  const changer = useCallback((suivant: EncounterState) => {
+    setBrouillon(suivant);
+    setErreur(null);
+    void (async () => {
+      try {
+        if (stocke) {
+          await saveEncounter(client, sync, stocke.id, suivant);
+          return;
+        }
+        creation.current ??= createEncounter(client, sync, campaignId, suivant)
+          .then((row) => row.id);
+        const id = await creation.current;
+        // La création a pu être lancée par l'appui précédent : cet appui-ci
+        // doit alors se rabattre sur une mise à jour, pas sur une seconde
+        // rencontre.
+        if (id) await saveEncounter(client, sync, id, suivant);
+      } catch (cause: unknown) {
+        creation.current = null;
+        setBrouillon(null);
+        setErreur(String(cause));
+      }
+    })();
+  }, [client, sync, campaignId, stocke]);
+
+  return (
+    <>
+      {erreur && (
+        <p role="alert" style={{
+          margin: 0, padding: '8px 14px', fontSize: 12,
+          background: 'var(--vital)', color: 'var(--accent-ink)',
+        }}>
+          {erreur}
+        </p>
+      )}
+      <GmCombatScreen state={affiche} onChange={changer} />
+    </>
+  );
+}
 
 function Liste({ campagnes, onChoisir }: {
   campagnes: Appartenance[];
