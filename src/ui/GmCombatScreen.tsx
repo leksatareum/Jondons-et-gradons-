@@ -132,6 +132,25 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
         )}
       </div>
 
+      {/*
+        Les attaques d'une créature, à lire quand vient son tour — jamais à
+        jouer pour elle. Une ligne compacte tout le temps, pour repérer d'un
+        coup d'œil qui frappe fort ; le détail (type de dégâts, effet annexe)
+        n'apparaît que sur la ligne active, pour ne pas noyer la liste.
+      */}
+      {combatant.attacks && combatant.attacks.length > 0 && (
+        <div style={{ marginTop: active ? 8 : 4, display: 'flex', flexDirection: 'column', gap: active ? 4 : 0 }}>
+          {combatant.attacks.map((attaque) => (
+            <div key={attaque.id} className="lbl" style={{ textTransform: 'none', color: 'var(--muted)' }}>
+              <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>{attaque.name}</strong>
+              {attaque.toHit !== undefined && ` +${attaque.toHit}`}
+              {attaque.damage && ` · ${attaque.damage}${attaque.damageType ? ` ${attaque.damageType}` : ''}`}
+              {active && attaque.detail && <span> — {attaque.detail}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {active && (
         <button
           onClick={onNext}

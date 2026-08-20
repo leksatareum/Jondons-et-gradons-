@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
 import { WILD_SHAPE_PROFILES } from '../domain/wild-shape';
 import { abilityModifier } from '../model/character';
-import type { Combatant } from '../domain/encounter';
+import type { Combatant, CombatantAttack } from '../domain/encounter';
 
 /**
  * Ajouter un adversaire.
@@ -24,6 +24,17 @@ const dexModOf = (template: CreatureTemplate): number | null => {
   return profil ? abilityModifier(profil.abilities.dex) : null;
 };
 
+const nouvelId = () => `att-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** Les attaques d'un modèle du bestiaire — le reste de son bloc (sauvegardes, utilitaires) ne se lit pas comme une attaque. */
+export const attaquesDuTemplate = (template: CreatureTemplate): CombatantAttack[] =>
+  (template.actions ?? [])
+    .filter((action) => action.kind === 'attack')
+    .map((action) => ({
+      id: nouvelId(), name: action.name, toHit: action.toHit,
+      damage: action.damage, damageType: action.damageType, detail: action.detail,
+    }));
+
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 6,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
@@ -41,6 +52,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
   const [pv, setPv] = useState('');
   const [dex, setDex] = useState('');
   const [initiative, setInitiative] = useState('');
+  const [attaques, setAttaques] = useState<CombatantAttack[]>([]);
 
   const resultats = useMemo(() => {
     const q = recherche.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr');
@@ -55,8 +67,17 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
     setPv(String(template.hp));
     const mod = dexModOf(template);
     if (mod !== null) setDex(String(mod));
+    // Reprend les attaques du modèle plutôt que d'ajouter aux éventuelles
+    // lignes déjà saisies à la main : choisir un autre modèle ne doit pas les
+    // empiler avec le précédent.
+    setAttaques(attaquesDuTemplate(template));
     setRecherche('');
   };
+
+  const ajouterAttaque = () => setAttaques((liste) => [...liste, { id: nouvelId(), name: '' }]);
+  const modifierAttaque = (id: string, patch: Partial<CombatantAttack>) =>
+    setAttaques((liste) => liste.map((attaque) => (attaque.id === id ? { ...attaque, ...patch } : attaque)));
+  const retirerAttaque = (id: string) => setAttaques((liste) => liste.filter((attaque) => attaque.id !== id));
 
   const nomValide = nom.trim().length > 0;
   const pvValide = Number(pv) > 0;
@@ -64,6 +85,10 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
 
   const valider = () => {
     if (!pret) return;
+    // Une ligne d'attaque ouverte sans nom n'est pas une attaque : elle ne
+    // part pas avec le reste, plutôt que d'afficher une carte muette au MJ
+    // en pleine partie.
+    const attaquesNommees = attaques.filter((attaque) => attaque.name.trim().length > 0);
     onAjouter({
       name: nom.trim(),
       side: 'creature',
@@ -74,6 +99,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
       temporaryHp: 0,
       armorClass: Number(ca) || 10,
       conditions: [],
+      ...(attaquesNommees.length > 0 ? { attacks: attaquesNommees } : {}),
     });
   };
 
@@ -171,6 +197,85 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
               Le jet se fait à la table, pas ici.
             </div>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 18 }}>
+          <label className="lbl" style={{ flexGrow: 1 }}>Attaques (facultatif)</label>
+          <button
+            onClick={ajouterAttaque}
+            className="lbl"
+            style={{
+              minHeight: 32, padding: '0 10px', borderRadius: 999,
+              border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700,
+            }}
+          >
+            + Ajouter
+          </button>
+        </div>
+        <div className="lbl" style={{ textTransform: 'none', marginTop: 3, color: 'var(--muted)' }}>
+          À lire à la table, jamais à jouer pour toi : les dégâts restent une
+          formule, tu les jettes toi-même.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+          {attaques.map((attaque) => (
+            <div key={attaque.id} className="card" style={{
+              padding: '10px 12px', borderRadius: 'var(--radius)',
+              border: '1px solid var(--line)', background: 'var(--surface)',
+            }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={attaque.name}
+                  onChange={(event) => modifierAttaque(attaque.id, { name: event.target.value })}
+                  placeholder="Morsure, Griffe, Coup de bec…"
+                  autoComplete="off"
+                  style={{ ...champ, flexGrow: 1, marginTop: 0 }}
+                />
+                <button
+                  onClick={() => retirerAttaque(attaque.id)}
+                  aria-label={`Retirer l’attaque ${attaque.name || 'sans nom'}`}
+                  style={{
+                    flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <input
+                  type="number" inputMode="numeric"
+                  value={attaque.toHit ?? ''}
+                  onChange={(event) => modifierAttaque(attaque.id, {
+                    toHit: event.target.value === '' ? undefined : Number(event.target.value),
+                  })}
+                  placeholder="+ toucher"
+                  style={{ ...champ, marginTop: 0, width: 90 }}
+                />
+                <input
+                  value={attaque.damage ?? ''}
+                  onChange={(event) => modifierAttaque(attaque.id, { damage: event.target.value })}
+                  placeholder="Dégâts, ex. 1d6+2"
+                  autoComplete="off"
+                  style={{ ...champ, marginTop: 0, flexGrow: 1 }}
+                />
+                <input
+                  value={attaque.damageType ?? ''}
+                  onChange={(event) => modifierAttaque(attaque.id, { damageType: event.target.value })}
+                  placeholder="Type"
+                  autoComplete="off"
+                  style={{ ...champ, marginTop: 0, width: 110 }}
+                />
+              </div>
+              <input
+                value={attaque.detail ?? ''}
+                onChange={(event) => modifierAttaque(attaque.id, { detail: event.target.value })}
+                placeholder="Effet annexe (facultatif) — « cible M ou moins à terre »…"
+                autoComplete="off"
+                style={{ ...champ, marginTop: 8 }}
+              />
+            </div>
+          ))}
         </div>
 
         <button

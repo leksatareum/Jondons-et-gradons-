@@ -15,6 +15,21 @@ import { resolveDamageAmount, type DamageProfile } from './damage';
 
 export type CombatantSide = 'joueur' | 'creature';
 
+/**
+ * Une attaque d'adversaire, à lire à la table — jamais à jouer pour lui.
+ * L'app ne lance aucun dé : `damage` reste une formule (« 1d6+2 »), que le MJ
+ * jette lui-même comme il l'a toujours fait.
+ */
+export interface CombatantAttack {
+  id: string;
+  name: string;
+  toHit?: number;
+  damage?: string;
+  damageType?: string;
+  /** Effet annexe : « la cible M ou moins tombe à terre »… */
+  detail?: string;
+}
+
 export interface Combatant {
   id: string;
   name: string;
@@ -31,6 +46,8 @@ export interface Combatant {
   hidden?: boolean;
   /** Modèle d'origine, pour retrouver les actions d'une créature. */
   templateId?: string;
+  /** Créatures seulement : ses attaques, saisies ou reprises du bestiaire. */
+  attacks?: CombatantAttack[];
 }
 
 export interface EncounterState {
