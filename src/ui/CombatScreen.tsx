@@ -326,6 +326,7 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
         </div>
 
         <div style={{ marginBottom: 11 }}>
+          <div className="lbl" style={{ marginBottom: 4 }}>Jets de sauvegarde</div>
           <SaveStrip
             modifiers={derived.modifiers}
             proficient={derived.saveProficiencies}
