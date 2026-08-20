@@ -134,27 +134,3 @@ export const tabledPreparedSpellCount = (classId: TabledCasterClass, level: numb
   return table ? table[clampLevel(level) - 1] : null;
 };
 
-/**
- * Quand la liste préparée peut-elle changer, et de combien de sorts.
- *
- * La question n'est pas décorative : elle décide si l'écran des sorts propose
- * un choix ou une consultation. Un Rôdeur rouvre sa liste à chaque repos long ;
- * un Occultiste ne la rouvre qu'en montant de niveau, et rien dans Ruse magique
- * ne l'y autorise — cette capacité ne rend que des emplacements de pacte.
- *
- * PHB 2024 : Rôdeur p. 119, Occultiste p. 154.
- */
-export interface SpellSwapRule {
-  /** Ce qui rouvre la liste. */
-  when: 'repos-long' | 'montee-de-niveau';
-  /** Nombre de sorts échangeables à cette occasion. */
-  count: number;
-}
-
-const SPELL_SWAP: Partial<Record<TabledCasterClass, SpellSwapRule>> = {
-  occultiste: { when: 'montee-de-niveau', count: 1 },
-  rodeur: { when: 'repos-long', count: 1 },
-};
-
-export const spellSwapRule = (classId: string): SpellSwapRule | null =>
-  SPELL_SWAP[classId as TabledCasterClass] ?? null;

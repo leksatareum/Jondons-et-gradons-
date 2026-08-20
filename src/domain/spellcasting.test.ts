@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   canChangePreparedSpells,
+  spellcastingAbility,
+  spellcastingNumbers,
   canReplaceCantripOnLevelUp,
   canReplaceCantripOnLongRest,
   canReplaceSpellOnLevelUp,
@@ -64,5 +66,50 @@ describe('gestion des sorts par classe 2024', () => {
   it('ajoute les sorts de magicien au grimoire sans les préparer automatiquement', () => {
     expect(newSpellStartsPrepared('magicien')).toBe(false);
     expect(newSpellStartsPrepared('barde')).toBe(true);
+  });
+});
+
+describe('quand la liste préparée se rouvre — PHB 2024', () => {
+  /**
+   * Relevé page par page : Rôdeur p. 119, Occultiste p. 154. Ces deux-là ne
+   * rouvrent pas leur liste de la même façon, et c'est ce qui décide si
+   * l'écran des sorts propose un choix ou une consultation.
+   */
+  it('le rôdeur échange un sort à chaque repos long', () => {
+    expect(spellManagementMode('rodeur')).toBe('long-rest-one');
+    expect(canReplaceSpellOnLongRest('rodeur', true)).toBe(true);
+    expect(canReplaceSpellOnLevelUp('rodeur')).toBe(false);
+  });
+
+  it('l’occultiste n’échange qu’en montant de niveau', () => {
+    expect(spellManagementMode('occultiste')).toBe('level-up');
+    expect(canReplaceSpellOnLongRest('occultiste', true)).toBe(false);
+    expect(canReplaceSpellOnLevelUp('occultiste')).toBe(true);
+  });
+
+  it('le druide rouvre toute sa liste au repos long', () => {
+    expect(spellManagementMode('druide')).toBe('long-rest');
+    expect(canChangePreparedSpells('druide', true)).toBe(true);
+  });
+});
+
+describe('DD de sauvegarde et bonus d’attaque de sort', () => {
+  it('8 + maîtrise + modificateur, et maîtrise + modificateur', () => {
+    // Occultiste 2, Charisme 15 (+2), maîtrise +2.
+    expect(spellcastingNumbers('occultiste', 2, 2)).toEqual({
+      ability: 'cha', saveDc: 12, attackBonus: 4,
+    });
+  });
+
+  it('chaque classe utilise sa propre caractéristique', () => {
+    expect(spellcastingAbility('druide')).toBe('wis');
+    expect(spellcastingAbility('rodeur')).toBe('wis');
+    expect(spellcastingAbility('magicien')).toBe('int');
+    expect(spellcastingAbility('occultiste')).toBe('cha');
+  });
+
+  it('une classe sans magie n’a ni DD ni bonus d’attaque', () => {
+    expect(spellcastingAbility('roublard')).toBeNull();
+    expect(spellcastingNumbers('roublard', 3, 2)).toBeNull();
   });
 });

@@ -4,7 +4,6 @@ import {
   fullCasterSlots,
   halfCasterSlots,
   tabledPreparedSpellCount,
-  spellSwapRule,
   pactMagicSlots,
   wizardSpellbookSize,
 } from './spellcasting-progression';
@@ -148,9 +147,4 @@ describe('sorts préparés — les classes qui lisent une table', () => {
     expect(tabledPreparedSpellCount.length).toBe(2);
   });
 
-  it('le rôdeur rouvre sa liste au repos long, l’occultiste en montant de niveau', () => {
-    expect(spellSwapRule('rodeur')).toEqual({ when: 'repos-long', count: 1 });
-    expect(spellSwapRule('occultiste')).toEqual({ when: 'montee-de-niveau', count: 1 });
-    expect(spellSwapRule('druide')).toBeNull();
-  });
 });

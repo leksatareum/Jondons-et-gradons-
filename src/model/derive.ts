@@ -12,6 +12,7 @@ import { alwaysPreparedSpellsFor } from '../content/always-prepared-spells';
 import { classFeaturesUpTo } from '../content/class-features';
 import { subclassFeaturesUpTo } from '../content/subclasses';
 import { classById } from '../content/classes';
+import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } from '../domain/spellcasting';
 import { backgroundById } from '../content/backgrounds';
 import { armorById, SHIELD } from '../content/armor';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
@@ -54,6 +55,12 @@ export interface DerivedSlot {
 }
 
 export interface DerivedSpellcasting {
+  /**
+   * DD de sauvegarde et bonus d'attaque, par classe lanceuse. Un multiclassé
+   * en a un jeu par classe : ils ne se combinent pas, contrairement aux
+   * emplacements.
+   */
+  numbers: Record<string, SpellcastingNumbers>;
   /** Rang de sort le plus élevé accessible, hors pacte. */
   maxSpellLevel: number;
   slots: DerivedSlot[];
@@ -229,6 +236,7 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
 
   const cantripCounts: Record<string, number> = {};
   const preparedMax: Record<string, number> = {};
+  const numbers: Record<string, SpellcastingNumbers> = {};
   for (const entry of sheet.classLevels) {
     const known = cantripsKnown(entry.classId as never, entry.level);
     if (known > 0) cantripCounts[entry.classId] = known;
@@ -239,6 +247,12 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     // dans ce calcul — elle sert au DD et au jet d'attaque.
     const preparables = tabledPreparedSpellCount(entry.classId as never, entry.level);
     if (preparables !== null) preparedMax[entry.classId] = preparables;
+
+    const ability = spellcastingAbility(entry.classId);
+    if (ability) {
+      const chiffres = spellcastingNumbers(entry.classId, modifiers[ability], prof);
+      if (chiffres) numbers[entry.classId] = chiffres;
+    }
   }
 
   // Les sorts accordés viennent de la classe, de la sous-classe, du terrain —
@@ -281,6 +295,7 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     features,
     resources: derivedResources(sheet, abilities),
     spellcasting: {
+      numbers,
       maxSpellLevel: slotMaxes.length,
       slots,
       cantripsKnown: cantripCounts,
