@@ -345,12 +345,11 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
               qui est l'action de hors-combat la plus fréquente. */}
           {!inCombat ? 'Repos' : isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
         </button>
-        <button style={{
-          width: 92, minHeight: 'var(--tap)', borderRadius: 11,
-          border: '1.5px solid var(--ink)', fontSize: 13, fontWeight: 700,
-        }}>
-          Fiche
-        </button>
+        {/* Le bouton « Fiche » qui occupait cette place n'avait pas de geste :
+            SheetView bascule désormais entre les écrans via son propre onglet
+            flottant, qui fait exactement ce que celui-ci promettait sans le
+            tenir. Le garder aurait laissé un bouton mort à côté d'un onglet
+            qui fait le travail. */}
       </footer>
     </div>
   );

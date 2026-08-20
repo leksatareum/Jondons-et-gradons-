@@ -31,6 +31,12 @@ import type { EncounterState } from '../domain/encounter';
 
 export type SheetTab = 'combat' | 'grimoire';
 
+/**
+ * Hauteur du pied de page de `CombatScreen`, plus une marge de respiration.
+ * 11px de marge haute + le bouton (`--tap`, 44px) + 14px de marge basse.
+ */
+const PIED_DE_PAGE_COMBAT = 'calc(83px + env(safe-area-inset-bottom))';
+
 export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj }: {
   client: SupabaseClient;
   sync: CampaignSync;
@@ -122,7 +128,8 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
   const barreMj = estMj ? (
     <div style={{
       position: 'fixed', zIndex: 10,
-      left: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))',
+      left: 14,
+      bottom: onglet === 'combat' ? PIED_DE_PAGE_COMBAT : 'calc(14px + env(safe-area-inset-bottom))',
       display: 'flex', gap: 6,
     }}>
       <button
@@ -213,7 +220,7 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
             : { mode: 'libre' }
         }
       />
-      <Onglets onglet={onglet} onChanger={onOnglet} />
+      <Onglets onglet={onglet} onChanger={onOnglet} degagement />
       {barreMj}
       {dialogues}
       {reposEnCours && (
@@ -235,14 +242,23 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
  * gèrent déjà leur propre hauteur, et leur en retirer une bande obligerait à
  * reprendre les deux mises en page pour un bouton.
  */
-function Onglets({ onglet, onChanger }: {
+function Onglets({ onglet, onChanger, degagement }: {
   onglet: SheetTab;
   onChanger: (onglet: SheetTab) => void;
+  /**
+   * Distance additionnelle au-dessus du bas de l'écran, pour dégager le pied
+   * de page de `CombatScreen` — son bouton « Repos »/« Fin du tour » occupe
+   * toute la largeur du pied, et un onglet flottant posé au même niveau
+   * s'affiche dessus plutôt qu'à côté. Le grimoire n'a pas ce pied de page :
+   * il n'a besoin d'aucun dégagement.
+   */
+  degagement?: boolean;
 }) {
   return (
     <nav style={{
       position: 'fixed', zIndex: 10,
-      right: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))',
+      right: 14,
+      bottom: degagement ? PIED_DE_PAGE_COMBAT : 'calc(14px + env(safe-area-inset-bottom))',
       display: 'flex', gap: 4, padding: 4,
       borderRadius: 999, border: '1px solid var(--line)',
       background: 'var(--surface-raised)', boxShadow: 'var(--raise)',
