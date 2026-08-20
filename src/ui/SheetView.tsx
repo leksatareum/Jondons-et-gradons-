@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
 import { FicheScreen } from './FicheScreen';
+import { JournalScreen, type Correspondant } from './JournalScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { RestScreen } from './RestScreen';
 import { SettingsScreen } from './SettingsScreen';
@@ -13,7 +14,8 @@ import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
-  createJournalEntry, createNote, deleteJournalEntry, deleteNote, saveNote, saveSheet,
+  createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
+  deleteNote, saveNote, saveSheet,
 } from '../sync/mutations';
 import { seDeconnecter } from '../sync/session';
 import { GrantSpellDialog } from './GrantSpellDialog';
@@ -24,7 +26,7 @@ import { spellById } from '../content/spell-catalogue';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
-import type { CampaignSync, JournalEntry, Note, StoredSheet } from '../sync/campaign-sync';
+import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
 /**
@@ -45,7 +47,7 @@ export type SheetTab = MainTab;
 
 export function SheetView({
   client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj,
-  campaignId, userId, userEmail, journalEntries, notes,
+  campaignId, userId, userEmail, journalEntries, notes, messages, correspondants,
 }: {
   client: SupabaseClient;
   sync: CampaignSync;
@@ -69,6 +71,9 @@ export function SheetView({
    * (le MJ lit toute sa table, mais un onglet ne montre qu'une fiche à la fois).
    */
   notes: Note[];
+  messages: Message[];
+  /** À qui l'on peut écrire depuis cette fiche : le MJ et les autres joueurs, ou le seul joueur dont le MJ regarde la fiche. */
+  correspondants: Correspondant[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
@@ -185,6 +190,13 @@ export function SheetView({
     void saveNote(client, sync, id, note);
   const supprimerNote = (id: string) => void deleteNote(client, sync, id);
 
+  // Messages et secrets : on signe toujours de son propre nom. La RLS refuse
+  // un secret qui ne viendrait pas du MJ, cet écran ne fait que le proposer
+  // là où il a un sens.
+  const envoyerMessage = (message: { recipientId: string; body: string; kind: 'message' | 'secret' }) =>
+    void createMessage(client, sync, campaignId, userId, message);
+  const supprimerMessage = (id: string) => void deleteMessage(client, sync, id);
+
   // Le sac : ce que le joueur possède est une décision, jamais un calcul.
   const ajouterObjet = (item: { name: string; qty: number }) =>
     void saveSheet(client, sync, fiche.id, addItem(fiche.data, item));
@@ -215,9 +227,6 @@ export function SheetView({
           derived={derivee}
           avecAllies={aDesFormesOuCompagnons}
           estMj={Boolean(estMj)}
-          journalEntries={journalEntries}
-          notes={notes}
-          notesOwnerName={estMj ? fiche.data.name : undefined}
           onTransformer={transformerEnForme}
           onRevenir={revenirDeLaForme}
           onApprendre={apprendreForme}
@@ -225,12 +234,28 @@ export function SheetView({
           onLier={lierCompagnon}
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
-          onAjouterEntreeJournal={estMj ? ajouterEntreeJournal : undefined}
-          onSupprimerEntreeJournal={estMj ? supprimerEntreeJournal : undefined}
+          onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
+        />
+      );
+    }
+
+    if (onglet === 'journal') {
+      return (
+        <JournalScreen
+          entries={journalEntries}
+          notes={notes}
+          estMj={Boolean(estMj)}
+          notesOwnerName={estMj ? fiche.data.name : undefined}
+          moi={userId}
+          correspondants={correspondants}
+          messages={messages}
+          onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}
+          onSupprimerEntree={estMj ? supprimerEntreeJournal : undefined}
           onAjouterNote={estMj ? undefined : ajouterNote}
           onModifierNote={estMj ? undefined : modifierNote}
           onSupprimerNote={estMj ? undefined : supprimerNote}
-          onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
+          onEnvoyerMessage={envoyerMessage}
+          onSupprimerMessage={supprimerMessage}
         />
       );
     }

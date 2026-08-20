@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  ENCOUNTERS_TABLE, JOURNAL_TABLE, NOTES_TABLE, SHEETS_TABLE, type CampaignSync,
+  ENCOUNTERS_TABLE, JOURNAL_TABLE, MESSAGES_TABLE, NOTES_TABLE, SHEETS_TABLE, type CampaignSync,
 } from './campaign-sync';
 import type { SyncRow } from './supabase-transport';
 import type { CharacterSheet } from '../model/character';
@@ -151,6 +151,42 @@ export const deleteNote = (
   sync: CampaignSync | null,
   id: string,
 ): Promise<void> => deleteRow(client, sync, NOTES_TABLE, id);
+
+/**
+ * Un message privé, ou un secret quand `kind` le dit — la RLS n'accepte
+ * `'secret'` que du MJ, cette fonction ne fait que transmettre l'intention.
+ */
+export async function createMessage(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  campaignId: string,
+  authorId: string,
+  message: { recipientId: string; body: string; kind?: 'message' | 'secret' },
+): Promise<SyncRow> {
+  const { data, error } = await client
+    .from(MESSAGES_TABLE)
+    .insert({
+      campaign_id: campaignId,
+      author_id: authorId,
+      recipient_id: message.recipientId,
+      kind: message.kind ?? 'message',
+      body: message.body,
+    })
+    .select()
+    .single();
+  if (error) throw new WriteError(MESSAGES_TABLE, error.message);
+  if (!data) throw new WriteError(MESSAGES_TABLE, 'envoi refusé');
+  const row = data as SyncRow;
+  sync?.ingest(MESSAGES_TABLE, row);
+  return row;
+}
+
+/** On efface ce qu'on a écrit, jamais ce qu'on a reçu — la RLS y veille. */
+export const deleteMessage = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+): Promise<void> => deleteRow(client, sync, MESSAGES_TABLE, id);
 
 export async function createEncounter(
   client: SupabaseClient,

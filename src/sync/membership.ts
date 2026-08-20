@@ -13,6 +13,8 @@ export interface Appartenance {
   campaignId: string;
   nom: string;
   estMj: boolean;
+  /** Qui mène la table — pour lui adresser un message privé sans le chercher. */
+  gmId: string;
 }
 
 export class ErreurAppartenance extends Error {
@@ -38,6 +40,7 @@ export async function chargerAppartenances(
     campaignId: String(ligne.id),
     nom: String(ligne.name),
     estMj: String(ligne.gm_id) === userId,
+    gmId: String(ligne.gm_id),
   }));
 }
 

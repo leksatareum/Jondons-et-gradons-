@@ -30,6 +30,12 @@ export interface CampaignSnapshot {
    * (qui garde un œil dessus, mais ne les écrit jamais).
    */
   notes: Note[];
+  /**
+   * Messages privés et secrets. Même remarque : ce tableau ne contient que ce
+   * qu'on a le droit de lire — ce qu'on a écrit, ce qu'on a reçu, et tout
+   * pour le MJ.
+   */
+  messages: Message[];
 }
 
 export interface StoredSheet {
@@ -63,10 +69,25 @@ export interface Note {
   createdAt: string;
 }
 
+/**
+ * Un message privé, ou un secret confié par le MJ. Même forme pour les deux :
+ * seul `kind` change qui a pu l'écrire et comment il s'affiche.
+ */
+export interface Message {
+  id: string;
+  authorId: string;
+  recipientId: string;
+  kind: 'message' | 'secret';
+  body: string;
+  version: number;
+  createdAt: string;
+}
+
 export const SHEETS_TABLE = 'jg_sheets';
 export const ENCOUNTERS_TABLE = 'jg_encounters';
 export const JOURNAL_TABLE = 'jg_journal_entries';
 export const NOTES_TABLE = 'jg_notes';
+export const MESSAGES_TABLE = 'jg_messages';
 
 /**
  * Choisit la rencontre courante. Une campagne accumule ses rencontres passées ;
@@ -114,6 +135,16 @@ const toNote = (row: SyncRow): Note => ({
   createdAt: String(row.created_at ?? ''),
 });
 
+const toMessage = (row: SyncRow): Message => ({
+  id: row.id,
+  authorId: String(row.author_id ?? ''),
+  recipientId: String(row.recipient_id ?? ''),
+  kind: row.kind === 'secret' ? 'secret' : 'message',
+  body: String(row.body ?? ''),
+  version: row.version,
+  createdAt: String(row.created_at ?? ''),
+});
+
 export interface CampaignSyncOptions {
   client: SupabaseClient;
   campaignId: string;
@@ -135,12 +166,14 @@ export class CampaignSync {
 
   private readonly notes = new VersionedStore<SyncRow>();
 
+  private readonly messages = new VersionedStore<SyncRow>();
+
   private readonly listeners = new Set<() => void>();
 
   private readonly connection: SyncConnection<SyncEvent>;
 
   private snapshot: CampaignSnapshot = {
-    status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [],
+    status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [], messages: [],
   };
 
   constructor(options: CampaignSyncOptions) {
@@ -149,6 +182,7 @@ export class CampaignSync {
       { name: ENCOUNTERS_TABLE, store: this.encounters },
       { name: JOURNAL_TABLE, store: this.journal },
       { name: NOTES_TABLE, store: this.notes },
+      { name: MESSAGES_TABLE, store: this.messages },
     ];
 
     const transport = createSupabaseTransport({
@@ -210,6 +244,7 @@ export class CampaignSync {
       case ENCOUNTERS_TABLE: return this.encounters;
       case JOURNAL_TABLE: return this.journal;
       case NOTES_TABLE: return this.notes;
+      case MESSAGES_TABLE: return this.messages;
       default: return null;
     }
   }
@@ -226,6 +261,7 @@ export class CampaignSync {
       encounter: currentEncounter(this.encounters.all().map(toEncounter)),
       journalEntries: this.journal.all().map(toJournalEntry),
       notes: this.notes.all().map(toNote),
+      messages: this.messages.all().map(toMessage),
     };
     // `useSyncExternalStore` compare par identité : republier un instantané
     // identique ferait re-rendre tous les écrans à chaque battement de canal.
@@ -254,5 +290,6 @@ function sameSnapshot(a: CampaignSnapshot, b: CampaignSnapshot): boolean {
   if (a.encounter?.version !== b.encounter?.version) return false;
   return sameVersions(a.sheets, b.sheets)
     && sameVersions(a.journalEntries, b.journalEntries)
-    && sameVersions(a.notes, b.notes);
+    && sameVersions(a.notes, b.notes)
+    && sameVersions(a.messages, b.messages);
 }

@@ -8,13 +8,15 @@
  * réserve sa place une fois pour toutes.
  */
 
-export type MainTab = 'combat' | 'fiche' | 'grimoire' | 'inventaire' | 'repos' | 'parametres';
+export type MainTab =
+  | 'combat' | 'fiche' | 'grimoire' | 'inventaire' | 'journal' | 'repos' | 'parametres';
 
 const TABS: [MainTab, string][] = [
   ['combat', 'Combat'],
   ['fiche', 'Fiche'],
   ['grimoire', 'Grimoire'],
   ['inventaire', 'Sac'],
+  ['journal', 'Journal'],
   ['repos', 'Repos'],
   ['parametres', 'Réglages'],
 ];
@@ -44,9 +46,18 @@ export function TabBar({ actif, onChanger }: { actif: MainTab; onChanger: (ongle
             color: actif === clef ? 'var(--accent)' : 'var(--muted)',
           }}
         >
+          {/*
+            Sept onglets sur 390px : le libellé le plus long (« Grimoire »,
+            « Réglages ») ne tient qu'en resserrant la lettre et sans
+            retour à la ligne — une étiquette coupée en deux vaut moins
+            qu'une étiquette petite mais entière.
+          */}
           <span
             className="lbl"
-            style={{ fontSize: 9.5, fontWeight: actif === clef ? 700 : 600, letterSpacing: 0.2 }}
+            style={{
+              fontSize: 8.5, fontWeight: actif === clef ? 700 : 600,
+              letterSpacing: 0, whiteSpace: 'nowrap',
+            }}
           >
             {libelle}
           </span>

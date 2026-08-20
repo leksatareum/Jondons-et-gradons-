@@ -17,8 +17,8 @@ describe('appartenances', () => {
       error: null,
     });
     expect(await chargerAppartenances(client, 'u-mj')).toEqual([
-      { campaignId: 'c1', nom: 'Les Loups Rouges', estMj: true },
-      { campaignId: 'c2', nom: 'Une autre table', estMj: false },
+      { campaignId: 'c1', nom: 'Les Loups Rouges', estMj: true, gmId: 'u-mj' },
+      { campaignId: 'c2', nom: 'Une autre table', estMj: false, gmId: 'u-autre' },
     ]);
   });
 

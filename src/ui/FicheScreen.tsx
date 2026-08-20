@@ -1,36 +1,28 @@
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
-import type { JournalEntry, Note } from '../sync/campaign-sync';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
-import { JournalScreen } from './JournalScreen';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
- * La fiche : caractéristiques, compétences, formes/créature liée, journal et
- * notes — tout ce qui n'est ni le combat en cours ni le grimoire.
+ * La fiche : caractéristiques, compétences, formes et créature liée.
  *
- * Un seul rouleau, un seul défilement : `AlliesScreen` et `JournalScreen` ne
- * possèdent plus leur propre `<main>`, c'est celui-ci qui les encadre tous
- * les deux, plutôt que d'empiler des zones de scroll indépendantes.
+ * Le journal et les notes en sont partis pour leur propre onglet — ils n'ont
+ * rien de commun avec un score de Force, et les empiler ici obligeait à
+ * défiler la moitié de la fiche pour relire une note.
  */
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 
 export function FicheScreen({
-  sheet, derived, avecAllies, estMj, journalEntries, notes, notesOwnerName,
+  sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
-  onAjouterEntreeJournal, onSupprimerEntreeJournal,
-  onAjouterNote, onModifierNote, onSupprimerNote,
   onNiveauSuperieur,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   avecAllies: boolean;
   estMj: boolean;
-  journalEntries: JournalEntry[];
-  notes: Note[];
-  notesOwnerName?: string;
   onTransformer: (formId: string) => void;
   onRevenir: () => void;
   onApprendre: (formId: string) => void;
@@ -38,11 +30,6 @@ export function FicheScreen({
   onLier: (optionId: string) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
-  onAjouterEntreeJournal?: (entree: { title: string | null; body: string }) => void;
-  onSupprimerEntreeJournal?: (id: string) => void;
-  onAjouterNote?: (note: { title: string | null; body: string }) => void;
-  onModifierNote?: (id: string, note: { title: string | null; body: string }) => void;
-  onSupprimerNote?: (id: string) => void;
   /** MJ seulement : ouvre la fenêtre de montée de niveau. */
   onNiveauSuperieur?: () => void;
 }) {
@@ -91,20 +78,6 @@ export function FicheScreen({
           />
         </section>
       )}
-
-      <section>
-        <JournalScreen
-          entries={journalEntries}
-          notes={notes}
-          estMj={estMj}
-          notesOwnerName={notesOwnerName}
-          onAjouterEntree={onAjouterEntreeJournal}
-          onSupprimerEntree={onSupprimerEntreeJournal}
-          onAjouterNote={onAjouterNote}
-          onModifierNote={onModifierNote}
-          onSupprimerNote={onSupprimerNote}
-        />
-      </section>
     </main>
   );
 }

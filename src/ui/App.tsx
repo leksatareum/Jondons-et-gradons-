@@ -9,7 +9,9 @@ import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { withParty } from './roster';
-import { createEncounter, createJournalEntry, deleteJournalEntry, saveEncounter } from '../sync/mutations';
+import {
+  createEncounter, createJournalEntry, createMessage, deleteJournalEntry, deleteMessage, saveEncounter,
+} from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -103,6 +105,26 @@ function Table({ client, compte, campagne }: {
   const bandeau = <SyncBanner status={snapshot.status} onRefresh={() => sync.refresh()} />;
   const rencontre = snapshot.encounter?.state;
 
+  /**
+   * À qui un joueur peut écrire : le MJ, et les autres personnages de la
+   * table — jamais soi-même. Les noms viennent des fiches, parce que c'est
+   * sous ces noms-là qu'on se connaît à la table, pas sous des adresses mail.
+   */
+  const correspondantsDuJoueur = useMemo(() => [
+    ...(campagne.gmId === compte.userId ? [] : [{ id: campagne.gmId, nom: 'le MJ' }]),
+    ...snapshot.sheets
+      .filter((f) => f.ownerId !== compte.userId && f.ownerId !== campagne.gmId)
+      .map((f) => ({ id: f.ownerId, nom: f.data.name })),
+  ], [snapshot.sheets, compte.userId, campagne.gmId]);
+
+  /** Depuis son écran principal, le MJ écrit à n'importe qui de sa table. */
+  const correspondantsDeLaTable = useMemo(
+    () => snapshot.sheets
+      .filter((f) => f.ownerId !== compte.userId)
+      .map((f) => ({ id: f.ownerId, nom: f.data.name })),
+    [snapshot.sheets, compte.userId],
+  );
+
   if (campagne.estMj) {
     const ouverte = snapshot.sheets.find((fiche) => fiche.id === ficheOuverte);
     if (ouverte) {
@@ -124,6 +146,10 @@ function Table({ client, compte, campagne }: {
           // l'onglet Journal d'une fiche ne montre que celles de cette
           // fiche-là : celles d'un autre joueur n'ont rien à faire ici.
           notes={snapshot.notes.filter((note) => note.ownerId === ouverte.ownerId)}
+          messages={snapshot.messages}
+          // Sur la fiche d'un joueur, le MJ n'écrit qu'à celui-là : c'est sa
+          // conversation avec lui qu'il ouvre, pas une boîte d'envoi générale.
+          correspondants={[{ id: ouverte.ownerId, nom: ouverte.data.name }]}
         />
       );
     }
@@ -140,18 +166,20 @@ function Table({ client, compte, campagne }: {
             onOuvrirFiche={setFicheOuverte}
           />
         ) : (
-          <main style={{
-            flexGrow: 1, padding: '12px 14px calc(20px + env(safe-area-inset-bottom))',
-            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          }}>
-            <JournalScreen
-              entries={snapshot.journalEntries}
-              notes={[]}
-              estMj
-              onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
-              onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
-            />
-          </main>
+          <JournalScreen
+            entries={snapshot.journalEntries}
+            // Les notes appartiennent à un personnage : elles se lisent sur sa
+            // fiche, pas dans une pile où l'on ne saurait plus de qui elles sont.
+            notes={[]}
+            estMj
+            moi={compte.userId}
+            correspondants={correspondantsDeLaTable}
+            messages={snapshot.messages}
+            onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
+            onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
+            onEnvoyerMessage={(message) => void createMessage(client, sync, campagne.campaignId, compte.userId, message)}
+            onSupprimerMessage={(id) => void deleteMessage(client, sync, id)}
+          />
         )}
       </>
     );
@@ -184,6 +212,8 @@ function Table({ client, compte, campagne }: {
       userEmail={compte.email}
       journalEntries={snapshot.journalEntries}
       notes={snapshot.notes}
+      messages={snapshot.messages}
+      correspondants={correspondantsDuJoueur}
     />
   );
 }
