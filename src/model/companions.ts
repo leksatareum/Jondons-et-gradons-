@@ -1,0 +1,96 @@
+import {
+  addLinkedCreature, linkedCreatureOptionFor, linkedCreatureOptionsFor,
+  linkedCreaturesAfterLongRest, refreshLinkedCreatures, type LinkedCreatureOption,
+} from '../domain/linked-creatures';
+import type { CharacterSheet, LinkedCreature } from './character';
+
+/**
+ * Créatures liées, greffées sur `CharacterSheet`.
+ *
+ * `domain/linked-creatures.ts` connaît déjà tout ce qui donne accès à une
+ * créature liée — Trouver un familier, Compagnon sauvage du Druide, Pacte de
+ * la Chaîne, Maître des bêtes — et calcule leurs profils mécaniques. Il
+ * travaille déjà sur des objets suffisamment proches de `CharacterSheet` pour
+ * être appelés directement, moyennant un petit adaptateur ; ce module ne fait
+ * que ça, et donne un type précis à ce que le domaine laisse en
+ * `Record<string, unknown>`.
+ */
+
+const adapter = (sheet: CharacterSheet) => ({
+  classLevels: sheet.classLevels,
+  // Le domaine appelle « classSelections » ce que cette fiche appelle
+  // `classChoices` : les décisions de classe, indexées par identifiant.
+  classSelections: sheet.classChoices,
+  abilities: sheet.abilities,
+  spells: sheet.spells,
+  // Le domaine ne connaît que la forme structurelle, pas les champs précis :
+  // il ne fait qu'y lire `family` et `swapReady`, qu'un `LinkedCreature` porte.
+  companions: (sheet.companions ?? []) as unknown as Array<Record<string, unknown>>,
+});
+
+/** Ce que ce personnage peut lier maintenant — familier, compagnon primordial. */
+export const availableCompanions = (sheet: CharacterSheet): LinkedCreatureOption[] =>
+  linkedCreatureOptionsFor(adapter(sheet));
+
+const asLinkedCreature = (raw: Record<string, unknown>): LinkedCreature => raw as unknown as LinkedCreature;
+
+/**
+ * Lie une créature. En remplace une de la même famille si le personnage en
+ * avait déjà une — un compagnon primordial ne s'empile pas avec le précédent,
+ * il le remplace, comme le prévoit la règle.
+ */
+export function bondCompanion(sheet: CharacterSheet, optionId: string, customName = ''): CharacterSheet {
+  const option = linkedCreatureOptionFor(adapter(sheet), optionId);
+  if (!option) return sheet;
+  const existantes = (sheet.companions ?? []) as unknown as Array<Record<string, unknown>>;
+  const suivants = addLinkedCreature(existantes, option, customName).map(asLinkedCreature);
+  return { ...sheet, companions: suivants };
+}
+
+/** Détache une créature liée — le joueur s'en sépare, ou elle est tombée hors du champ de la règle. */
+export function dismissCompanion(sheet: CharacterSheet, companionId: string): CharacterSheet {
+  const restants = (sheet.companions ?? []).filter((companion) => companion.id !== companionId);
+  return { ...sheet, companions: restants };
+}
+
+/**
+ * Dégâts ou soins sur une créature liée, plafonnés entre 0 et son maximum —
+ * comme pour le personnage, mais son maximum à elle ne se dérive de rien : il
+ * vient du profil qui l'a créée, recalculé à chaque montée de niveau par
+ * `afterLongRest`.
+ */
+export function applyCompanionDamage(sheet: CharacterSheet, companionId: string, delta: number): CharacterSheet {
+  const companions = (sheet.companions ?? []).map((companion) => (
+    companion.id === companionId
+      ? { ...companion, hp: Math.max(0, Math.min(companion.hpMax, companion.hp - delta)) }
+      : companion
+  ));
+  return { ...sheet, companions };
+}
+
+/**
+ * Ce qu'un repos long fait aux créatures liées : un Compagnon sauvage
+ * disparaît, un compagnon primordial peut être reformé (`swapReady`), et
+ * toutes voient leurs nombres recalculés sur le niveau et les caractéristiques
+ * actuels — un Maître des bêtes qui monte de niveau voit son compagnon
+ * grandir avec lui, sans qu'on ait à le relier à la main.
+ */
+/**
+ * Les nombres d'une créature liée, recalculés sur le niveau et les
+ * caractéristiques actuels — sans rien y expirer ni y ouvrir. À la différence
+ * du repos long, monter de niveau ne fait pas disparaître un Compagnon
+ * sauvage : rien dans la règle ne le prévoit, et l'appeler ici le ferait
+ * pourtant, à tort, à chaque « Niveau + ».
+ */
+export function refreshCompanions(sheet: CharacterSheet): CharacterSheet {
+  const existantes = (sheet.companions ?? []) as unknown as Array<Record<string, unknown>>;
+  const rafraichis = refreshLinkedCreatures(adapter(sheet), existantes).map(asLinkedCreature);
+  return { ...sheet, companions: rafraichis };
+}
+
+export function companionsAfterLongRest(sheet: CharacterSheet): CharacterSheet {
+  const existantes = (sheet.companions ?? []) as unknown as Array<Record<string, unknown>>;
+  const restants = linkedCreaturesAfterLongRest(existantes);
+  const rafraichis = refreshLinkedCreatures(adapter(sheet), restants).map(asLinkedCreature);
+  return { ...sheet, companions: rafraichis };
+}

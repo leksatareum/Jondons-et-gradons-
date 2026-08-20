@@ -93,6 +93,18 @@ export interface LiveState {
   heroicInspiration: boolean;
   /** Concentration en cours, s'il y en a une. */
   concentration?: { spellId: string; note?: string } | null;
+  /**
+   * Forme de bête active, si le personnage est actuellement transformé.
+   * L'identité (PV max normaux, attaques normales) n'est pas remplacée : elle
+   * reste dérivable, la transformation n'en est qu'un état temporaire.
+   */
+  activeWildShape?: { formId: string } | null;
+  /**
+   * Vrai juste après un repos long : un échange de forme apprise contre une
+   * autre est possible. Se referme au premier échange, ou dès le prochain
+   * repos long si le joueur ne s'en sert pas.
+   */
+  wildShapeSwapOpen?: boolean;
 }
 
 /**
@@ -193,8 +205,58 @@ export interface CharacterSheet {
   // ── État vivant ──────────────────────────────────────────────────────
   live: LiveState;
 
+  /**
+   * Formes de bête apprises (Forme sauvage) : une décision du joueur, plafonnée
+   * par le niveau de Druide. Absent ou vide : la fiche n'a encore rien choisi,
+   * et propose alors une sélection de départ raisonnable.
+   */
+  wildShapeKnownForms?: string[];
+
+  /**
+   * Créatures liées au personnage : familier, compagnon primordial du Maître
+   * des bêtes. Un seul élément par famille (`family`) tient à la fois — en
+   * lier un nouveau remplace l'ancien de la même famille, jamais ne l'empile.
+   */
+  companions?: LinkedCreature[];
+
   /** Provenance, quand la fiche vient d'un import. Utile pour tracer un écart. */
   importedFrom?: { app: string; importedAt: string; legacyId?: string };
+}
+
+/**
+ * Une créature liée à un personnage — familier ou compagnon primordial.
+ *
+ * Comme un combattant de rencontre (`Combatant`), elle mêle volontairement
+ * identité et état vivant en un seul objet plutôt que de dériver ses PV à la
+ * lecture : ses dégâts se suivent dans le temps, au même titre que ceux du
+ * personnage, et rien ne les recalcule à partir de rien à chaque rendu.
+ */
+export interface LinkedCreature {
+  id: string;
+  templateId: string;
+  /** L'option de `linkedCreatureOptionsFor` qui a produit cette créature. */
+  sourceOptionId: string;
+  source: 'find-familiar' | 'wild-companion' | 'pact-chain' | 'primal-companion';
+  sourceLabel: string;
+  family: 'familiar' | 'primal-companion';
+  name: string;
+  ac: number;
+  hp: number;
+  hpMax: number;
+  speed: string;
+  cr: string;
+  kind: string;
+  /** Vrai pour un Compagnon sauvage : il disparaît au repos long. */
+  expiresOnLongRest: boolean;
+  initiativeMode: 'independent' | 'during-owner-turn';
+  commandMode: string;
+  attackBonus?: number;
+  damageFormula?: string;
+  saveDc?: number;
+  rules: string[];
+  /** Compagnon primordial seulement : un repos long vient d'ouvrir la possibilité d'en changer. */
+  swapReady: boolean;
+  conditions: { id: string; detail?: string }[];
 }
 
 export const EMPTY_LIVE_STATE: LiveState = {

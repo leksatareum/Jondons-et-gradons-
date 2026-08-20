@@ -1,4 +1,6 @@
 import { restoresAllOnShortRest } from '../domain/resource-recovery';
+import { companionsAfterLongRest } from './companions';
+import { druidLevel } from './wild-shape';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
 
@@ -107,24 +109,23 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
   if (rendus > 0) recovered.push(`${rendus} dé(s) de vie`);
   if (live.exhaustion > 0) recovered.push('Un cran d’épuisement');
 
-  return {
-    sheet: {
-      ...sheet,
-      live: {
-        ...live,
-        damageTaken: 0,
-        temporaryHp: 0,
-        spellSlotsSpent: {},
-        pactSlotsSpent: 0,
-        resourcesSpent: {},
-        hitDiceSpent,
-        exhaustion: Math.max(0, live.exhaustion - 1),
-        deathSaves: { success: 0, fail: 0 },
-        concentration: null,
-      },
-    },
-    recovered,
-  };
+  // Une forme de bête apprise peut être échangée juste après le repos —
+  // seulement maintenant, et une seule fois (PHB 2024, Forme sauvage).
+  const wildShapeSwapOpen = druidLevel(sheet) >= 2 ? true : undefined;
+  if (wildShapeSwapOpen) recovered.push('Une forme apprise peut être échangée');
+
+  const avantCompagnons = sheet.companions ?? [];
+  const apresRepos = companionsAfterLongRest({
+    ...sheet,
+    live: { ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {}, hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 }, concentration: null, wildShapeSwapOpen },
+  });
+  for (const companion of avantCompagnons) {
+    if (companion.expiresOnLongRest && !apresRepos.companions?.some((c) => c.id === companion.id)) {
+      recovered.push(`${companion.name} disparaît (Compagnon sauvage)`);
+    }
+  }
+
+  return { sheet: apresRepos, recovered };
 }
 
 export const rest = (sheet: CharacterSheet, derived: DerivedCharacter, kind: RestKind): RestOutcome =>

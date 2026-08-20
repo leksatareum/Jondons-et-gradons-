@@ -1,6 +1,7 @@
 import { classById } from '../content/classes';
 import { classFeaturesAt } from '../content/class-features';
 import { subclassByName, subclassGroupFor, type SubclassFeature, type SubclassOption } from '../content/subclasses';
+import { refreshCompanions } from './companions';
 import { abilityModifier, effectiveAbilities, totalLevel, type AbilityScores, type CharacterSheet } from './character';
 
 /**
@@ -153,18 +154,17 @@ export function applyLevelUp(
       : {}),
   };
 
-  if (plan.usesOverride) {
-    return {
-      ...suivante,
-      maxHpOverride: (sheet.maxHpOverride ?? 0) + hpGainOnOverride(sheet, suivante, choice.hitPointRoll),
-      // Le jet est consigné malgré tout : le jour où le total imposé sera
-      // levé, l'historique aura commencé à se reconstituer.
-      hitPointRolls: [...(sheet.hitPointRolls ?? []), choice.hitPointRoll],
-    };
-  }
+  const avecJet: CharacterSheet = plan.usesOverride
+    ? {
+        ...suivante,
+        maxHpOverride: (sheet.maxHpOverride ?? 0) + hpGainOnOverride(sheet, suivante, choice.hitPointRoll),
+        // Le jet est consigné malgré tout : le jour où le total imposé sera
+        // levé, l'historique aura commencé à se reconstituer.
+        hitPointRolls: [...(sheet.hitPointRolls ?? []), choice.hitPointRoll],
+      }
+    : { ...suivante, hitPointRolls: [...(sheet.hitPointRolls ?? []), choice.hitPointRoll] };
 
-  return {
-    ...suivante,
-    hitPointRolls: [...(sheet.hitPointRolls ?? []), choice.hitPointRoll],
-  };
+  // Un compagnon primordial grandit avec son Rôdeur : sans ce rafraîchissement,
+  // « Niveau + » monterait le personnage sans jamais monter la bête à ses côtés.
+  return avecJet.companions?.length ? refreshCompanions(avecJet) : avecJet;
 }

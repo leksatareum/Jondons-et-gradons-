@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { longRest, shortRest } from './rest';
+import { availableCompanions, bondCompanion } from './companions';
 import { deriveCharacter } from './derive';
 import { withGrant } from './spell-grants';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type LiveState } from './character';
@@ -114,5 +115,28 @@ describe('repos court — ce qui revient, et ce qui ne revient pas', () => {
     };
     const { sheet } = shortRest(avecPatron, deriveCharacter(avecPatron));
     expect(sheet.live.resourcesSpent['occultiste:combattant-clairvoyant']).toBeUndefined();
+  });
+});
+
+describe('repos long — forme sauvage et créatures liées', () => {
+  it('ouvre la fenêtre d’échange de forme, pour un Druide de niveau 2 ou plus', () => {
+    const sheet = fiche('druide', 4);
+    const { sheet: apres, recovered } = longRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.wildShapeSwapOpen).toBe(true);
+    expect(recovered.join(' ')).toContain('échangée');
+  });
+
+  it('rien pour une classe sans Forme sauvage', () => {
+    const sheet = fiche('occultiste', 4);
+    const { sheet: apres } = longRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.wildShapeSwapOpen).toBeUndefined();
+  });
+
+  it('un Compagnon sauvage disparaît, et le repos le dit', () => {
+    const sheet = fiche('druide', 2);
+    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id, 'Grisounet');
+    const { sheet: apres, recovered } = longRest(lie, deriveCharacter(lie));
+    expect(apres.companions).toEqual([]);
+    expect(recovered.join(' ')).toContain('Grisounet disparaît');
   });
 });

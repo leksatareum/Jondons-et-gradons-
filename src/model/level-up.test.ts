@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyLevelUp, levelUpBlockers, levelUpPlan } from './level-up';
+import { availableCompanions, bondCompanion } from './companions';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, totalLevel, type CharacterSheet } from './character';
 
@@ -188,5 +189,26 @@ describe('les PV d’un personnage importé ne changent pas sous ses yeux', () =
     // Dé 8 au niveau 1, moyenne 5 au niveau 2 (jamais jetée), 6 au niveau 3,
     // plus Constitution +2 par niveau.
     expect(deriveCharacter(apres).maxHp).toBe(8 + 5 + 6 + 6);
+  });
+});
+
+describe('montée de niveau — les créatures liées ne sont pas oubliées', () => {
+  it('un compagnon primordial grandit avec le niveau du Rôdeur', () => {
+    const sheet = fiche({
+      classLevels: [{ classId: 'rodeur', level: 3, subclass: 'Maître des bêtes', subclassId: null }],
+    });
+    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const hpAvant = lie.companions![0].hpMax;
+    const apres = applyLevelUp(lie, levelUpPlan(lie, 'rodeur')!, { classId: 'rodeur', hitPointRoll: 6 });
+    expect(apres.companions?.[0].hpMax).toBeGreaterThan(hpAvant);
+  });
+
+  it('un Compagnon sauvage ne disparaît pas en montant de niveau — seul le repos long le fait', () => {
+    const sheet = fiche({
+      classLevels: [{ classId: 'druide', level: 2, subclass: null, subclassId: null }],
+    });
+    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const apres = applyLevelUp(lie, levelUpPlan(lie, 'druide')!, { classId: 'druide', hitPointRoll: 6, subclass: 'Cercle de la Lune' });
+    expect(apres.companions).toHaveLength(1);
   });
 });

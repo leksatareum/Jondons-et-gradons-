@@ -11,6 +11,9 @@ import { LevelUpDialog } from './LevelUpDialog';
 import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
+import { AlliesScreen } from './AlliesScreen';
+import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
+import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
@@ -29,7 +32,7 @@ import type { EncounterState } from '../domain/encounter';
  * tranche.
  */
 
-export type SheetTab = 'combat' | 'grimoire';
+export type SheetTab = 'combat' | 'grimoire' | 'allies';
 
 /**
  * Hauteur du pied de page de `CombatScreen`, plus une marge de respiration.
@@ -119,6 +122,28 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
     setNiveauEnCours(false);
   };
 
+  // L'onglet Formes n'existe que s'il a quelque chose à montrer : la plupart
+  // des personnages n'ont ni Forme sauvage ni créature liée, et un onglet vide
+  // serait une case de plus à ignorer sur un écran déjà chargé.
+  const aDesFormesOuCompagnons = wildShapeAccess(fiche.data, derivee).knownLimit > 0
+    || availableCompanions(fiche.data).length > 0
+    || (fiche.data.companions?.length ?? 0) > 0;
+
+  const transformerEnForme = (formId: string) =>
+    void saveSheet(client, sync, fiche.id, transform(fiche.data, derivee, formId));
+  const revenirDeLaForme = () =>
+    void saveSheet(client, sync, fiche.id, revenirDeForme(fiche.data));
+  const apprendreForme = (formId: string) =>
+    void saveSheet(client, sync, fiche.id, learnForm(fiche.data, derivee, formId));
+  const echangerForme = (fromId: string, toId: string) =>
+    void saveSheet(client, sync, fiche.id, swapForm(fiche.data, derivee, fromId, toId));
+  const lierCompagnon = (optionId: string) =>
+    void saveSheet(client, sync, fiche.id, bondCompanion(fiche.data, optionId));
+  const degatsCompagnon = (companionId: string, delta: number) =>
+    void saveSheet(client, sync, fiche.id, applyCompanionDamage(fiche.data, companionId, delta));
+  const detacherCompagnon = (companionId: string) =>
+    void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
+
   /**
    * Les pouvoirs du MJ, disponibles sur les deux onglets. Ils vivent ici et
    * non dans chaque écran : monter de niveau n'est ni une action de combat ni
@@ -158,6 +183,28 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
     </>
   );
 
+  if (onglet === 'allies') {
+    return (
+      <>
+        {entete}
+        <AlliesScreen
+          sheet={fiche.data}
+          derived={derivee}
+          onTransformer={transformerEnForme}
+          onRevenir={revenirDeLaForme}
+          onApprendre={apprendreForme}
+          onEchanger={echangerForme}
+          onLier={lierCompagnon}
+          onDegatsCompagnon={degatsCompagnon}
+          onDetacherCompagnon={detacherCompagnon}
+        />
+        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
+        {barreMj}
+        {dialogues}
+      </>
+    );
+  }
+
   if (onglet === 'grimoire') {
     const vise = (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer);
     return (
@@ -171,7 +218,7 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
             ? { onAccorder: () => setDonEnCours(true), onRevoquer: setARevoquer }
             : undefined}
         />
-        <Onglets onglet={onglet} onChanger={onOnglet} />
+        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
         {barreMj}
         {dialogues}
         {donEnCours && (
@@ -220,7 +267,7 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
             : { mode: 'libre' }
         }
       />
-      <Onglets onglet={onglet} onChanger={onOnglet} degagement />
+      <Onglets onglet={onglet} onChanger={onOnglet} degagement avecAllies={aDesFormesOuCompagnons} />
       {barreMj}
       {dialogues}
       {reposEnCours && (
@@ -242,7 +289,7 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
  * gèrent déjà leur propre hauteur, et leur en retirer une bande obligerait à
  * reprendre les deux mises en page pour un bouton.
  */
-function Onglets({ onglet, onChanger, degagement }: {
+function Onglets({ onglet, onChanger, degagement, avecAllies }: {
   onglet: SheetTab;
   onChanger: (onglet: SheetTab) => void;
   /**
@@ -253,7 +300,11 @@ function Onglets({ onglet, onChanger, degagement }: {
    * il n'a besoin d'aucun dégagement.
    */
   degagement?: boolean;
+  /** Absent pour la plupart des personnages : ni Forme sauvage, ni créature liée. */
+  avecAllies?: boolean;
 }) {
+  const items: [SheetTab, string][] = [['combat', 'Combat'], ['grimoire', 'Sorts']];
+  if (avecAllies) items.push(['allies', 'Formes']);
   return (
     <nav style={{
       position: 'fixed', zIndex: 10,
@@ -263,7 +314,7 @@ function Onglets({ onglet, onChanger, degagement }: {
       borderRadius: 999, border: '1px solid var(--line)',
       background: 'var(--surface-raised)', boxShadow: 'var(--raise)',
     }}>
-      {([['combat', 'Combat'], ['grimoire', 'Sorts']] as const).map(([clef, libelle]) => (
+      {items.map(([clef, libelle]) => (
         <button
           key={clef}
           onClick={() => onChanger(clef)}
