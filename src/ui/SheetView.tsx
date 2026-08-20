@@ -5,6 +5,10 @@ import { SpellbookScreen } from './SpellbookScreen';
 import { cardsFromCharacter } from './spell-cards';
 import { deriveCharacter } from '../model/derive';
 import { saveSheet } from '../sync/mutations';
+import { GrantSpellDialog } from './GrantSpellDialog';
+import { withGrant, withoutGrant } from '../model/spell-grants';
+import { spellById } from '../content/spell-catalogue';
+import type { SpellGrant } from '../model/character';
 import type { CampaignSync, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -24,7 +28,7 @@ import type { EncounterState } from '../domain/encounter';
 
 export type SheetTab = 'combat' | 'grimoire';
 
-export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, entete }: {
+export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj }: {
   client: SupabaseClient;
   sync: CampaignSync;
   fiche: StoredSheet;
@@ -33,7 +37,11 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
   onOnglet: (onglet: SheetTab) => void;
   /** Rendu au-dessus de l'écran : bandeau de synchronisation, retour du MJ… */
   entete?: React.ReactNode;
+  /** Ouvre les pouvoirs qui n'appartiennent qu'au MJ : accorder, révoquer. */
+  estMj?: boolean;
 }) {
+  const [donEnCours, setDonEnCours] = useState(false);
+  const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
   const cartes = useMemo(() => cardsFromCharacter(fiche.data, derivee), [fiche.data, derivee]);
 
@@ -66,12 +74,48 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
     });
   };
 
+  const accorder = (grant: SpellGrant) => {
+    void saveSheet(client, sync, fiche.id, withGrant(fiche.data, grant));
+    setDonEnCours(false);
+  };
+
+  const revoquer = (grantId: string) => {
+    void saveSheet(client, sync, fiche.id, withoutGrant(fiche.data, grantId));
+    setARevoquer(null);
+  };
+
   if (onglet === 'grimoire') {
+    const vise = (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer);
     return (
       <>
         {entete}
-        <SpellbookScreen sheet={fiche.data} derived={derivee} onToggle={basculerSort} />
+        <SpellbookScreen
+          sheet={fiche.data}
+          derived={derivee}
+          onToggle={basculerSort}
+          dons={estMj
+            ? { onAccorder: () => setDonEnCours(true), onRevoquer: setARevoquer }
+            : undefined}
+        />
         <Onglets onglet={onglet} onChanger={onOnglet} />
+        {donEnCours && (
+          <GrantSpellDialog
+            sheet={fiche.data}
+            derived={derivee}
+            onAccorder={accorder}
+            onFermer={() => setDonEnCours(false)}
+          />
+        )}
+        {vise && (
+          <Confirmation
+            question={`Révoquer « ${spellById(vise.spellId)?.name ?? vise.spellId} » ?`}
+            detail={`Accordé à ${fiche.data.name} par ${vise.source}. `
+              + 'Le sort et ses lancements disparaissent de la fiche.'}
+            valider="Révoquer"
+            onValider={() => revoquer(vise.id)}
+            onAnnuler={() => setARevoquer(null)}
+          />
+        )}
       </>
     );
   }
@@ -139,5 +183,61 @@ function Onglets({ onglet, onChanger }: {
         </button>
       ))}
     </nav>
+  );
+}
+
+/**
+ * Une confirmation, pour les gestes qu'on ne veut pas faire du pouce par
+ * accident. Elle nomme la cible : « Révoquer ? » ne dit pas de quoi ni à qui.
+ */
+function Confirmation({ question, detail, valider, onValider, onAnnuler }: {
+  question: string;
+  detail: string;
+  valider: string;
+  onValider: () => void;
+  onAnnuler: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 40, display: 'grid', placeItems: 'end center',
+        background: 'rgb(0 0 0 / 0.55)', padding: 16,
+        paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+      }}
+    >
+      <div style={{
+        width: '100%', maxWidth: 360, padding: '16px 16px 14px',
+        borderRadius: 'var(--radius)', background: 'var(--surface-raised)',
+        border: '1px solid var(--line)', boxShadow: 'var(--raise)',
+      }}>
+        <div className="ttl" style={{ fontSize: 17 }}>{question}</div>
+        <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--muted)', margin: '8px 0 0' }}>
+          {detail}
+        </p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button
+            onClick={onAnnuler}
+            style={{
+              flexGrow: 1, minHeight: 48, borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 15,
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onValider}
+            style={{
+              flexGrow: 1, minHeight: 48, borderRadius: 'var(--radius-sm)',
+              background: 'var(--vital)', color: 'var(--accent-ink)',
+              fontSize: 15, fontWeight: 700,
+            }}
+          >
+            {valider}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

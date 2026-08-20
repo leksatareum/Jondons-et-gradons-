@@ -112,6 +112,7 @@ function Table({ client, compte, campagne }: {
           onglet={onglet}
           onOnglet={setOnglet}
           entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
+          estMj
         />
       );
     }

@@ -29,6 +29,8 @@ export interface PlayableCard {
   resource?: { key: string; remaining: number; max: number; label: string };
   /** Accordé par un don ou une invocation : hors budget de sorts préparés. */
   granted?: boolean;
+  /** D'où vient ce qui a été accordé, en clair — « Génie du désert ». */
+  grantedBy?: string;
 }
 
 /**

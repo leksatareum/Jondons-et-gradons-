@@ -69,3 +69,34 @@ export function spellsForClass(classId: string, level?: number): Spell[] {
   return CATALOGUE.filter((spell) =>
     spell.classes.includes(code) && (level === undefined || spell.level === level));
 }
+
+const sansAccents = (texte: string): string =>
+  texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr');
+
+/**
+ * Recherche un sort par son nom, du plus pertinent au moins.
+ *
+ * L'ordre compte plus qu'il n'y paraît. « Boule de feu » et « Boule de feu à
+ * retardement » commencent pareil, et le catalogue range le second en premier :
+ * qui tape « boule de feu » et prend le premier résultat accorde un autre sort
+ * que celui qu'il visait, sans que rien ne le signale. Un nom exact passe donc
+ * devant, puis les débuts de nom, puis le reste.
+ */
+export function searchSpells(query: string, limit = 40): Spell[] {
+  const q = sansAccents(query.trim());
+  if (q.length < 2) return [];
+  const rang = (spell: Spell): number => {
+    const nom = sansAccents(spell.name);
+    if (nom === q) return 0;
+    if (nom.startsWith(q)) return 1;
+    if (nom.includes(q)) return 2;
+    return 3;
+  };
+  return CATALOGUE
+    .map((spell) => ({ spell, rang: rang(spell) }))
+    .filter((entry) => entry.rang < 3)
+    .sort((a, b) => a.rang - b.rang
+      || a.spell.name.localeCompare(b.spell.name, 'fr'))
+    .slice(0, limit)
+    .map((entry) => entry.spell);
+}

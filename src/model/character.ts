@@ -95,6 +95,27 @@ export interface LiveState {
   concentration?: { spellId: string; note?: string } | null;
 }
 
+/**
+ * Un sort accordé en jeu, avec ses propres lancements gratuits.
+ *
+ * Volontairement séparé de `spells` : un sort accordé ne se prépare pas, ne
+ * consomme aucun emplacement, et ne suit pas les règles de réouverture de la
+ * classe. Le ranger dans la même liste obligerait chaque règle sur les sorts
+ * préparés à porter une exception, et c'est l'exception qu'on oublie.
+ */
+export interface SpellGrant {
+  /** Identifiant du don lui-même : ce qu'on retire pour le révoquer. */
+  id: string;
+  spellId: string;
+  /** D'où ça vient, en clair. « Génie du désert », « Parchemin de la crypte ». */
+  source: string;
+  /** Lancements gratuits avant recharge. */
+  uses: number;
+  recharge: 'court' | 'long';
+  /** Quand le don a été fait, pour retrouver la séance correspondante. */
+  grantedAt: string;
+}
+
 export interface CharacterSheet {
   id: string;
   name: string;
@@ -149,6 +170,20 @@ export interface CharacterSheet {
    * `hitPointRolls` et efface ce champ ; la dérivation reprend la main.
    */
   maxHpOverride?: number | null;
+
+  /**
+   * Sorts accordés par le MJ au fil du scénario — un génie, un maître, une
+   * relique.
+   *
+   * Une décision, comme le reste de cette fiche : ce n'est pas un état qu'on
+   * dépense, c'est un fait acquis en jeu. Ce que le personnage en a consommé
+   * aujourd'hui vit dans `live.resourcesSpent`, avec la clé du don.
+   *
+   * Le seul endroit de la fiche qu'un joueur ne remplit pas lui-même. La
+   * source est libre et obligatoire : six mois plus tard, « pourquoi ce rôdeur
+   * a-t-il Boule de feu » doit avoir une réponse sur la fiche elle-même.
+   */
+  grants?: SpellGrant[];
 
   /** Armure portée ; `null` ou `'none'` si aucune. La CA, elle, est dérivée. */
   armorId?: string | null;

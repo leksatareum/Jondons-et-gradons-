@@ -1,5 +1,6 @@
 import { spellById, type Spell } from '../content/spell-catalogue';
 import { spellbookOf } from '../model/spellbook';
+import { grantedSpells, grantResourceKey } from '../model/spell-grants';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PlayableCard } from './combat-layout';
@@ -79,13 +80,36 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       detail: detailOf(spell),
-      ...(standing.kind === 'accorde' ? { granted: true } : {}),
+      ...(standing.kind === 'accorde' ? { granted: true, grantedBy: standing.par } : {}),
       ...(slot ? {
         resource: {
           key: slot.pact ? 'pacte' : `emplacement-${slot.level}`,
           remaining: slot.remaining,
           max: slot.max,
           label: slot.pact ? 'Emplacement de pacte' : `Emplacement de rang ${slot.level}`,
+        },
+      } : {}),
+    });
+  }
+
+  // Les dons du MJ : ils ne dépensent pas d'emplacement, ils ont leurs propres
+  // lancements. Un sort au-dessus du rang du personnage se joue donc quand
+  // même — c'est tout l'intérêt d'une récompense de scénario.
+  for (const { grant, spell } of grantedSpells(sheet, derived)) {
+    const ressource = derived.resources.find((entry) => entry.key === grantResourceKey(grant));
+    cartes.push({
+      id: `don-${grant.id}`,
+      name: spell.name,
+      economy: economyOf(spell),
+      detail: detailOf(spell),
+      granted: true,
+      grantedBy: grant.source,
+      ...(ressource ? {
+        resource: {
+          key: ressource.key,
+          remaining: ressource.remaining,
+          max: ressource.max,
+          label: `Accordé · ${grant.recharge === 'long' ? 'repos long' : 'repos court'}`,
         },
       } : {}),
     });

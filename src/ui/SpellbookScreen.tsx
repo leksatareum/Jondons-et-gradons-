@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { preparedBudget, spellbookOf, spellChoices, type BookEntry, type ChoiceState, type ClassBudget } from '../model/spellbook';
 import { detailOf, economyOf } from './spell-cards';
+import { grantedSpells, grantResourceKey } from '../model/spell-grants';
 import type { Spell } from '../content/spell-catalogue';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
@@ -163,11 +164,16 @@ const MODE_TEXTE: Record<ClassBudget['mode'], string> = {
   'none': '',
 };
 
-export function SpellbookScreen({ sheet, derived, onToggle }: {
+export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   /** Absent : l'écran est en consultation. */
   onToggle?: (spellId: string, classId: string) => void;
+  /**
+   * Accorder et révoquer, réservé au MJ. Absent pour un joueur : accorder un
+   * sort n'est pas une décision de personnage.
+   */
+  dons?: { onAccorder: () => void; onRevoquer: (grantId: string) => void };
 }) {
   const budgets = useMemo(() => preparedBudget(sheet, derived), [sheet, derived]);
   const [classeActive, setClasseActive] = useState<string | null>(null);
@@ -199,6 +205,7 @@ export function SpellbookScreen({ sheet, derived, onToggle }: {
     );
   }
 
+  const accordes = grantedSpells(sheet, derived);
   const prets = choix.filter((entry) => entry.state.kind !== 'disponible' && entry.state.kind !== 'budget-plein');
   const reste = choix.filter((entry) => entry.state.kind === 'disponible' || entry.state.kind === 'budget-plein');
 
@@ -296,6 +303,73 @@ export function SpellbookScreen({ sheet, derived, onToggle }: {
             ))}
           </>
         )}
+
+        {(accordes.length > 0 || dons) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <div className="lbl" style={{ flexGrow: 1 }}>Accordés en jeu</div>
+            {dons && (
+              <button
+                onClick={dons.onAccorder}
+                className="lbl"
+                style={{
+                  minHeight: 34, padding: '0 12px', borderRadius: 999,
+                  border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700,
+                }}
+              >
+                + Accorder
+              </button>
+            )}
+          </div>
+        )}
+
+        {accordes.map(({ grant, spell, auDessusDeSonRang }) => {
+          const ressource = derived.resources.find((entry) => entry.key === grantResourceKey(grant));
+          return (
+            <div
+              key={grant.id}
+              className="card"
+              style={{
+                padding: '10px 12px', borderRadius: 'var(--radius)',
+                border: '1px solid var(--ok)', background: 'var(--surface)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={() => setOuvert(spell)}
+                  style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
+                    {detailOf(spell)}
+                  </div>
+                  <div className="lbl" style={{ color: 'var(--ok)', marginTop: 3 }}>
+                    {grant.source}
+                    {ressource ? ` · ${ressource.remaining}/${ressource.max} lancement${ressource.max > 1 ? 's' : ''}` : ''}
+                    {` · recharge au repos ${grant.recharge}`}
+                  </div>
+                  {auDessusDeSonRang && (
+                    <div className="lbl" style={{ color: 'var(--accent)', marginTop: 3, textTransform: 'none' }}>
+                      Rang {spell.level} — au-delà de ses emplacements : lançable par ces lancements seulement.
+                    </div>
+                  )}
+                </button>
+                {dons && (
+                  <button
+                    onClick={() => dons.onRevoquer(grant.id)}
+                    aria-label={`Révoquer ${spell.name}`}
+                    className="lbl"
+                    style={{
+                      flexShrink: 0, minHeight: 'var(--tap)', padding: '0 12px',
+                      borderRadius: 10, border: '1px solid var(--line)', color: 'var(--muted)',
+                    }}
+                  >
+                    Révoquer
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
         <div className="lbl" style={{ marginTop: 14 }}>
           À préparer — {reste.length} sort{reste.length > 1 ? 's' : ''} de ta liste

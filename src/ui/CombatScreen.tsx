@@ -143,13 +143,16 @@ function ActionCard({ card, playable, hero, onPlay }: {
         </div>
       </div>
 
+      {card.detail && (
+        <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{card.detail}</div>
+      )}
       {card.granted && (
         <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--accent)' }}>
-          accordé par ton don · hors budget
+          {/* La provenance vient de la carte quand elle en a une : « accordé
+              par ton don » ne dit pas d'où, et c'est précisément ce que le
+              joueur cherchera à la séance suivante. */}
+          {card.grantedBy ? `accordé par ${card.grantedBy} · hors budget` : 'accordé · hors budget'}
         </div>
-      )}
-      {card.detail && !card.granted && (
-        <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{card.detail}</div>
       )}
 
       {hero && hasNumbers && (

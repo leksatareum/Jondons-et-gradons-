@@ -13,6 +13,8 @@ import { classFeaturesUpTo } from '../content/class-features';
 import { subclassFeaturesUpTo } from '../content/subclasses';
 import { classById } from '../content/classes';
 import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } from '../domain/spellcasting';
+import { spellById } from '../content/spell-catalogue';
+import { grantResourceKey } from './spell-grants';
 import { backgroundById } from '../content/backgrounds';
 import { armorById, SHIELD } from '../content/armor';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
@@ -152,6 +154,20 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   if (patron === 'Patron Fiélon') push('occultiste:chance-tenebreux', 'Chance du Ténébreux', fiendDarkOnesLuckUses(occultiste, cha), 'long', 'occultiste');
   if (patron === 'Patron Grand Ancien') push('occultiste:combattant-clairvoyant', 'Combattant clairvoyant', greatOldOneClairvoyantCombatantUses(occultiste), 'court', 'occultiste');
   if (patron === 'Patron Archifée') push('occultiste:pas-des-fees', 'Pas des fées', archfeyFeyStepUses(occultiste, cha), 'long', 'occultiste');
+
+  // Les dons du MJ apportent leurs propres lancements. Ils viennent après les
+  // ressources de classe et d'espèce parce qu'ils s'y ajoutent : un don ne
+  // remplace jamais rien.
+  for (const grant of sheet.grants ?? []) {
+    const spell = spellById(grant.spellId);
+    push(
+      grantResourceKey(grant),
+      `${spell?.name ?? grant.spellId} — ${grant.source}`,
+      Math.max(0, grant.uses),
+      grant.recharge,
+      'don',
+    );
+  }
 
   for (const resource of speciesResourcesFor({
     speciesId: sheet.speciesId, lineageId: sheet.lineageId,
