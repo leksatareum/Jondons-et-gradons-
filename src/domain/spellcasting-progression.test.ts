@@ -53,6 +53,24 @@ describe('sorts mineurs connus', () => {
   });
   it('une classe sans sorts mineurs renvoie 0', () => {
     expect(cantripsKnown('rodeur', 20)).toBe(0);
+    expect(cantripsKnown('paladin', 20)).toBe(0);
+  });
+
+  it('confirmé contre le PHB 2024 : même palier (4 et 10) pour les six classes', () => {
+    // barde 2/3/4, clerc 3/4/5, druide 2/3/4, ensorceleur 4/5/6,
+    // magicien 3/4/5, occultiste 2/3/4 — un seul point de départ par classe,
+    // la même progression pour toutes.
+    const attendu: Record<string, [number, number, number]> = {
+      barde: [2, 3, 4], clerc: [3, 4, 5], druide: [2, 3, 4],
+      ensorceleur: [4, 5, 6], magicien: [3, 4, 5], occultiste: [2, 3, 4],
+    };
+    for (const [classe, [avant4, avant10, apres10]] of Object.entries(attendu)) {
+      expect(cantripsKnown(classe as never, 3)).toBe(avant4);
+      expect(cantripsKnown(classe as never, 4)).toBe(avant10);
+      expect(cantripsKnown(classe as never, 9)).toBe(avant10);
+      expect(cantripsKnown(classe as never, 10)).toBe(apres10);
+      expect(cantripsKnown(classe as never, 20)).toBe(apres10);
+    }
   });
 });
 

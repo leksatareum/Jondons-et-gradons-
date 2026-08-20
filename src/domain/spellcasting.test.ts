@@ -58,6 +58,16 @@ describe('gestion des sorts par classe 2024', () => {
     expect(canReplaceCantripOnLongRest('barde')).toBe(false);
   });
 
+  it('confirmé contre le PHB 2024 : le Magicien est seul à échanger au repos long', () => {
+    // Les cinq autres classes à sorts mineurs échangent en montant de niveau.
+    for (const classe of ['barde', 'clerc', 'druide', 'ensorceleur', 'occultiste']) {
+      expect(canReplaceCantripOnLevelUp(classe)).toBe(true);
+      expect(canReplaceCantripOnLongRest(classe)).toBe(false);
+    }
+    expect(canReplaceCantripOnLevelUp('magicien')).toBe(false);
+    expect(canReplaceCantripOnLongRest('magicien')).toBe(true);
+  });
+
   it('calcule le coût standard de copie au grimoire', () => {
     expect(scribingCost(1)).toEqual({ gold: 50, hours: 2 });
     expect(scribingCost(5)).toEqual({ gold: 250, hours: 10 });

@@ -79,7 +79,17 @@ const CANTRIPS_KNOWN_BASE = {
   barde: 2, clerc: 3, druide: 2, ensorceleur: 4, magicien: 3, occultiste: 2, rodeur: 0,
 } as const satisfies Partial<Record<TabledCasterClass, number>>;
 
-/** +1 aux niveaux 4 et 10, pour les classes qui ont des sorts mineurs. Vérifié. */
+/**
+ * +1 aux niveaux 4 et 10, pour les classes qui ont des sorts mineurs.
+ *
+ * Confirmé contre le PHB 2024, terme à terme, pour les six classes : la
+ * progression est identique pour toutes — seul le point de départ change —
+ * et aucune n'a de palier différent (pas de 3/10, pas de 4/10/16). Paladin et
+ * Rôdeur n'ont aucune colonne « Cantrips » dans leur table de base : leur
+ * seul accès à un sort mineur passe par un style de combat (Guerrier béni,
+ * Guerrier druidique), hors de cette table — voir `DRUIDIC_WARRIOR` dans
+ * `content/fighting-styles.ts`, non dérivé pour l'instant.
+ */
 export const cantripsKnown = (classId: keyof typeof CANTRIPS_KNOWN_BASE, level: number): number => {
   const base = CANTRIPS_KNOWN_BASE[classId] ?? 0;
   if (base === 0) return 0;
