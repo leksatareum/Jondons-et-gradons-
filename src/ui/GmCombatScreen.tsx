@@ -5,6 +5,7 @@ import {
   type Combatant, type EncounterState,
 } from '../domain/encounter';
 import { AddAdversaryDialog } from './AddAdversaryDialog';
+import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basics';
 
 /**
  * Écran de combat du MJ.
@@ -50,6 +51,9 @@ function HpBar({ combatant }: { combatant: Combatant }) {
     </div>
   );
 }
+
+/** Bonus signé, à la française : « +5 », « −2 », jamais un nu « 0 » ambigu. */
+const avecSigne = (bonus: number): string => (bonus >= 0 ? `+${bonus}` : `−${Math.abs(bonus)}`);
 
 function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
   combatant: Combatant;
@@ -148,6 +152,44 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
               {active && attaque.detail && <span> — {attaque.detail}</span>}
             </div>
           ))}
+        </div>
+      )}
+
+      {/*
+        Sauvegardes et compétences : ce qu'on lit quand un joueur force un
+        test sur la créature, pas seulement quand elle agit — donc affiché en
+        permanence, pas réservé à la ligne active, contrairement aux
+        caractéristiques brutes (rarement nécessaires) ci-dessous.
+      */}
+      {((combatant.savingThrows && Object.keys(combatant.savingThrows).length > 0)
+        || (combatant.skills && Object.keys(combatant.skills).length > 0)) && (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 4 }}>
+          {combatant.savingThrows && Object.keys(combatant.savingThrows).length > 0 && (
+            <div>
+              Sauvegardes : {ABILITY_ORDER
+                .filter((ability) => combatant.savingThrows?.[ability] !== undefined)
+                .map((ability) => `${ABILITY_ABBREVIATIONS[ability]} ${avecSigne(combatant.savingThrows![ability]!)}`)
+                .join(', ')}
+            </div>
+          )}
+          {combatant.skills && Object.keys(combatant.skills).length > 0 && (
+            <div>
+              Compétences : {Object.entries(combatant.skills)
+                .map(([nom, bonus]) => `${nom} ${avecSigne(bonus)}`)
+                .join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {active && (combatant.abilities || combatant.proficiencyBonus !== undefined) && (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 4 }}>
+          {combatant.abilities && ABILITY_ORDER
+            .filter((ability) => combatant.abilities?.[ability] !== undefined)
+            .map((ability) => `${ABILITY_ABBREVIATIONS[ability]} ${combatant.abilities![ability]}`)
+            .join(' · ')}
+          {combatant.proficiencyBonus !== undefined && (combatant.abilities ? ' — ' : '')}
+          {combatant.proficiencyBonus !== undefined && `Maîtrise ${avecSigne(combatant.proficiencyBonus)}`}
         </div>
       )}
 

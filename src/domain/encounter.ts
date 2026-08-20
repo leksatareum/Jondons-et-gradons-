@@ -1,4 +1,5 @@
 import { resolveDamageAmount, type DamageProfile } from './damage';
+import type { AbilityId } from './multiclassing';
 
 /**
  * Déroulement d'un combat : ordre d'initiative, tours, rounds, dégâts.
@@ -48,6 +49,14 @@ export interface Combatant {
   templateId?: string;
   /** Créatures seulement : ses attaques, saisies ou reprises du bestiaire. */
   attacks?: CombatantAttack[];
+  /** Créatures seulement : ses caractéristiques — pour un test que l'app ne devine pas. */
+  abilities?: Partial<Record<AbilityId, number>>;
+  /** Créatures seulement : lu au bestiaire ou au FP, pour calculer une DD à la volée. */
+  proficiencyBonus?: number;
+  /** Créatures seulement : jets de sauvegarde où elle est maîtrisée (bonus total, pas le seul modificateur). */
+  savingThrows?: Partial<Record<AbilityId, number>>;
+  /** Créatures seulement : compétences où elle est maîtrisée (bonus total). */
+  skills?: Record<string, number>;
 }
 
 export interface EncounterState {

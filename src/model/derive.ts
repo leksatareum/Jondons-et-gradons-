@@ -16,6 +16,7 @@ import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } fr
 import { spellById } from '../content/spell-catalogue';
 import { grantResourceKey } from './spell-grants';
 import { backgroundById } from '../content/backgrounds';
+import { SKILLS } from '../content/character-basics';
 import { armorById, SHIELD } from '../content/armor';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
 import { speciesResourcesFor } from '../domain/species-resources';
@@ -74,6 +75,16 @@ export interface DerivedSpellcasting {
   spellbookSize?: number;
 }
 
+export interface DerivedSkill {
+  id: string;
+  name: string;
+  ability: keyof AbilityScores;
+  proficient: boolean;
+  /** Maîtrise doublée — nécessite déjà `proficient`, jamais seule. */
+  expertise: boolean;
+  bonus: number;
+}
+
 export interface DerivedCharacter {
   level: number;
   proficiencyBonus: number;
@@ -88,6 +99,8 @@ export interface DerivedCharacter {
   resistances: string[];
   saveProficiencies: string[];
   skillProficiencies: string[];
+  /** Les 18 compétences du PHB, bonus final déjà calculé — rien à recalculer à l'écran. */
+  skills: DerivedSkill[];
   features: { level: number; name: string; source: string; desc?: string }[];
   resources: DerivedResource[];
   spellcasting: DerivedSpellcasting;
@@ -222,6 +235,15 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     ...(background?.skills ?? []),
     ...sheet.skillProficiencies,
   ])];
+  // L'Expertise double un bonus de maîtrise existant — elle ne le crée pas :
+  // une compétence marquée en Expertise sans être elle-même maîtrisée reste
+  // un simple modificateur de caractéristique, jamais deux fois le bonus.
+  const skills: DerivedSkill[] = SKILLS.map((skill) => {
+    const proficient = skillProficiencies.includes(skill.id);
+    const expertise = proficient && sheet.expertise.includes(skill.id);
+    const bonus = modifiers[skill.ability] + (expertise ? prof * 2 : proficient ? prof : 0);
+    return { id: skill.id, name: skill.name, ability: skill.ability, proficient, expertise, bonus };
+  });
 
   // ── Capacités ──────────────────────────────────────────────────────
   const features = sheet.classLevels.flatMap((entry) => [
@@ -299,6 +321,7 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     proficiencyBonus: prof,
     abilities,
     modifiers,
+    skills,
     maxHp,
     currentHp: Math.max(0, maxHp - Math.max(0, sheet.live.damageTaken ?? 0)),
     temporaryHp: Math.max(0, sheet.live.temporaryHp ?? 0),

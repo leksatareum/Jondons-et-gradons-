@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { CharacterSheet } from '../model/character';
-import { deriveCharacter } from '../model/derive';
+import type { AbilityScores, CharacterSheet } from '../model/character';
+import { deriveCharacter, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import { layoutCombatCards, type Economy, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
 
@@ -113,6 +113,68 @@ function SaveStrip({ modifiers, proficient, bonus }: {
   );
 }
 
+/** Caractéristiques brutes : score et modificateur, pour qui veut vérifier plutôt que se fier au calcul. */
+function AbilityScoresStrip({ abilities, modifiers }: {
+  abilities: AbilityScores; modifiers: Record<AbilityId, number>;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 4 }}>
+      {ABILITY_ORDER.map((ability) => (
+        <div
+          key={ability}
+          title={ABILITY_NAMES[ability]}
+          style={{ textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}
+        >
+          <div className="lbl" style={{ fontSize: 9 }}>{ABILITY_ABBREVIATIONS[ability]}</div>
+          <div className="num" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{abilities[ability]}</div>
+          <div className="lbl" style={{ fontSize: 9 }}>{sign(modifiers[ability])}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Les 18 compétences du PHB, bonus déjà calculé par `deriveCharacter` — cet
+ * écran n'additionne rien. Maîtrisée : fond accentué. Avec Expertise : le ✦
+ * en plus, plutôt qu'une seconde couleur qu'il faudrait deviner.
+ */
+function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px' }}>
+      {skills.map((skill) => (
+        <div
+          key={skill.id}
+          title={ABILITY_NAMES[skill.ability]}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 7px', borderRadius: 8,
+            background: skill.proficient ? 'var(--accent-wash)' : 'transparent',
+          }}
+        >
+          <span
+            className="lbl"
+            style={{ fontSize: 9, width: 22, flexShrink: 0, color: skill.proficient ? 'var(--accent)' : undefined }}
+          >
+            {ABILITY_ABBREVIATIONS[skill.ability]}
+          </span>
+          <span style={{
+            fontSize: 12.5, flexGrow: 1, fontWeight: skill.proficient ? 600 : 400,
+            color: skill.proficient ? 'var(--accent)' : undefined,
+          }}>
+            {skill.name}{skill.expertise ? ' ✦' : ''}
+          </span>
+          <span
+            className="num"
+            style={{ fontSize: 13, fontWeight: skill.proficient ? 700 : 600, color: skill.proficient ? 'var(--accent)' : undefined }}
+          >
+            {sign(skill.bonus)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ActionCard({ card, playable, hero, onPlay }: {
   card: PlayableCard;
   /** Jouable maintenant : pleinement lisible et actionnable. */
@@ -216,6 +278,9 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
   onRest?: () => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
+  // Repliées par défaut : utiles pour un test hors tour, pas à chaque round —
+  // les garder ouvertes en permanence aurait mangé la place des cartes.
+  const [caracOuvertes, setCaracOuvertes] = useState(false);
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
   const layout = useMemo(() => layoutCombatCards(cards, { turn, spent }), [cards, turn, spent]);
   const inCombat = turn.mode === 'combat';
@@ -266,6 +331,28 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
             proficient={derived.saveProficiencies}
             bonus={derived.proficiencyBonus}
           />
+        </div>
+
+        <div style={{ marginBottom: 11 }}>
+          <button
+            onClick={() => setCaracOuvertes((v) => !v)}
+            aria-expanded={caracOuvertes}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 6,
+              minHeight: 30, color: 'var(--muted)',
+            }}
+          >
+            <span className="lbl" style={{ flexGrow: 1, textAlign: 'left' }}>
+              Caractéristiques et compétences · Maîtrise {sign(derived.proficiencyBonus)}
+            </span>
+            <span aria-hidden style={{ fontSize: 11, transform: caracOuvertes ? 'rotate(180deg)' : 'none' }}>▾</span>
+          </button>
+          {caracOuvertes && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <AbilityScoresStrip abilities={derived.abilities} modifiers={derived.modifiers} />
+              <SkillsGrid skills={derived.skills} />
+            </div>
+          )}
         </div>
 
         {layout.showEconomy && (

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { attaquesDuTemplate } from './AddAdversaryDialog';
+import {
+  attaquesDuTemplate, caracteristiquesDuTemplate, competencesDuTemplate,
+  maitriseDuTemplate, sauvegardesDuTemplate,
+} from './AddAdversaryDialog';
 import { PHB_CREATURES } from '../content/creatures';
 
 const loup = PHB_CREATURES.find((creature) => creature.id === 'wolf')!;
 const sprite = PHB_CREATURES.find((creature) => creature.id === 'sprite')!;
+const chat = PHB_CREATURES.find((creature) => creature.id === 'cat')!;
+const elephant = PHB_CREATURES.find((creature) => creature.id === 'elephant')!;
 
 describe('attaques reprises du bestiaire', () => {
   it('extrait l’attaque d’une bête simple, avec ses dégâts', () => {
@@ -32,5 +37,31 @@ describe('attaques reprises du bestiaire', () => {
     // Le corbeau n'a pas de bloc de combat détaillé dans le catalogue.
     const corbeau = PHB_CREATURES.find((creature) => creature.id === 'raven')!;
     expect(attaquesDuTemplate(corbeau)).toEqual([]);
+  });
+});
+
+describe('caractéristiques, maîtrise, sauvegardes et compétences reprises du bestiaire', () => {
+  it('reprend Force/Dex/Constitution telles qu’imprimées, sans inventer les mentales', () => {
+    expect(caracteristiquesDuTemplate(chat)).toEqual({ str: 3, dex: 15, con: 10 });
+  });
+
+  it('une créature sans profil de bête renvoie un objet vide, pas une erreur', () => {
+    expect(caracteristiquesDuTemplate(sprite)).toEqual({});
+    expect(caracteristiquesDuTemplate(elephant)).toEqual({});
+  });
+
+  it('calcule le bonus de maîtrise depuis le FP du modèle (table du Manuel des Monstres)', () => {
+    expect(maitriseDuTemplate(loup)).toBe(2); // FP 1/4
+    expect(maitriseDuTemplate(elephant)).toBe(2); // FP 4 — encore dans la même tranche
+  });
+
+  it('ne retient que les sauvegardes où la créature est effectivement maîtrisée', () => {
+    expect(sauvegardesDuTemplate(chat)).toEqual({ dex: 4 });
+    expect(sauvegardesDuTemplate(loup)).toEqual({}); // le loup n'a aucune sauvegarde maîtrisée au PHB
+  });
+
+  it('reprend les compétences maîtrisées avec leur bonus total, pas le seul modificateur', () => {
+    expect(competencesDuTemplate(chat)).toEqual({ perception: 3, discretion: 4 });
+    expect(competencesDuTemplate(sprite)).toEqual({});
   });
 });
