@@ -2,21 +2,25 @@ import { useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
-import { JournalScreen } from './JournalScreen';
+import { FicheScreen } from './FicheScreen';
+import { InventoryScreen } from './InventoryScreen';
+import { RestScreen } from './RestScreen';
+import { SettingsScreen } from './SettingsScreen';
+import { TabBar, type MainTab } from './TabBar';
 import { cardsFromCharacter } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
+import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
   createJournalEntry, createNote, deleteJournalEntry, deleteNote, saveNote, saveSheet,
 } from '../sync/mutations';
+import { seDeconnecter } from '../sync/session';
 import { GrantSpellDialog } from './GrantSpellDialog';
-import { RestDialog } from './RestDialog';
 import { LevelUpDialog } from './LevelUpDialog';
 import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
-import { AlliesScreen } from './AlliesScreen';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
@@ -24,7 +28,7 @@ import type { CampaignSync, JournalEntry, Note, StoredSheet } from '../sync/camp
 import type { EncounterState } from '../domain/encounter';
 
 /**
- * La vue d'une fiche : combat et grimoire.
+ * La vue d'une fiche : combat, fiche, grimoire, sac, repos, réglages.
  *
  * La même pour le joueur sur sa fiche et pour le MJ sur celle d'un autre. Une
  * seconde version « pour le MJ » aurait divergé au premier changement de règle,
@@ -37,16 +41,11 @@ import type { EncounterState } from '../domain/encounter';
  * tranche.
  */
 
-export type SheetTab = 'combat' | 'grimoire' | 'allies' | 'journal';
-
-/**
- * Hauteur du pied de page de `CombatScreen`, plus une marge de respiration.
- * 11px de marge haute + le bouton (`--tap`, 44px) + 14px de marge basse.
- */
-const PIED_DE_PAGE_COMBAT = 'calc(83px + env(safe-area-inset-bottom))';
+export type SheetTab = MainTab;
 
 export function SheetView({
-  client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj, campaignId, userId, journalEntries, notes,
+  client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj,
+  campaignId, userId, userEmail, journalEntries, notes,
 }: {
   client: SupabaseClient;
   sync: CampaignSync;
@@ -56,11 +55,13 @@ export function SheetView({
   onOnglet: (onglet: SheetTab) => void;
   /** Rendu au-dessus de l'écran : bandeau de synchronisation, retour du MJ… */
   entete?: React.ReactNode;
-  /** Ouvre les pouvoirs qui n'appartiennent qu'au MJ : accorder, révoquer. */
+  /** Ouvre les pouvoirs qui n'appartiennent qu'au MJ : accorder, révoquer, monter de niveau. */
   estMj?: boolean;
   campaignId: string;
   /** Qui regarde l'écran — pour signer une entrée de journal ou une note, jamais pour filtrer : la RLS s'en charge déjà. */
   userId: string;
+  /** Pour l'onglet Réglages : le compte connecté, pas celui de la fiche. */
+  userEmail: string;
   journalEntries: JournalEntry[];
   /**
    * Côté joueur : les siennes — la RLS ne renvoie jamais celles d'un autre.
@@ -70,7 +71,6 @@ export function SheetView({
   notes: Note[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
-  const [reposEnCours, setReposEnCours] = useState(false);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
@@ -142,7 +142,6 @@ export function SheetView({
 
   const prendreRepos = (kind: RestKind) => {
     void saveSheet(client, sync, fiche.id, rest(fiche.data, derivee, kind).sheet);
-    setReposEnCours(false);
   };
 
   const monterDeNiveau = (suivante: CharacterSheet) => {
@@ -150,9 +149,9 @@ export function SheetView({
     setNiveauEnCours(false);
   };
 
-  // L'onglet Formes n'existe que s'il a quelque chose à montrer : la plupart
-  // des personnages n'ont ni Forme sauvage ni créature liée, et un onglet vide
-  // serait une case de plus à ignorer sur un écran déjà chargé.
+  // L'onglet Fiche montre les formes/créature liée seulement si elles ont
+  // quelque chose à afficher : la plupart des personnages n'ont ni Forme
+  // sauvage ni créature liée.
   const aDesFormesOuCompagnons = wildShapeAccess(fiche.data, derivee).knownLimit > 0
     || availableCompanions(fiche.data).length > 0
     || (fiche.data.companions?.length ?? 0) > 0;
@@ -186,32 +185,15 @@ export function SheetView({
     void saveNote(client, sync, id, note);
   const supprimerNote = (id: string) => void deleteNote(client, sync, id);
 
-  /**
-   * Les pouvoirs du MJ, disponibles sur les deux onglets. Ils vivent ici et
-   * non dans chaque écran : monter de niveau n'est ni une action de combat ni
-   * une affaire de sorts, et l'accrocher à l'un des deux le rendrait
-   * introuvable depuis l'autre.
-   */
-  const barreMj = estMj ? (
-    <div style={{
-      position: 'fixed', zIndex: 10,
-      left: 14,
-      bottom: onglet === 'combat' ? PIED_DE_PAGE_COMBAT : 'calc(14px + env(safe-area-inset-bottom))',
-      display: 'flex', gap: 6,
-    }}>
-      <button
-        onClick={() => setNiveauEnCours(true)}
-        className="lbl"
-        style={{
-          minHeight: 38, padding: '0 12px', borderRadius: 999,
-          border: '1px solid var(--line)', background: 'var(--surface-raised)',
-          color: 'var(--muted)', boxShadow: 'var(--raise)', fontWeight: 700,
-        }}
-      >
-        Niveau +
-      </button>
-    </div>
-  ) : null;
+  // Le sac : ce que le joueur possède est une décision, jamais un calcul.
+  const ajouterObjet = (item: { name: string; qty: number }) =>
+    void saveSheet(client, sync, fiche.id, addItem(fiche.data, item));
+  const quantiteObjet = (itemId: string, qty: number) =>
+    void saveSheet(client, sync, fiche.id, setItemQty(fiche.data, itemId, qty));
+  const retirerObjet = (itemId: string) =>
+    void saveSheet(client, sync, fiche.id, removeItem(fiche.data, itemId));
+  const fixerOr = (gold: number) =>
+    void saveSheet(client, sync, fiche.id, setGold(fiche.data, gold));
 
   const dialogues = (
     <>
@@ -225,35 +207,17 @@ export function SheetView({
     </>
   );
 
-  if (onglet === 'journal') {
-    return (
-      <>
-        {entete}
-        <JournalScreen
-          entries={journalEntries}
-          notes={notes}
-          estMj={Boolean(estMj)}
-          notesOwnerName={estMj ? fiche.data.name : undefined}
-          onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}
-          onSupprimerEntree={estMj ? supprimerEntreeJournal : undefined}
-          onAjouterNote={estMj ? undefined : ajouterNote}
-          onModifierNote={estMj ? undefined : modifierNote}
-          onSupprimerNote={estMj ? undefined : supprimerNote}
-        />
-        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
-        {barreMj}
-        {dialogues}
-      </>
-    );
-  }
-
-  if (onglet === 'allies') {
-    return (
-      <>
-        {entete}
-        <AlliesScreen
+  const corps = () => {
+    if (onglet === 'fiche') {
+      return (
+        <FicheScreen
           sheet={fiche.data}
           derived={derivee}
+          avecAllies={aDesFormesOuCompagnons}
+          estMj={Boolean(estMj)}
+          journalEntries={journalEntries}
+          notes={notes}
+          notesOwnerName={estMj ? fiche.data.name : undefined}
           onTransformer={transformerEnForme}
           onRevenir={revenirDeLaForme}
           onApprendre={apprendreForme}
@@ -261,19 +225,18 @@ export function SheetView({
           onLier={lierCompagnon}
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
+          onAjouterEntreeJournal={estMj ? ajouterEntreeJournal : undefined}
+          onSupprimerEntreeJournal={estMj ? supprimerEntreeJournal : undefined}
+          onAjouterNote={estMj ? undefined : ajouterNote}
+          onModifierNote={estMj ? undefined : modifierNote}
+          onSupprimerNote={estMj ? undefined : supprimerNote}
+          onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
         />
-        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
-        {barreMj}
-        {dialogues}
-      </>
-    );
-  }
+      );
+    }
 
-  if (onglet === 'grimoire') {
-    const vise = (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer);
-    return (
-      <>
-        {entete}
+    if (onglet === 'grimoire') {
+      return (
         <SpellbookScreen
           sheet={fiche.data}
           derived={derivee}
@@ -282,42 +245,36 @@ export function SheetView({
             ? { onAccorder: () => setDonEnCours(true), onRevoquer: setARevoquer }
             : undefined}
         />
-        <Onglets onglet={onglet} onChanger={onOnglet} avecAllies={aDesFormesOuCompagnons} />
-        {barreMj}
-        {dialogues}
-        {donEnCours && (
-          <GrantSpellDialog
-            sheet={fiche.data}
-            derived={derivee}
-            onAccorder={accorder}
-            onFermer={() => setDonEnCours(false)}
-          />
-        )}
-        {vise && (
-          <Confirmation
-            question={`Révoquer « ${spellById(vise.spellId)?.name ?? vise.spellId} » ?`}
-            detail={`Accordé à ${fiche.data.name} par ${vise.source}. `
-              + 'Le sort et ses lancements disparaissent de la fiche.'}
-            valider="Révoquer"
-            onValider={() => revoquer(vise.id)}
-            onAnnuler={() => setARevoquer(null)}
-          />
-        )}
-      </>
-    );
-  }
+      );
+    }
 
-  const enCombat = rencontre != null && rencontre.turnIndex >= 0;
-  const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
+    if (onglet === 'inventaire') {
+      return (
+        <InventoryScreen
+          sheet={fiche.data}
+          onAjouter={ajouterObjet}
+          onQty={quantiteObjet}
+          onRetirer={retirerObjet}
+          onOr={fixerOr}
+        />
+      );
+    }
 
-  return (
-    <>
-      {entete}
+    if (onglet === 'repos') {
+      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} />;
+    }
+
+    if (onglet === 'parametres') {
+      return <SettingsScreen email={userEmail} onDeconnexion={() => void seDeconnecter(client)} />;
+    }
+
+    const enCombat = rencontre != null && rencontre.turnIndex >= 0;
+    const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
+    return (
       <CombatScreen
         sheet={fiche.data}
         cards={cartes}
         onSpendHp={soignerOuBlesser}
-        onRest={() => setReposEnCours(true)}
         onPlayCard={jouerCarte}
         turn={
           enCombat
@@ -332,70 +289,36 @@ export function SheetView({
             : { mode: 'libre' }
         }
       />
-      <Onglets onglet={onglet} onChanger={onOnglet} degagement avecAllies={aDesFormesOuCompagnons} />
-      {barreMj}
+    );
+  };
+
+  const vise = onglet === 'grimoire' ? (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer) : undefined;
+
+  return (
+    <>
+      {entete}
+      {corps()}
+      <TabBar actif={onglet} onChanger={onOnglet} />
       {dialogues}
-      {reposEnCours && (
-        <RestDialog
+      {donEnCours && (
+        <GrantSpellDialog
           sheet={fiche.data}
           derived={derivee}
-          onRepos={prendreRepos}
-          onFermer={() => setReposEnCours(false)}
+          onAccorder={accorder}
+          onFermer={() => setDonEnCours(false)}
+        />
+      )}
+      {vise && (
+        <Confirmation
+          question={`Révoquer « ${spellById(vise.spellId)?.name ?? vise.spellId} » ?`}
+          detail={`Accordé à ${fiche.data.name} par ${vise.source}. `
+            + 'Le sort et ses lancements disparaissent de la fiche.'}
+          valider="Révoquer"
+          onValider={() => revoquer(vise.id)}
+          onAnnuler={() => setARevoquer(null)}
         />
       )}
     </>
-  );
-}
-
-/**
- * Le passage d'un écran à l'autre.
- *
- * Flottant au-dessus du contenu plutôt qu'en barre fixe : les deux écrans
- * gèrent déjà leur propre hauteur, et leur en retirer une bande obligerait à
- * reprendre les deux mises en page pour un bouton.
- */
-function Onglets({ onglet, onChanger, degagement, avecAllies }: {
-  onglet: SheetTab;
-  onChanger: (onglet: SheetTab) => void;
-  /**
-   * Distance additionnelle au-dessus du bas de l'écran, pour dégager le pied
-   * de page de `CombatScreen` — son bouton « Repos »/« Fin du tour » occupe
-   * toute la largeur du pied, et un onglet flottant posé au même niveau
-   * s'affiche dessus plutôt qu'à côté. Le grimoire n'a pas ce pied de page :
-   * il n'a besoin d'aucun dégagement.
-   */
-  degagement?: boolean;
-  /** Absent pour la plupart des personnages : ni Forme sauvage, ni créature liée. */
-  avecAllies?: boolean;
-}) {
-  const items: [SheetTab, string][] = [['combat', 'Combat'], ['grimoire', 'Sorts']];
-  if (avecAllies) items.push(['allies', 'Formes']);
-  items.push(['journal', 'Journal']);
-  return (
-    <nav style={{
-      position: 'fixed', zIndex: 10,
-      right: 14,
-      bottom: degagement ? PIED_DE_PAGE_COMBAT : 'calc(14px + env(safe-area-inset-bottom))',
-      display: 'flex', gap: 4, padding: 4,
-      borderRadius: 999, border: '1px solid var(--line)',
-      background: 'var(--surface-raised)', boxShadow: 'var(--raise)',
-    }}>
-      {items.map(([clef, libelle]) => (
-        <button
-          key={clef}
-          onClick={() => onChanger(clef)}
-          className="lbl"
-          style={{
-            minHeight: 38, padding: '0 14px', borderRadius: 999,
-            background: onglet === clef ? 'var(--accent)' : 'transparent',
-            color: onglet === clef ? 'var(--accent-ink)' : 'var(--muted)',
-            fontWeight: 700,
-          }}
-        >
-          {libelle}
-        </button>
-      ))}
-    </nav>
   );
 }
 

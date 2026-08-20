@@ -113,12 +113,10 @@ export function JournalScreen({
     fermerNote();
   };
 
+  // Ni `<main>` ni défilement propre : ce bloc est empilé dans le rouleau
+  // unique de `FicheScreen`, qui possède seul la zone de scroll.
   return (
-    <main style={{
-      flexGrow: 1, padding: '12px 14px calc(76px + env(safe-area-inset-bottom))',
-      display: 'flex', flexDirection: 'column', gap: 8,
-      overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <h2 className="ttl" style={{ fontSize: 17 }}>Journal</h2>
 
       {estMj && (
@@ -273,6 +271,6 @@ export function JournalScreen({
           ))}
         </>
       )}
-    </main>
+    </div>
   );
 }

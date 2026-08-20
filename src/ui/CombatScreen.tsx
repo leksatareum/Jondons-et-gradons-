@@ -3,6 +3,7 @@ import type { AbilityScores, CharacterSheet } from '../model/character';
 import { deriveCharacter, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import { layoutCombatCards, type Economy, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
+import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
  * Écran de combat du joueur.
@@ -114,7 +115,7 @@ function SaveStrip({ modifiers, proficient, bonus }: {
 }
 
 /** Caractéristiques brutes : score et modificateur, pour qui veut vérifier plutôt que se fier au calcul. */
-function AbilityScoresStrip({ abilities, modifiers }: {
+export function AbilityScoresStrip({ abilities, modifiers }: {
   abilities: AbilityScores; modifiers: Record<AbilityId, number>;
 }) {
   return (
@@ -139,7 +140,7 @@ function AbilityScoresStrip({ abilities, modifiers }: {
  * écran n'additionne rien. Maîtrisée : fond accentué. Avec Expertise : le ✦
  * en plus, plutôt qu'une seconde couleur qu'il faudrait deviner.
  */
-function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
+export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px' }}>
       {skills.map((skill) => (
@@ -265,7 +266,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard }: {
+export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
   /**
@@ -274,8 +275,6 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard
    */
   turn: TurnMode;
   onSpendHp?: (delta: number) => void;
-  /** Hors combat seulement : le repos n'a pas de sens au milieu d'un tour. */
-  onRest?: () => void;
   /**
    * Une carte payante vient d'être jouée : à la fiche de dépenser
    * l'emplacement ou la ressource. L'économie d'action, elle, reste locale à
@@ -284,9 +283,6 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard
   onPlayCard?: (card: PlayableCard) => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
-  // Repliées par défaut : utiles pour un test hors tour, pas à chaque round —
-  // les garder ouvertes en permanence aurait mangé la place des cartes.
-  const [caracOuvertes, setCaracOuvertes] = useState(false);
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
   const layout = useMemo(() => layoutCombatCards(cards, { turn, spent }), [cards, turn, spent]);
   const inCombat = turn.mode === 'combat';
@@ -299,7 +295,10 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard
   const className = sheet.classLevels[0]?.classId ?? '';
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{
+      height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      paddingBottom: TAB_BAR_CLEARANCE, boxSizing: 'border-box',
+    }}>
 
       {/* ───── Zone figée : ne défile jamais ───── */}
       <header style={{
@@ -341,28 +340,6 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard
             proficient={derived.saveProficiencies}
             bonus={derived.proficiencyBonus}
           />
-        </div>
-
-        <div style={{ marginBottom: 11 }}>
-          <button
-            onClick={() => setCaracOuvertes((v) => !v)}
-            aria-expanded={caracOuvertes}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 6,
-              minHeight: 30, color: 'var(--muted)',
-            }}
-          >
-            <span className="lbl" style={{ flexGrow: 1, textAlign: 'left' }}>
-              Caractéristiques et compétences · Maîtrise {sign(derived.proficiencyBonus)}
-            </span>
-            <span aria-hidden style={{ fontSize: 11, transform: caracOuvertes ? 'rotate(180deg)' : 'none' }}>▾</span>
-          </button>
-          {caracOuvertes && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 9 }}>
-              <AbilityScoresStrip abilities={derived.abilities} modifiers={derived.modifiers} />
-              <SkillsGrid skills={derived.skills} />
-            </div>
-          )}
         </div>
 
         {layout.showEconomy && (
@@ -419,35 +396,28 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard
         ))}
       </main>
 
-      {/* ───── Zone du pouce ───── */}
-      <footer style={{
-        flexShrink: 0, padding: '11px 14px 14px',
-        paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
-        display: 'flex', gap: 9,
-      }}>
-        {/* Hors combat ce bouton est le repos, et il doit être cliquable :
-            la condition « c'est ton tour » ne vaut qu'en combat, où elle
-            désactivait aussi le repos — un bouton grisé en permanence. */}
-        <button
-          disabled={inCombat ? !isYourTurn : !onRest}
-          style={{
-            flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 11, fontSize: 13, fontWeight: 700,
-            background: isYourTurn ? 'var(--ink)' : 'transparent',
-            color: isYourTurn ? 'var(--bg)' : 'var(--muted)',
-            border: isYourTurn ? 'none' : '1px solid var(--line)',
-          }}
-          onClick={!inCombat ? onRest : undefined}
-        >
-          {/* Hors combat, ni fin de tour ni ordre d'initiative : on propose le repos,
-              qui est l'action de hors-combat la plus fréquente. */}
-          {!inCombat ? 'Repos' : isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
-        </button>
-        {/* Le bouton « Fiche » qui occupait cette place n'avait pas de geste :
-            SheetView bascule désormais entre les écrans via son propre onglet
-            flottant, qui fait exactement ce que celui-ci promettait sans le
-            tenir. Le garder aurait laissé un bouton mort à côté d'un onglet
-            qui fait le travail. */}
-      </footer>
+      {/*
+        Zone du pouce — seulement en combat : « Fin du tour » ou « Ordre du
+        combat » à suivre. Hors combat, le repos vit maintenant dans son
+        propre onglet (voir `TabBar`), pas dans un bouton de cet écran.
+      */}
+      {inCombat && (
+        <footer style={{
+          flexShrink: 0, padding: '11px 14px 14px', display: 'flex', gap: 9,
+        }}>
+          <button
+            disabled={!isYourTurn}
+            style={{
+              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 11, fontSize: 13, fontWeight: 700,
+              background: isYourTurn ? 'var(--ink)' : 'transparent',
+              color: isYourTurn ? 'var(--bg)' : 'var(--muted)',
+              border: isYourTurn ? 'none' : '1px solid var(--line)',
+            }}
+          >
+            {isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
+          </button>
+        </footer>
+      )}
     </div>
   );
 }

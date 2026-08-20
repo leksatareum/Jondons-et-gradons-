@@ -300,12 +300,10 @@ export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onAppre
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
 }) {
+  // Ni `<main>` ni défilement propre : ce bloc est destiné à être empilé dans
+  // le rouleau unique de `FicheScreen`, qui possède seul la zone de scroll.
   return (
-    <main style={{
-      flexGrow: 1, padding: '12px 14px calc(76px + env(safe-area-inset-bottom))',
-      display: 'flex', flexDirection: 'column', gap: 8,
-      overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <SectionFormeSauvage
         sheet={sheet} derived={derived}
         onTransformer={onTransformer} onRevenir={onRevenir}
@@ -317,6 +315,6 @@ export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onAppre
         onDegats={onDegatsCompagnon}
         onDetacher={onDetacherCompagnon}
       />
-    </main>
+    </div>
   );
 }

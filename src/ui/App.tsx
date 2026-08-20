@@ -118,6 +118,7 @@ function Table({ client, compte, campagne }: {
           estMj
           campaignId={campagne.campaignId}
           userId={compte.userId}
+          userEmail={compte.email}
           journalEntries={snapshot.journalEntries}
           // Le MJ lit les notes de toute sa table (RLS `jg_is_gm`), mais
           // l'onglet Journal d'une fiche ne montre que celles de cette
@@ -139,13 +140,18 @@ function Table({ client, compte, campagne }: {
             onOuvrirFiche={setFicheOuverte}
           />
         ) : (
-          <JournalScreen
-            entries={snapshot.journalEntries}
-            notes={[]}
-            estMj
-            onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
-            onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
-          />
+          <main style={{
+            flexGrow: 1, padding: '12px 14px calc(20px + env(safe-area-inset-bottom))',
+            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+          }}>
+            <JournalScreen
+              entries={snapshot.journalEntries}
+              notes={[]}
+              estMj
+              onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
+              onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
+            />
+          </main>
         )}
       </>
     );
@@ -175,6 +181,7 @@ function Table({ client, compte, campagne }: {
       entete={bandeau}
       campaignId={campagne.campaignId}
       userId={compte.userId}
+      userEmail={compte.email}
       journalEntries={snapshot.journalEntries}
       notes={snapshot.notes}
     />
