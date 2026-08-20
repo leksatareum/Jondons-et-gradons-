@@ -4,7 +4,9 @@ import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
 import { JournalScreen } from './JournalScreen';
 import { cardsFromCharacter } from './spell-cards';
+import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
+import { spendResource } from '../model/cast';
 import {
   createJournalEntry, createNote, deleteJournalEntry, deleteNote, saveNote, saveSheet,
 } from '../sync/mutations';
@@ -115,6 +117,17 @@ export function SheetView({
       ...fiche.data,
       live: { ...fiche.data.live, damageTaken: subis },
     });
+  };
+
+  /**
+   * Une carte payante vient d'être jouée : le sort ou le pouvoir se joue à
+   * la table (jets compris) comme toujours, cet écran ne fait que retenir
+   * ce qui a payé — l'emplacement ou la ressource — pour que la pastille et
+   * les repos restent justes.
+   */
+  const jouerCarte = (card: PlayableCard) => {
+    if (!card.resource) return;
+    void saveSheet(client, sync, fiche.id, spendResource(fiche.data, card.resource.key));
   };
 
   const accorder = (grant: SpellGrant) => {
@@ -305,6 +318,7 @@ export function SheetView({
         cards={cartes}
         onSpendHp={soignerOuBlesser}
         onRest={() => setReposEnCours(true)}
+        onPlayCard={jouerCarte}
         turn={
           enCombat
             ? {

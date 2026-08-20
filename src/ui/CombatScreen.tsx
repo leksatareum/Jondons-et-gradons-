@@ -265,7 +265,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
+export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest, onPlayCard }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
   /**
@@ -276,6 +276,12 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
   onSpendHp?: (delta: number) => void;
   /** Hors combat seulement : le repos n'a pas de sens au milieu d'un tour. */
   onRest?: () => void;
+  /**
+   * Une carte payante vient d'être jouée : à la fiche de dépenser
+   * l'emplacement ou la ressource. L'économie d'action, elle, reste locale à
+   * cet écran (`spent`) — elle n'a de sens que le temps du tour, pas au-delà.
+   */
+  onPlayCard?: (card: PlayableCard) => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
   // Repliées par défaut : utiles pour un test hors tour, pas à chaque round —
@@ -286,7 +292,10 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
   const inCombat = turn.mode === 'combat';
   const isYourTurn = turn.mode === 'combat' && turn.isYourTurn;
 
-  const play = (card: PlayableCard) => setSpent((current) => ({ ...current, [card.economy]: true }));
+  const play = (card: PlayableCard) => {
+    setSpent((current) => ({ ...current, [card.economy]: true }));
+    if (card.resource) onPlayCard?.(card);
+  };
   const className = sheet.classLevels[0]?.classId ?? '';
 
   return (
