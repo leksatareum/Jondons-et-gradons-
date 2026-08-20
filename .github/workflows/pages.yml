@@ -1,0 +1,63 @@
+# Publication de l'app sur GitHub Pages.
+#
+# À activer une fois dans le dépôt : Settings → Pages → Source : « GitHub Actions ».
+# Puis Settings → Secrets and variables → Actions → Variables, deux entrées :
+#   VITE_SUPABASE_URL       l'URL du projet Supabase
+#   VITE_SUPABASE_ANON_KEY  la clé « anon »
+#
+# Des variables, pas des secrets : la clé anon est publique par nature — elle
+# part dans le bundle que le navigateur télécharge, et c'est la RLS qui protège
+# les données. La ranger dans un secret donnerait l'illusion inverse.
+#
+# Absentes, la compilation échoue bruyamment (`ConfigurationManquante`) plutôt
+# que de publier une app qui s'ouvre et se casse à la première lecture.
+
+name: Publier l'app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une publication à la fois ; on ne coupe pas celle qui est en cours.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publication.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Les écrans ne partent pas en ligne si le moteur de règles est cassé.
+      - run: npm run check
+
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Pages sert le site depuis /<nom-du-dépôt>/, pas depuis la racine.
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: publication
+        uses: actions/deploy-pages@v4
