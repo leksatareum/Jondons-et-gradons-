@@ -3,7 +3,8 @@ import {
   cantripsKnown,
   fullCasterSlots,
   halfCasterSlots,
-  knownSpellCount,
+  tabledPreparedSpellCount,
+  spellSwapRule,
   pactMagicSlots,
   preparedSpellCount,
   wizardSpellbookSize,
@@ -81,16 +82,48 @@ describe('sorts préparés — dérivé du modificateur, pas d’une table figé
 
 describe('sorts connus — Occultiste (vérifié PHB 2024)', () => {
   it('niveau 1 : deux sorts connus', () => {
-    expect(knownSpellCount('occultiste', 1)).toBe(2);
+    expect(tabledPreparedSpellCount('occultiste', 1)).toBe(2);
   });
   it('niveau 20 : quinze sorts connus', () => {
-    expect(knownSpellCount('occultiste', 20)).toBe(15);
+    expect(tabledPreparedSpellCount('occultiste', 20)).toBe(15);
   });
 });
 
 describe('sorts connus — table absente pour une classe non reconstruite', () => {
   it('barde et ensorceleur renvoient null tant que non vérifiés contre le PHB', () => {
-    expect(knownSpellCount('barde' as never, 5)).toBeNull();
-    expect(knownSpellCount('ensorceleur' as never, 5)).toBeNull();
+    expect(tabledPreparedSpellCount('barde', 5)).toBe(9);
+    expect(tabledPreparedSpellCount('ensorceleur', 5)).toBe(9);
+    expect(tabledPreparedSpellCount('paladin' as never, 5)).toBeNull();
+  });
+});
+
+describe('sorts préparés — les classes qui lisent une table', () => {
+  /**
+   * Ces valeurs ont été relevées dans le PHB 2024 (Barde p. 60, Rôdeur p. 120,
+   * Ensorceleur p. 140, Occultiste p. 154). Les figer ici évite qu'une
+   * réécriture les remplace un jour par une formule qui « paraît » juste.
+   */
+  it('lit les bornes de chaque table', () => {
+    expect(tabledPreparedSpellCount('occultiste', 1)).toBe(2);
+    expect(tabledPreparedSpellCount('occultiste', 20)).toBe(15);
+    expect(tabledPreparedSpellCount('rodeur', 1)).toBe(2);
+    expect(tabledPreparedSpellCount('rodeur', 20)).toBe(15);
+    expect(tabledPreparedSpellCount('barde', 1)).toBe(4);
+    expect(tabledPreparedSpellCount('barde', 20)).toBe(22);
+    expect(tabledPreparedSpellCount('ensorceleur', 1)).toBe(2);
+    expect(tabledPreparedSpellCount('ensorceleur', 20)).toBe(22);
+  });
+
+  it('ne dépend jamais de la caractéristique d’incantation', () => {
+    // Deux occultistes de même niveau préparent autant de sorts, quel que
+    // soit leur Charisme : la table ne prend pas le modificateur en argument.
+    expect(tabledPreparedSpellCount('occultiste', 5)).toBe(6);
+    expect(tabledPreparedSpellCount.length).toBe(2);
+  });
+
+  it('le rôdeur rouvre sa liste au repos long, l’occultiste en montant de niveau', () => {
+    expect(spellSwapRule('rodeur')).toEqual({ when: 'repos-long', count: 1 });
+    expect(spellSwapRule('occultiste')).toEqual({ when: 'montee-de-niveau', count: 1 });
+    expect(spellSwapRule('druide')).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import {
 import { proficiencyBonus } from '../domain/proficiency';
 import {
   cantripsKnown, fullCasterSlots, halfCasterSlots, pactMagicSlots,
-  preparedSpellCount, wizardSpellbookSize,
+  preparedSpellCount, tabledPreparedSpellCount, wizardSpellbookSize,
 } from '../domain/spellcasting-progression';
 import { alwaysPreparedSpellsFor } from '../content/always-prepared-spells';
 import { classFeaturesUpTo } from '../content/class-features';
@@ -238,7 +238,14 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     // les classes à sorts connus ont une liste fixe, traitée à part.
     const ability = entry.classId === 'magicien' ? 'int'
       : ['clerc', 'druide', 'rodeur'].includes(entry.classId) ? 'wis' : 'cha';
-    if (['clerc', 'druide', 'paladin', 'magicien'].includes(entry.classId)) {
+    // Occultiste, Rôdeur, Barde, Ensorceleur lisent leur nombre dans une table.
+    // Il était calculable depuis toujours, mais personne ne l'appelait : ces
+    // classes ressortaient donc sans budget de sorts du tout, et l'écran n'avait
+    // rien à afficher pour elles.
+    const parTable = tabledPreparedSpellCount(entry.classId as never, entry.level);
+    if (parTable !== null) {
+      preparedMax[entry.classId] = parTable;
+    } else if (['clerc', 'druide', 'paladin', 'magicien'].includes(entry.classId)) {
       preparedMax[entry.classId] = preparedSpellCount(modifiers[ability as keyof AbilityScores], entry.level);
     }
   }

@@ -11,7 +11,12 @@
 
 export type FullCasterClass = 'barde' | 'clerc' | 'druide' | 'ensorceleur' | 'magicien';
 export type HalfCasterClass = 'paladin' | 'rodeur';
-export type KnownCasterClass = 'barde' | 'ensorceleur' | 'occultiste' | 'rodeur';
+/**
+ * Classes dont le nombre de sorts préparés est lu dans une table figée, sans
+ * la caractéristique d'incantation. Le PHB 2024 dit bien « sorts préparés »
+ * pour elles aussi : « sorts connus » a disparu du vocabulaire.
+ */
+export type TabledCasterClass = 'barde' | 'ensorceleur' | 'occultiste' | 'rodeur';
 export type PrepareCasterClass = 'clerc' | 'druide' | 'paladin' | 'magicien';
 
 const clampLevel = (level: number): number => Math.max(1, Math.min(20, Math.floor(level)));
@@ -56,7 +61,7 @@ export const halfCasterSlots = (level: number): number[] => HALF_CASTER_SLOTS[cl
 export const pactMagicSlots = (level: number): { slots: number; slotLevel: number } => PACT_MAGIC[clampLevel(level) - 1];
 
 /** Sorts mineurs connus au niveau 1, avant paliers. Vérifié contre le PHB 2024. */
-const CANTRIPS_KNOWN_BASE: Record<FullCasterClass | KnownCasterClass, number> = {
+const CANTRIPS_KNOWN_BASE: Record<FullCasterClass | TabledCasterClass, number> = {
   barde: 2, clerc: 3, druide: 2, ensorceleur: 4, magicien: 3, occultiste: 2, rodeur: 0,
 };
 
@@ -75,41 +80,72 @@ export const wizardSpellbookSize = (level: number): number => 6 + 2 * (clampLeve
  * Sorts préparés — Clerc, Druide, Paladin, Magicien (le Magicien prépare
  * depuis son grimoire, cf. `wizardSpellbookSize` pour sa taille).
  *
- * CORRECTIF DE FOND par rapport à `table-connectee` : l'ancienne app
- * plafonnait ce nombre avec une table `PREPARED` figée par niveau, identique
- * pour magicien/clerc/druide/barde à un facteur près — sans jamais lire le
- * modificateur de caractéristique du personnage. C'est la règle de base du
- * jeu depuis 2014, inchangée en 2024 : `prêts = modificateur + niveau de
- * classe (minimum 1)`. Deux druides de même niveau mais de Sagesse
- * différente n'ont pas le même nombre de sorts préparés — l'ancienne table
- * ne pouvait pas le représenter puisqu'elle ignorait la caractéristique.
+ * ⚠ SOUS RÉSERVE — cette formule est probablement la règle de 2014, pas celle
+ * de 2024.
+ *
+ * Elle vient d'un correctif appliqué à `table-connectee`, dont la table
+ * `PREPARED` figée ignorait le modificateur de caractéristique. Le
+ * raisonnement était que « prêts = modificateur + niveau » est la règle de
+ * base, inchangée. Une relecture du PHB 2024 (tables de progression) indique
+ * l'inverse : le Clerc et le Druide y liraient eux aussi leur nombre de sorts
+ * préparés dans une colonne de leur table, comme les quatre classes de
+ * `PREPARED_SPELLS` ci-dessous.
+ *
+ * Les valeurs des colonnes Clerc et Druide n'ayant pas encore été relevées,
+ * rien n'est changé ici : une formule douteuse mais connue vaut mieux qu'une
+ * table inventée. Dès que les deux colonnes sont disponibles, cette fonction
+ * disparaît au profit de `PREPARED_SPELLS` — et le nombre de sorts préparés
+ * d'un Druide cesse de dépendre de sa Sagesse.
  */
 export const preparedSpellCount = (abilityModifier: number, level: number): number =>
   Math.max(1, abilityModifier + clampLevel(level));
 
 /**
- * Sorts connus — Barde, Ensorceleur, Occultiste, Rôdeur : liste fixe, ne
- * dépend pas de la caractéristique d'incantation.
+ * Sorts préparés lus dans la table de classe, du niveau 1 au niveau 20.
  *
- * Confiance par classe :
- * - `occultiste` : vérifié indépendamment contre le PHB 2024 (table Magie
- *   occulte, inchangée depuis 2014).
- * - `rodeur` : repris de `table-connectee` tel quel. Cohérent avec le
- *   décalage 2024 de `HALF_CASTER_SLOTS` (Magie dès le niveau 1), mais PAS
- *   vérifié indépendamment terme à terme — à confirmer contre le PHB papier.
- * - `barde`, `ensorceleur` : NON repris. Dans `table-connectee`, ces deux
- *   lignes étaient structurellement identiques à `druide`/`clerc` (une table
- *   `PREPARED` unique pour les quatre), ce qui n'a pas de sens pour des
- *   classes à sorts *connus* — signe que la table source elle-même mélangeait
- *   les deux mécaniques. À reconstruire depuis le PHB plutôt qu'à copier une
- *   valeur suspecte.
+ * Ces quatre classes ne calculent pas leur nombre de sorts : elles le lisent.
+ * La caractéristique d'incantation sert au DD de sauvegarde et au jet
+ * d'attaque, jamais à la taille de la liste — s'en servir ici rendrait un
+ * Occultiste au Charisme élevé plus large qu'il ne doit l'être.
+ *
+ * Toutes relevées dans le PHB 2024, table de progression de chaque classe :
+ * Barde p. 60, Ensorceleur p. 140, Rôdeur p. 120, Occultiste p. 154.
+ * Occultiste et Rôdeur ont été confrontés terme à terme aux valeurs que
+ * portait déjà ce module : les quarante nombres concordent.
  */
-const KNOWN_SPELLS: Partial<Record<KnownCasterClass, readonly number[]>> = {
+const PREPARED_SPELLS: Record<TabledCasterClass, readonly number[]> = {
+  barde: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  ensorceleur: [2, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
   occultiste: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
   rodeur: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
 };
 
-export const knownSpellCount = (classId: KnownCasterClass, level: number): number | null => {
-  const table = KNOWN_SPELLS[classId];
+export const tabledPreparedSpellCount = (classId: TabledCasterClass, level: number): number | null => {
+  const table = PREPARED_SPELLS[classId];
   return table ? table[clampLevel(level) - 1] : null;
 };
+
+/**
+ * Quand la liste préparée peut-elle changer, et de combien de sorts.
+ *
+ * La question n'est pas décorative : elle décide si l'écran des sorts propose
+ * un choix ou une consultation. Un Rôdeur rouvre sa liste à chaque repos long ;
+ * un Occultiste ne la rouvre qu'en montant de niveau, et rien dans Ruse magique
+ * ne l'y autorise — cette capacité ne rend que des emplacements de pacte.
+ *
+ * PHB 2024 : Rôdeur p. 119, Occultiste p. 154.
+ */
+export interface SpellSwapRule {
+  /** Ce qui rouvre la liste. */
+  when: 'repos-long' | 'montee-de-niveau';
+  /** Nombre de sorts échangeables à cette occasion. */
+  count: number;
+}
+
+const SPELL_SWAP: Partial<Record<TabledCasterClass, SpellSwapRule>> = {
+  occultiste: { when: 'montee-de-niveau', count: 1 },
+  rodeur: { when: 'repos-long', count: 1 },
+};
+
+export const spellSwapRule = (classId: string): SpellSwapRule | null =>
+  SPELL_SWAP[classId as TabledCasterClass] ?? null;
