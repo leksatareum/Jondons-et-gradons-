@@ -8,9 +8,10 @@ import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { cardsFromCharacter } from './spell-cards';
+import { SpellbookScreen } from './SpellbookScreen';
 import { withParty } from './roster';
 import { deriveCharacter } from '../model/derive';
-import { createEncounter, saveEncounter } from '../sync/mutations';
+import { createEncounter, saveEncounter, saveSheet } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -88,6 +89,7 @@ function Table({ client, compte, campagne }: {
   campagne: Appartenance;
 }) {
   const { snapshot, sync } = useCampaign(client, campagne.campaignId);
+  const [vue, setVue] = useState<'combat' | 'grimoire'>('combat');
 
   // La fiche du joueur, c'est la sienne — la propriété vient de la base, pas
   // d'un choix d'écran.
@@ -127,7 +129,33 @@ function Table({ client, compte, campagne }: {
 
   // Les cartes viennent de la fiche du joueur, pas d'une liste de démonstration :
   // celle-ci était écrite pour une occultiste, et tout le monde la recevait.
-  const cartes = cardsFromCharacter(maFiche.data, deriveCharacter(maFiche.data));
+  const derivee = deriveCharacter(maFiche.data);
+  const cartes = cardsFromCharacter(maFiche.data, derivee);
+
+  // Préparer un sort est une écriture comme une autre : la fiche part en base,
+  // et la ligne renvoyée fait foi. La règle qui dit si c'est permis vit dans le
+  // modèle — l'écran ne fait que proposer ce qu'elle autorise.
+  const basculerSort = (spellId: string, classId: string) => {
+    const fiche = maFiche.data;
+    const present = fiche.spells.some((sort) => sort.id === spellId);
+    const suivante = {
+      ...fiche,
+      spells: present
+        ? fiche.spells.filter((sort) => sort.id !== spellId)
+        : [...fiche.spells, { id: spellId, sourceClass: classId, prepared: true }],
+    };
+    void saveSheet(client, sync, maFiche.id, suivante);
+  };
+
+  if (vue === 'grimoire') {
+    return (
+      <>
+        {bandeau}
+        <SpellbookScreen sheet={maFiche.data} derived={derivee} onToggle={basculerSort} />
+        <Onglets vue={vue} onChanger={setVue} />
+      </>
+    );
+  }
 
   const rencontre = snapshot.encounter?.state;
   const enCombat = rencontre != null && rencontre.turnIndex >= 0;
@@ -152,7 +180,46 @@ function Table({ client, compte, campagne }: {
             : { mode: 'libre' }
         }
       />
+      <Onglets vue={vue} onChanger={setVue} />
     </>
+  );
+}
+
+/**
+ * Le passage d'un écran à l'autre.
+ *
+ * Flottant au-dessus du contenu plutôt qu'en barre fixe : les deux écrans
+ * gèrent déjà leur propre hauteur, et leur en retirer une bande obligerait à
+ * reprendre les deux mises en page pour un bouton.
+ */
+function Onglets({ vue, onChanger }: {
+  vue: 'combat' | 'grimoire';
+  onChanger: (vue: 'combat' | 'grimoire') => void;
+}) {
+  return (
+    <nav style={{
+      position: 'fixed', zIndex: 10,
+      right: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))',
+      display: 'flex', gap: 4, padding: 4,
+      borderRadius: 999, border: '1px solid var(--line)',
+      background: 'var(--surface-raised)', boxShadow: 'var(--raise)',
+    }}>
+      {([['combat', 'Combat'], ['grimoire', 'Sorts']] as const).map(([clef, libelle]) => (
+        <button
+          key={clef}
+          onClick={() => onChanger(clef)}
+          className="lbl"
+          style={{
+            minHeight: 38, padding: '0 14px', borderRadius: 999,
+            background: vue === clef ? 'var(--accent)' : 'transparent',
+            color: vue === clef ? 'var(--accent-ink)' : 'var(--muted)',
+            fontWeight: 700,
+          }}
+        >
+          {libelle}
+        </button>
+      ))}
+    </nav>
   );
 }
 

@@ -142,3 +142,51 @@ export function preparedBudget(sheet: CharacterSheet, derived: DerivedCharacter)
       };
     });
 }
+
+/** État d'un sort de la liste autorisée, du point de vue du joueur. */
+export type ChoiceState =
+  /** Déjà préparé par choix : retirable. */
+  | { kind: 'prepare' }
+  /** Accordé d'office : présent, non retirable, hors budget. */
+  | { kind: 'toujours-prepare' }
+  /** Accordé par un don ou une invocation : hors budget, non retirable. */
+  | { kind: 'accorde'; par: string }
+  /** Préparable maintenant. */
+  | { kind: 'disponible' }
+  /** Préparable, mais le plafond est atteint : il faut d'abord en retirer un. */
+  | { kind: 'budget-plein' };
+
+export interface SpellChoice {
+  spell: Spell;
+  state: ChoiceState;
+}
+
+/**
+ * Le catalogue autorisé d'une classe, chaque sort avec son état.
+ *
+ * Un sort indisponible reste affiché, avec sa raison. Le faire disparaître
+ * ferait chercher au joueur s'il s'agit d'une règle ou d'un défaut — et
+ * l'ancienne app lui a déjà coûté ces demi-heures-là.
+ */
+export function spellChoices(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  classId: string,
+): SpellChoice[] {
+  const liste = allowedSpells(sheet, derived).find((entry) => entry.classId === classId);
+  if (!liste) return [];
+
+  const book = new Map(
+    spellbookOf(sheet, derived)
+      .filter((entry) => entry.classId === classId)
+      .map((entry) => [entry.spell.id, entry.standing]),
+  );
+  const budget = preparedBudget(sheet, derived).find((entry) => entry.classId === classId);
+  const plein = budget ? !budget.room : false;
+
+  return liste.spells.map((spell): SpellChoice => {
+    const standing = book.get(spell.id);
+    if (standing) return { spell, state: standing };
+    return { spell, state: plein ? { kind: 'budget-plein' } : { kind: 'disponible' } };
+  });
+}

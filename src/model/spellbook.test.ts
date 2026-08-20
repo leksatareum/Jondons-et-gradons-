@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedSpells, maxCastableRank, preparedBudget, spellbookOf } from './spellbook';
+import { allowedSpells, maxCastableRank, preparedBudget, spellbookOf, spellChoices } from './spellbook';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
@@ -136,5 +136,45 @@ describe('le grimoire montre aussi ce qui n’est pas sur la fiche', () => {
     const ids = spellbookOf(sheet, derived).map((entree) => entree.spell.id);
     expect(ids).toContain('soins');
     expect(ids).not.toContain('sort-fantome');
+  });
+});
+
+describe('le catalogue autorisé, sort par sort', () => {
+  it('marque ce qui est préparé, et ce qui reste disponible', () => {
+    const { sheet, derived } = avec(fiche({
+      spells: [{ id: 'soins', sourceClass: 'druide', prepared: true }],
+    }));
+    const choix = spellChoices(sheet, derived, 'druide');
+    expect(choix.find((c) => c.spell.id === 'soins')?.state.kind).toBe('prepare');
+    expect(choix.find((c) => c.spell.id === 'enchevetrement')?.state.kind).toBe('disponible');
+  });
+
+  it('au plafond, tout le reste passe à « budget plein » plutôt que de disparaître', () => {
+    const { sheet, derived } = avec(fiche({
+      spells: ['soins', 'enchevetrement', 'baies-nourricieres', 'charme-personne', 'graisse']
+        .map((id) => ({ id, sourceClass: 'druide', prepared: true })),
+    }));
+    const choix = spellChoices(sheet, derived, 'druide');
+    // Plus rien n'est « disponible » : ce qui reste est soit hors d'atteinte
+    // faute de place, soit accordé d'office — un sort toujours préparé n'a
+    // jamais dépendu du budget.
+    expect(choix.some((c) => c.state.kind === 'disponible')).toBe(false);
+    expect(choix.some((c) => c.state.kind === 'budget-plein')).toBe(true);
+    expect(choix.find((c) => c.spell.id === 'parler-animaux')?.state.kind)
+      .toBe('toujours-prepare');
+  });
+
+  it('un sort toujours préparé n’est jamais proposé au choix', () => {
+    const { sheet, derived } = avec(fiche({
+      classLevels: [{ classId: 'rodeur', level: 2, subclass: null, subclassId: null }],
+    }));
+    const choix = spellChoices(sheet, derived, 'rodeur');
+    const marque = choix.find((c) => c.spell.id === 'marque-chasseur');
+    expect(marque?.state.kind).toBe('toujours-prepare');
+  });
+
+  it('ne propose rien pour une classe qui n’est pas celle du personnage', () => {
+    const { sheet, derived } = avec(fiche());
+    expect(spellChoices(sheet, derived, 'occultiste')).toEqual([]);
   });
 });
