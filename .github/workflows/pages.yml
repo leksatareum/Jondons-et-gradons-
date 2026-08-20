@@ -9,8 +9,8 @@
 # part dans le bundle que le navigateur télécharge, et c'est la RLS qui protège
 # les données. La ranger dans un secret donnerait l'illusion inverse.
 #
-# Absentes, la compilation échoue bruyamment (`ConfigurationManquante`) plutôt
-# que de publier une app qui s'ouvre et se casse à la première lecture.
+# Absentes, la publication s'arrête avant la compilation plutôt que de mettre
+# en ligne une app qui s'ouvre et se casse à la première lecture.
 
 name: Publier l'app
 
@@ -47,6 +47,20 @@ jobs:
 
       # Les écrans ne partent pas en ligne si le moteur de règles est cassé.
       - run: npm run check
+
+      # `readConfig` ne s'exécute que dans le navigateur : sans ce garde-fou, la
+      # compilation réussit et publie une app qui s'ouvre puis échoue à la
+      # première lecture — en pleine partie, le pire moment pour le découvrir.
+      - name: Vérifier la configuration Supabase
+        run: |
+          manquantes=()
+          [ -n "${{ vars.VITE_SUPABASE_URL }}" ] || manquantes+=(VITE_SUPABASE_URL)
+          [ -n "${{ vars.VITE_SUPABASE_ANON_KEY }}" ] || manquantes+=(VITE_SUPABASE_ANON_KEY)
+          if [ ${#manquantes[@]} -ne 0 ]; then
+            echo "::error::Variables de dépôt manquantes : ${manquantes[*]}."
+            echo "::error::Settings → Secrets and variables → Actions → Variables."
+            exit 1
+          fi
 
       - run: npm run build
         env:
