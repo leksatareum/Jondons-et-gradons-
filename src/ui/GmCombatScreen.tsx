@@ -50,12 +50,14 @@ function HpBar({ combatant }: { combatant: Combatant }) {
   );
 }
 
-function CombatantRow({ combatant, active, onTarget, onNext }: {
+function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
   combatant: Combatant;
   /** Vrai seulement quand le combat tourne ET que c'est son tour. */
   active: boolean;
   onTarget: (combatant: Combatant) => void;
   onNext: () => void;
+  /** Absent pour une créature : elle n'a pas de fiche à ouvrir. */
+  onOpenSheet: (() => void) | null;
 }) {
   const down = isDown(combatant);
   const isPlayer = combatant.side === 'joueur';
@@ -112,7 +114,22 @@ function CombatantRow({ combatant, active, onTarget, onNext }: {
         </div>
       </button>
 
-      <div style={{ marginTop: 8 }}><HpBar combatant={combatant} /></div>
+      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flexGrow: 1 }}><HpBar combatant={combatant} /></div>
+        {onOpenSheet && (
+          <button
+            onClick={onOpenSheet}
+            aria-label={`Ouvrir la fiche de ${combatant.name}`}
+            className="lbl"
+            style={{
+              flexShrink: 0, minHeight: 32, padding: '0 10px', borderRadius: 999,
+              border: '1px solid var(--line)', color: 'var(--muted)',
+            }}
+          >
+            Fiche →
+          </button>
+        )}
+      </div>
 
       {active && (
         <button
@@ -219,9 +236,14 @@ function DamagePad({ target, onApply, onClose }: {
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, onChange }: {
+export function GmCombatScreen({ state, onChange, onOpenSheet }: {
   state: EncounterState;
   onChange: (suivant: EncounterState) => void;
+  /**
+   * Ouvre la fiche d'un combattant du groupe. Le MJ y a les mêmes pouvoirs que
+   * le joueur — c'est la RLS qui l'y autorise, pas cet écran.
+   */
+  onOpenSheet?: (combatantId: string) => void;
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
   const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
@@ -311,6 +333,8 @@ export function GmCombatScreen({ state, onChange }: {
             active={active?.id === combatant.id}
             onTarget={(picked) => setTargetId(picked.id)}
             onNext={() => setState(nextTurn)}
+            onOpenSheet={onOpenSheet && combatant.side === 'joueur'
+              ? () => onOpenSheet(combatant.id) : null}
           />
         ))}
       </main>

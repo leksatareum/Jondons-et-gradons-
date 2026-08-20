@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CombatScreen } from './CombatScreen';
 import { GmCombatScreen } from './GmCombatScreen';
+import { SheetView, type SheetTab } from './SheetView';
 import { SignInScreen } from './SignInScreen';
 import { SyncBanner } from './SyncBanner';
 import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
-import { cardsFromCharacter } from './spell-cards';
-import { SpellbookScreen } from './SpellbookScreen';
 import { withParty } from './roster';
-import { deriveCharacter } from '../model/derive';
-import { createEncounter, saveEncounter, saveSheet } from '../sync/mutations';
+import { createEncounter, saveEncounter } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -89,7 +86,9 @@ function Table({ client, compte, campagne }: {
   campagne: Appartenance;
 }) {
   const { snapshot, sync } = useCampaign(client, campagne.campaignId);
-  const [vue, setVue] = useState<'combat' | 'grimoire'>('combat');
+  const [onglet, setOnglet] = useState<SheetTab>('combat');
+  /** Fiche que le MJ regarde. `null` : il est sur sa liste d'initiative. */
+  const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
 
   // La fiche du joueur, c'est la sienne — la propriété vient de la base, pas
   // d'un choix d'écran.
@@ -99,8 +98,23 @@ function Table({ client, compte, campagne }: {
   );
 
   const bandeau = <SyncBanner status={snapshot.status} onRefresh={() => sync.refresh()} />;
+  const rencontre = snapshot.encounter?.state;
 
   if (campagne.estMj) {
+    const ouverte = snapshot.sheets.find((fiche) => fiche.id === ficheOuverte);
+    if (ouverte) {
+      return (
+        <SheetView
+          client={client}
+          sync={sync}
+          fiche={ouverte}
+          rencontre={rencontre}
+          onglet={onglet}
+          onOnglet={setOnglet}
+          entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
+        />
+      );
+    }
     return (
       <>
         {bandeau}
@@ -109,6 +123,7 @@ function Table({ client, compte, campagne }: {
           sync={sync}
           campaignId={campagne.campaignId}
           snapshot={snapshot}
+          onOuvrirFiche={setFicheOuverte}
         />
       </>
     );
@@ -127,99 +142,49 @@ function Table({ client, compte, campagne }: {
     );
   }
 
-  // Les cartes viennent de la fiche du joueur, pas d'une liste de démonstration :
-  // celle-ci était écrite pour une occultiste, et tout le monde la recevait.
-  const derivee = deriveCharacter(maFiche.data);
-  const cartes = cardsFromCharacter(maFiche.data, derivee);
-
-  // Préparer un sort est une écriture comme une autre : la fiche part en base,
-  // et la ligne renvoyée fait foi. La règle qui dit si c'est permis vit dans le
-  // modèle — l'écran ne fait que proposer ce qu'elle autorise.
-  const basculerSort = (spellId: string, classId: string) => {
-    const fiche = maFiche.data;
-    const present = fiche.spells.some((sort) => sort.id === spellId);
-    const suivante = {
-      ...fiche,
-      spells: present
-        ? fiche.spells.filter((sort) => sort.id !== spellId)
-        : [...fiche.spells, { id: spellId, sourceClass: classId, prepared: true }],
-    };
-    void saveSheet(client, sync, maFiche.id, suivante);
-  };
-
-  if (vue === 'grimoire') {
-    return (
-      <>
-        {bandeau}
-        <SpellbookScreen sheet={maFiche.data} derived={derivee} onToggle={basculerSort} />
-        <Onglets vue={vue} onChanger={setVue} />
-      </>
-    );
-  }
-
-  const rencontre = snapshot.encounter?.state;
-  const enCombat = rencontre != null && rencontre.turnIndex >= 0;
-  const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
-
   return (
-    <>
-      {bandeau}
-      <CombatScreen
-        sheet={maFiche.data}
-        cards={cartes}
-        turn={
-          enCombat
-            ? {
-                mode: 'combat',
-                // Le lien fiche ↔ combattant se fait par le nom du personnage :
-                // c'est la seule clé commune tant qu'un combattant n'est pas
-                // rattaché à une fiche côté base.
-                isYourTurn: actif?.name === maFiche.data.name,
-                holder: actif?.name,
-              }
-            : { mode: 'libre' }
-        }
-      />
-      <Onglets vue={vue} onChanger={setVue} />
-    </>
+    <SheetView
+      client={client}
+      sync={sync}
+      fiche={maFiche}
+      rencontre={rencontre}
+      onglet={onglet}
+      onOnglet={setOnglet}
+      entete={bandeau}
+    />
   );
 }
 
 /**
- * Le passage d'un écran à l'autre.
+ * Le bandeau que voit le MJ sur la fiche d'un autre.
  *
- * Flottant au-dessus du contenu plutôt qu'en barre fixe : les deux écrans
- * gèrent déjà leur propre hauteur, et leur en retirer une bande obligerait à
- * reprendre les deux mises en page pour un bouton.
+ * Il dit en permanence de qui est la fiche ouverte. Sans lui, le MJ qui
+ * applique des dégâts sur un écran identique à celui d'un joueur n'a aucun
+ * moyen de savoir qu'il s'est trompé de personnage — et il ne s'en apercevrait
+ * qu'au moment où le joueur, lui, verrait ses points de vie fondre.
  */
-function Onglets({ vue, onChanger }: {
-  vue: 'combat' | 'grimoire';
-  onChanger: (vue: 'combat' | 'grimoire') => void;
-}) {
+function BandeauMj({ nom, onRetour }: { nom: string; onRetour: () => void }) {
   return (
-    <nav style={{
-      position: 'fixed', zIndex: 10,
-      right: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))',
-      display: 'flex', gap: 4, padding: 4,
-      borderRadius: 999, border: '1px solid var(--line)',
-      background: 'var(--surface-raised)', boxShadow: 'var(--raise)',
+    <div style={{
+      position: 'sticky', top: 0, zIndex: 15,
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 12px', paddingTop: 'calc(8px + env(safe-area-inset-top))',
+      background: 'var(--accent-wash)', borderBottom: '1px solid var(--accent)',
     }}>
-      {([['combat', 'Combat'], ['grimoire', 'Sorts']] as const).map(([clef, libelle]) => (
-        <button
-          key={clef}
-          onClick={() => onChanger(clef)}
-          className="lbl"
-          style={{
-            minHeight: 38, padding: '0 14px', borderRadius: 999,
-            background: vue === clef ? 'var(--accent)' : 'transparent',
-            color: vue === clef ? 'var(--accent-ink)' : 'var(--muted)',
-            fontWeight: 700,
-          }}
-        >
-          {libelle}
-        </button>
-      ))}
-    </nav>
+      <button
+        onClick={onRetour}
+        className="lbl"
+        style={{
+          minHeight: 36, padding: '0 12px', borderRadius: 999,
+          border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700,
+        }}
+      >
+        ← Combat
+      </button>
+      <div className="lbl" style={{ color: 'var(--accent)', textTransform: 'none' }}>
+        Tu modifies la fiche de <strong>{nom}</strong>
+      </div>
+    </div>
   );
 }
 
@@ -239,11 +204,12 @@ const vide: EncounterState = { turnIndex: -1, round: 0, combatants: [] };
  *   réseau, puis la ligne renvoyée par la base reprend la main. Sans lui, tenir
  *   « Suivant » deux fois de suite perdrait le premier appui.
  */
-function EcranMj({ client, sync, campaignId, snapshot }: {
+function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
   client: SupabaseClient;
   sync: CampaignSync;
   campaignId: string;
   snapshot: CampaignSnapshot;
+  onOuvrirFiche: (sheetId: string) => void;
 }) {
   const [brouillon, setBrouillon] = useState<EncounterState | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -296,7 +262,15 @@ function EcranMj({ client, sync, campaignId, snapshot }: {
           {erreur}
         </p>
       )}
-      <GmCombatScreen state={affiche} onChange={changer} />
+      <GmCombatScreen
+        state={affiche}
+        onChange={changer}
+        onOpenSheet={(combatantId) => {
+          // L'identifiant du combattant issu du groupe EST celui de la fiche
+          // (voir `withParty`) : une créature, elle, n'en a pas.
+          if (snapshot.sheets.some((fiche) => fiche.id === combatantId)) onOuvrirFiche(combatantId);
+        }}
+      />
     </>
   );
 }
