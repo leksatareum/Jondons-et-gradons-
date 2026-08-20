@@ -1,23 +1,31 @@
 /**
- * Progression de magie — PHB 2024. Tout est dérivé à la lecture : niveau de
- * classe et modificateur de caractéristique sont les seules entrées, jamais
- * une valeur figée sur la fiche.
+ * Progression de magie — PHB 2024. Tout est dérivé à la lecture : le niveau de
+ * classe est la seule entrée, jamais une valeur figée sur la fiche.
  *
  * Repêché de `table-connectee/src/App.jsx` (tables `SLOTS_FULL`, `SLOTS_HALF`,
- * `PACT`, `CANTRIPS_BASE`) et vérifié indépendamment contre le PHB 2024 —
- * voir le détail par table ci-dessous. Une correction de fond a été apportée
- * au passage : voir `preparedSpellCount`.
+ * `PACT`, `CANTRIPS_BASE`) et vérifié table par table contre le PHB 2024.
+ *
+ * Ce module a porté un temps une formule `modificateur + niveau` pour le
+ * nombre de sorts préparés du Clerc, du Druide, du Paladin et du Magicien.
+ * C'était la règle de 2014 : en 2024 ces quatre classes lisent leur nombre
+ * dans leur table, comme les autres. La formule a été retirée, et avec elle
+ * la dernière dépendance du répertoire de sorts à la caractéristique
+ * d'incantation.
  */
 
 export type FullCasterClass = 'barde' | 'clerc' | 'druide' | 'ensorceleur' | 'magicien';
 export type HalfCasterClass = 'paladin' | 'rodeur';
 /**
- * Classes dont le nombre de sorts préparés est lu dans une table figée, sans
- * la caractéristique d'incantation. Le PHB 2024 dit bien « sorts préparés »
- * pour elles aussi : « sorts connus » a disparu du vocabulaire.
+ * Toutes les classes lanceuses de sorts.
+ *
+ * En 2024 il n'y a plus de distinction à faire : chacune lit son nombre de
+ * sorts préparés dans la colonne « Prepared Spells » de sa propre table. Ni
+ * « sorts connus », ni formule à base de caractéristique — les deux
+ * mécaniques que le PHB 2014 opposait ont fusionné en une seule.
  */
-export type TabledCasterClass = 'barde' | 'ensorceleur' | 'occultiste' | 'rodeur';
-export type PrepareCasterClass = 'clerc' | 'druide' | 'paladin' | 'magicien';
+export type TabledCasterClass =
+  | 'barde' | 'clerc' | 'druide' | 'ensorceleur'
+  | 'magicien' | 'occultiste' | 'paladin' | 'rodeur';
 
 const clampLevel = (level: number): number => Math.max(1, Math.min(20, Math.floor(level)));
 
@@ -60,10 +68,16 @@ export const fullCasterSlots = (level: number): number[] => FULL_CASTER_SLOTS[cl
 export const halfCasterSlots = (level: number): number[] => HALF_CASTER_SLOTS[clampLevel(level) - 1];
 export const pactMagicSlots = (level: number): { slots: number; slotLevel: number } => PACT_MAGIC[clampLevel(level) - 1];
 
-/** Sorts mineurs connus au niveau 1, avant paliers. Vérifié contre le PHB 2024. */
-const CANTRIPS_KNOWN_BASE: Record<FullCasterClass | TabledCasterClass, number> = {
+/**
+ * Sorts mineurs connus au niveau 1, avant paliers. Vérifié contre le PHB 2024.
+ *
+ * Sa propre liste de classes, et non l'union des lanceurs : le Paladin lance
+ * des sorts sans jamais avoir de sort mineur, et le lui faire déclarer un
+ * nombre — fût-il zéro — laisserait croire que la question se pose.
+ */
+const CANTRIPS_KNOWN_BASE = {
   barde: 2, clerc: 3, druide: 2, ensorceleur: 4, magicien: 3, occultiste: 2, rodeur: 0,
-};
+} as const satisfies Partial<Record<TabledCasterClass, number>>;
 
 /** +1 aux niveaux 4 et 10, pour les classes qui ont des sorts mineurs. Vérifié. */
 export const cantripsKnown = (classId: keyof typeof CANTRIPS_KNOWN_BASE, level: number): number => {
@@ -73,50 +87,45 @@ export const cantripsKnown = (classId: keyof typeof CANTRIPS_KNOWN_BASE, level: 
   return base + (lv >= 4 ? 1 : 0) + (lv >= 10 ? 1 : 0);
 };
 
-/** Taille du grimoire du Magicien : 6 sorts au niveau 1, +2 par niveau. Vérifié, inchangé depuis 2014. */
+/**
+ * Sorts inscrits au grimoire du Magicien par sa progression : 6 au niveau 1,
+ * +2 par niveau ensuite (PHB 2024 p. 165).
+ *
+ * À ne jamais confondre avec le nombre de sorts préparés, qui se lit dans
+ * `PREPARED_SPELLS` : le grimoire est le répertoire où le Magicien puise, la
+ * liste préparée est ce qu'il en a tiré aujourd'hui. Au niveau 20 le premier
+ * contient au moins 44 sorts quand la seconde en compte 25.
+ *
+ * « Au moins » : ce n'est pas un plafond. Un Magicien recopie les sorts
+ * trouvés en aventure, et son grimoire dépasse alors cette progression.
+ */
 export const wizardSpellbookSize = (level: number): number => 6 + 2 * (clampLevel(level) - 1);
 
 /**
- * Sorts préparés — Clerc, Druide, Paladin, Magicien (le Magicien prépare
- * depuis son grimoire, cf. `wizardSpellbookSize` pour sa taille).
+ * Sorts préparés, lus dans la table de progression de chaque classe.
  *
- * ⚠ SOUS RÉSERVE — cette formule est probablement la règle de 2014, pas celle
- * de 2024.
+ * Une classe ne calcule pas son nombre de sorts : elle le lit. La
+ * caractéristique d'incantation sert au DD de sauvegarde et au jet d'attaque,
+ * jamais à la taille de la liste — deux Druides de même niveau préparent
+ * autant de sorts, quelle que soit leur Sagesse.
  *
- * Elle vient d'un correctif appliqué à `table-connectee`, dont la table
- * `PREPARED` figée ignorait le modificateur de caractéristique. Le
- * raisonnement était que « prêts = modificateur + niveau » est la règle de
- * base, inchangée. Une relecture du PHB 2024 (tables de progression) indique
- * l'inverse : le Clerc et le Druide y liraient eux aussi leur nombre de sorts
- * préparés dans une colonne de leur table, comme les quatre classes de
- * `PREPARED_SPELLS` ci-dessous.
+ * Relevées dans le PHB 2024, table de progression de chaque classe :
+ * Barde p. 60, Clerc p. 70, Druide p. 80, Paladin p. 110, Rôdeur p. 120,
+ * Ensorceleur p. 140, Occultiste p. 154, Magicien p. 166.
  *
- * Les valeurs des colonnes Clerc et Druide n'ayant pas encore été relevées,
- * rien n'est changé ici : une formule douteuse mais connue vaut mieux qu'une
- * table inventée. Dès que les deux colonnes sont disponibles, cette fonction
- * disparaît au profit de `PREPARED_SPELLS` — et le nombre de sorts préparés
- * d'un Druide cesse de dépendre de sa Sagesse.
- */
-export const preparedSpellCount = (abilityModifier: number, level: number): number =>
-  Math.max(1, abilityModifier + clampLevel(level));
-
-/**
- * Sorts préparés lus dans la table de classe, du niveau 1 au niveau 20.
- *
- * Ces quatre classes ne calculent pas leur nombre de sorts : elles le lisent.
- * La caractéristique d'incantation sert au DD de sauvegarde et au jet
- * d'attaque, jamais à la taille de la liste — s'en servir ici rendrait un
- * Occultiste au Charisme élevé plus large qu'il ne doit l'être.
- *
- * Toutes relevées dans le PHB 2024, table de progression de chaque classe :
- * Barde p. 60, Ensorceleur p. 140, Rôdeur p. 120, Occultiste p. 154.
- * Occultiste et Rôdeur ont été confrontés terme à terme aux valeurs que
- * portait déjà ce module : les quarante nombres concordent.
+ * Trois progressions seulement, pour huit classes : les lanceurs complets
+ * partagent la même (le Magicien s'en écarte à partir du niveau 14), et les
+ * demi-lanceurs Paladin et Rôdeur sont identiques. L'Occultiste est le seul
+ * cas à part.
  */
 const PREPARED_SPELLS: Record<TabledCasterClass, readonly number[]> = {
   barde: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  clerc: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  druide: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
   ensorceleur: [2, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  magicien: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 18, 19, 21, 22, 23, 24, 25],
   occultiste: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+  paladin: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
   rodeur: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
 };
 

@@ -6,7 +6,7 @@ import {
 import { proficiencyBonus } from '../domain/proficiency';
 import {
   cantripsKnown, fullCasterSlots, halfCasterSlots, pactMagicSlots,
-  preparedSpellCount, tabledPreparedSpellCount, wizardSpellbookSize,
+  tabledPreparedSpellCount, wizardSpellbookSize,
 } from '../domain/spellcasting-progression';
 import { alwaysPreparedSpellsFor } from '../content/always-prepared-spells';
 import { classFeaturesUpTo } from '../content/class-features';
@@ -234,20 +234,11 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     if (known > 0) cantripCounts[entry.classId] = known;
     const klass = classById(entry.classId);
     if (!klass?.caster) continue;
-    // Les classes qui préparent tirent leur nombre du modificateur + niveau ;
-    // les classes à sorts connus ont une liste fixe, traitée à part.
-    const ability = entry.classId === 'magicien' ? 'int'
-      : ['clerc', 'druide', 'rodeur'].includes(entry.classId) ? 'wis' : 'cha';
-    // Occultiste, Rôdeur, Barde, Ensorceleur lisent leur nombre dans une table.
-    // Il était calculable depuis toujours, mais personne ne l'appelait : ces
-    // classes ressortaient donc sans budget de sorts du tout, et l'écran n'avait
-    // rien à afficher pour elles.
-    const parTable = tabledPreparedSpellCount(entry.classId as never, entry.level);
-    if (parTable !== null) {
-      preparedMax[entry.classId] = parTable;
-    } else if (['clerc', 'druide', 'paladin', 'magicien'].includes(entry.classId)) {
-      preparedMax[entry.classId] = preparedSpellCount(modifiers[ability as keyof AbilityScores], entry.level);
-    }
+    // Une seule règle pour les huit classes lanceuses : le nombre se lit dans
+    // leur table de progression. La caractéristique d'incantation n'entre pas
+    // dans ce calcul — elle sert au DD et au jet d'attaque.
+    const preparables = tabledPreparedSpellCount(entry.classId as never, entry.level);
+    if (preparables !== null) preparedMax[entry.classId] = preparables;
   }
 
   // Les sorts accordés viennent de la classe, de la sous-classe, du terrain —

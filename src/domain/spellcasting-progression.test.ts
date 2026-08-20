@@ -6,7 +6,6 @@ import {
   tabledPreparedSpellCount,
   spellSwapRule,
   pactMagicSlots,
-  preparedSpellCount,
   wizardSpellbookSize,
 } from './spellcasting-progression';
 
@@ -65,35 +64,63 @@ describe('grimoire du Magicien', () => {
   });
 });
 
-describe('sorts préparés — dérivé du modificateur, pas d’une table figée', () => {
-  it('un Druide niveau 1 avec Sagesse +3 prépare 4 sorts', () => {
-    expect(preparedSpellCount(3, 1)).toBe(4);
+describe('sorts préparés — lus dans la table, jamais calculés (PHB 2024)', () => {
+  it('un Druide niveau 1 prépare 4 sorts, quelle que soit sa Sagesse', () => {
+    expect(tabledPreparedSpellCount('druide', 1)).toBe(4);
   });
-  it('à niveau égal, un modificateur plus élevé prépare plus de sorts', () => {
-    const faible = preparedSpellCount(1, 5);
-    const fort = preparedSpellCount(4, 5);
-    expect(fort).toBeGreaterThan(faible);
-    expect(fort - faible).toBe(3);
+  it('Clerc et Druide partagent la progression des lanceurs complets', () => {
+    for (let niveau = 1; niveau <= 20; niveau += 1) {
+      expect(tabledPreparedSpellCount('clerc', niveau))
+        .toBe(tabledPreparedSpellCount('druide', niveau));
+      expect(tabledPreparedSpellCount('barde', niveau))
+        .toBe(tabledPreparedSpellCount('druide', niveau));
+    }
   });
-  it('minimum 1, même avec un modificateur négatif', () => {
-    expect(preparedSpellCount(-2, 1)).toBe(1);
+  it('Paladin et Rôdeur ont la même progression de demi-lanceurs', () => {
+    for (let niveau = 1; niveau <= 20; niveau += 1) {
+      expect(tabledPreparedSpellCount('paladin', niveau))
+        .toBe(tabledPreparedSpellCount('rodeur', niveau));
+    }
+  });
+  it('le Magicien s’écarte des autres lanceurs complets à partir du niveau 14', () => {
+    expect(tabledPreparedSpellCount('magicien', 13)).toBe(tabledPreparedSpellCount('clerc', 13));
+    expect(tabledPreparedSpellCount('magicien', 14)).toBe(18);
+    expect(tabledPreparedSpellCount('clerc', 14)).toBe(17);
+    expect(tabledPreparedSpellCount('magicien', 20)).toBe(25);
+  });
+  it('le grimoire du Magicien n’est pas sa liste préparée', () => {
+    // Le répertoire où il puise, et ce qu'il en a tiré aujourd'hui : au
+    // niveau 20, 44 sorts inscrits au minimum pour 25 préparés.
+    expect(wizardSpellbookSize(20)).toBe(44);
+    expect(tabledPreparedSpellCount('magicien', 20)).toBe(25);
+    expect(wizardSpellbookSize(1)).toBe(6);
+    expect(tabledPreparedSpellCount('magicien', 1)).toBe(4);
   });
 });
 
-describe('sorts connus — Occultiste (vérifié PHB 2024)', () => {
-  it('niveau 1 : deux sorts connus', () => {
+describe('sorts préparés — Occultiste (vérifié PHB 2024)', () => {
+  it('niveau 1 : deux sorts préparés', () => {
     expect(tabledPreparedSpellCount('occultiste', 1)).toBe(2);
   });
-  it('niveau 20 : quinze sorts connus', () => {
+  it('niveau 20 : quinze sorts préparés', () => {
     expect(tabledPreparedSpellCount('occultiste', 20)).toBe(15);
   });
 });
 
-describe('sorts connus — table absente pour une classe non reconstruite', () => {
-  it('barde et ensorceleur renvoient null tant que non vérifiés contre le PHB', () => {
-    expect(tabledPreparedSpellCount('barde', 5)).toBe(9);
-    expect(tabledPreparedSpellCount('ensorceleur', 5)).toBe(9);
-    expect(tabledPreparedSpellCount('paladin' as never, 5)).toBeNull();
+describe('sorts préparés — les huit classes lanceuses ont leur table', () => {
+  it('aucune classe lanceuse ne reste sans nombre', () => {
+    const lanceuses = ['barde', 'clerc', 'druide', 'ensorceleur',
+      'magicien', 'occultiste', 'paladin', 'rodeur'] as const;
+    for (const classe of lanceuses) {
+      for (const niveau of [1, 5, 11, 20]) {
+        expect(tabledPreparedSpellCount(classe, niveau)).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('une classe sans magie n’a pas de nombre à lire', () => {
+    expect(tabledPreparedSpellCount('roublard' as never, 5)).toBeNull();
+    expect(tabledPreparedSpellCount('guerrier' as never, 5)).toBeNull();
   });
 });
 
