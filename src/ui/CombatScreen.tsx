@@ -203,7 +203,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, turn, onSpendHp }: {
+export function CombatScreen({ sheet, cards, turn, onSpendHp, onRest }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
   /**
@@ -212,6 +212,8 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp }: {
    */
   turn: TurnMode;
   onSpendHp?: (delta: number) => void;
+  /** Hors combat seulement : le repos n'a pas de sens au milieu d'un tour. */
+  onRest?: () => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
@@ -326,14 +328,18 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp }: {
         paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
         display: 'flex', gap: 9,
       }}>
+        {/* Hors combat ce bouton est le repos, et il doit être cliquable :
+            la condition « c'est ton tour » ne vaut qu'en combat, où elle
+            désactivait aussi le repos — un bouton grisé en permanence. */}
         <button
-          disabled={!isYourTurn}
+          disabled={inCombat ? !isYourTurn : !onRest}
           style={{
             flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 11, fontSize: 13, fontWeight: 700,
             background: isYourTurn ? 'var(--ink)' : 'transparent',
             color: isYourTurn ? 'var(--bg)' : 'var(--muted)',
             border: isYourTurn ? 'none' : '1px solid var(--line)',
           }}
+          onClick={!inCombat ? onRest : undefined}
         >
           {/* Hors combat, ni fin de tour ni ordre d'initiative : on propose le repos,
               qui est l'action de hors-combat la plus fréquente. */}

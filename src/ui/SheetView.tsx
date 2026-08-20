@@ -6,9 +6,12 @@ import { cardsFromCharacter } from './spell-cards';
 import { deriveCharacter } from '../model/derive';
 import { saveSheet } from '../sync/mutations';
 import { GrantSpellDialog } from './GrantSpellDialog';
+import { RestDialog } from './RestDialog';
+import { LevelUpDialog } from './LevelUpDialog';
+import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
-import type { SpellGrant } from '../model/character';
+import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
 
@@ -41,6 +44,8 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
   estMj?: boolean;
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
+  const [reposEnCours, setReposEnCours] = useState(false);
+  const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
   const cartes = useMemo(() => cardsFromCharacter(fiche.data, derivee), [fiche.data, derivee]);
@@ -84,6 +89,54 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
     setARevoquer(null);
   };
 
+  const prendreRepos = (kind: RestKind) => {
+    void saveSheet(client, sync, fiche.id, rest(fiche.data, derivee, kind).sheet);
+    setReposEnCours(false);
+  };
+
+  const monterDeNiveau = (suivante: CharacterSheet) => {
+    void saveSheet(client, sync, fiche.id, suivante);
+    setNiveauEnCours(false);
+  };
+
+  /**
+   * Les pouvoirs du MJ, disponibles sur les deux onglets. Ils vivent ici et
+   * non dans chaque écran : monter de niveau n'est ni une action de combat ni
+   * une affaire de sorts, et l'accrocher à l'un des deux le rendrait
+   * introuvable depuis l'autre.
+   */
+  const barreMj = estMj ? (
+    <div style={{
+      position: 'fixed', zIndex: 10,
+      left: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))',
+      display: 'flex', gap: 6,
+    }}>
+      <button
+        onClick={() => setNiveauEnCours(true)}
+        className="lbl"
+        style={{
+          minHeight: 38, padding: '0 12px', borderRadius: 999,
+          border: '1px solid var(--line)', background: 'var(--surface-raised)',
+          color: 'var(--muted)', boxShadow: 'var(--raise)', fontWeight: 700,
+        }}
+      >
+        Niveau +
+      </button>
+    </div>
+  ) : null;
+
+  const dialogues = (
+    <>
+      {niveauEnCours && (
+        <LevelUpDialog
+          sheet={fiche.data}
+          onMonter={monterDeNiveau}
+          onFermer={() => setNiveauEnCours(false)}
+        />
+      )}
+    </>
+  );
+
   if (onglet === 'grimoire') {
     const vise = (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer);
     return (
@@ -98,6 +151,8 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
             : undefined}
         />
         <Onglets onglet={onglet} onChanger={onOnglet} />
+        {barreMj}
+        {dialogues}
         {donEnCours && (
           <GrantSpellDialog
             sheet={fiche.data}
@@ -130,6 +185,7 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
         sheet={fiche.data}
         cards={cartes}
         onSpendHp={soignerOuBlesser}
+        onRest={() => setReposEnCours(true)}
         turn={
           enCombat
             ? {
@@ -144,6 +200,16 @@ export function SheetView({ client, sync, fiche, rencontre, onglet, onOnglet, en
         }
       />
       <Onglets onglet={onglet} onChanger={onOnglet} />
+      {barreMj}
+      {dialogues}
+      {reposEnCours && (
+        <RestDialog
+          sheet={fiche.data}
+          derived={derivee}
+          onRepos={prendreRepos}
+          onFermer={() => setReposEnCours(false)}
+        />
+      )}
     </>
   );
 }
