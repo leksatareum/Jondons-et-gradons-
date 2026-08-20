@@ -7,8 +7,9 @@ import { SyncBanner } from './SyncBanner';
 import { useCampaign } from './useCampaign';
 import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
-import { demoCards } from './demo-data';
+import { cardsFromCharacter } from './spell-cards';
 import { withParty } from './roster';
+import { deriveCharacter } from '../model/derive';
 import { createEncounter, saveEncounter } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
@@ -124,6 +125,10 @@ function Table({ client, compte, campagne }: {
     );
   }
 
+  // Les cartes viennent de la fiche du joueur, pas d'une liste de démonstration :
+  // celle-ci était écrite pour une occultiste, et tout le monde la recevait.
+  const cartes = cardsFromCharacter(maFiche.data, deriveCharacter(maFiche.data));
+
   const rencontre = snapshot.encounter?.state;
   const enCombat = rencontre != null && rencontre.turnIndex >= 0;
   const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
@@ -133,7 +138,7 @@ function Table({ client, compte, campagne }: {
       {bandeau}
       <CombatScreen
         sheet={maFiche.data}
-        cards={demoCards}
+        cards={cartes}
         turn={
           enCombat
             ? {
