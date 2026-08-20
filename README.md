@@ -45,6 +45,21 @@ compilation, les 29 feuilles CSS, et les ponts UI/effets temps réel
 (`src/runtime/*Bridge.tsx`) — c'est précisément l'architecture qui rendait
 l'ancienne app bancale.
 
+## Mise en ligne
+
+Hébergée sur Vercel, qui compile à chaque poussée sur `main`. Deux variables
+d'environnement à renseigner dans le projet Vercel :
+
+    VITE_SUPABASE_URL       l'URL du projet Supabase
+    VITE_SUPABASE_ANON_KEY  la clé « anon »
+
+Des variables ordinaires, pas des secrets : la clé anon part dans le bundle que
+le navigateur télécharge, et c'est la RLS qui protège les données — la ranger
+dans un secret donnerait l'illusion inverse.
+
+Vercel compile mais ne lance pas les tests (`npm run build` s'arrête au
+typecheck) : c'est le workflow `Vérification` qui fait tourner `npm run check`.
+
 ## Commandes
 
 ```bash

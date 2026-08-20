@@ -1,0 +1,25 @@
+# Vérification à chaque poussée.
+#
+# Le déploiement est chez Vercel, qui compile mais ne lance pas les tests :
+# `npm run build` s'arrête au typecheck. Sans ce workflow, une règle cassée
+# partirait en ligne sans que rien ne s'y oppose.
+
+name: Vérification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
