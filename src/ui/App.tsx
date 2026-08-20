@@ -119,7 +119,10 @@ function Table({ client, compte, campagne }: {
           campaignId={campagne.campaignId}
           userId={compte.userId}
           journalEntries={snapshot.journalEntries}
-          notes={[]}
+          // Le MJ lit les notes de toute sa table (RLS `jg_is_gm`), mais
+          // l'onglet Journal d'une fiche ne montre que celles de cette
+          // fiche-là : celles d'un autre joueur n'ont rien à faire ici.
+          notes={snapshot.notes.filter((note) => note.ownerId === ouverte.ownerId)}
         />
       );
     }

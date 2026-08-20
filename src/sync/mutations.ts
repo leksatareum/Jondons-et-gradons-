@@ -116,9 +116,9 @@ export const deleteJournalEntry = (
 ): Promise<void> => deleteRow(client, sync, JOURNAL_TABLE, id);
 
 /**
- * Les notes : personnelles, jamais lues par personne d'autre — pas même le
- * MJ. La RLS (`owner_id = auth.uid()`) est la seule garantie qui compte ;
- * ces fonctions ne font que la solliciter dans le bon sens.
+ * Les notes : personnelles à l'écriture (RLS `owner_id = auth.uid()`), mais
+ * lisibles du MJ (`jg_is_gm(campaign_id)`, policy additive) — jamais des
+ * autres joueurs. Ces fonctions ne font que solliciter la RLS dans le bon sens.
  */
 export async function createNote(
   client: SupabaseClient,

@@ -25,8 +25,9 @@ export interface CampaignSnapshot {
   /** Journal public, écrit par le MJ. Visible de tous — la RLS s'en charge. */
   journalEntries: JournalEntry[];
   /**
-   * Notes personnelles. La RLS ne renvoie jamais que les siennes : ce tableau
-   * contient déjà exactement ce qu'un client a le droit de voir, jamais plus.
+   * Notes personnelles. La RLS ne renvoie jamais que ce qu'on a le droit de
+   * voir : les siennes pour un joueur, celles de toute la table pour le MJ
+   * (qui garde un œil dessus, mais ne les écrit jamais).
    */
   notes: Note[];
 }

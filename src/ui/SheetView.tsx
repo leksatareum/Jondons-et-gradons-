@@ -60,7 +60,11 @@ export function SheetView({
   /** Qui regarde l'écran — pour signer une entrée de journal ou une note, jamais pour filtrer : la RLS s'en charge déjà. */
   userId: string;
   journalEntries: JournalEntry[];
-  /** Toujours celles de `userId` : la RLS ne renvoie jamais celles d'un autre. Absent côté MJ. */
+  /**
+   * Côté joueur : les siennes — la RLS ne renvoie jamais celles d'un autre.
+   * Côté MJ : celles du personnage de `fiche`, déjà filtrées par l'appelant
+   * (le MJ lit toute sa table, mais un onglet ne montre qu'une fiche à la fois).
+   */
   notes: Note[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
@@ -214,8 +218,9 @@ export function SheetView({
         {entete}
         <JournalScreen
           entries={journalEntries}
-          notes={estMj ? [] : notes}
+          notes={notes}
           estMj={Boolean(estMj)}
+          notesOwnerName={estMj ? fiche.data.name : undefined}
           onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}
           onSupprimerEntree={estMj ? supprimerEntreeJournal : undefined}
           onAjouterNote={estMj ? undefined : ajouterNote}

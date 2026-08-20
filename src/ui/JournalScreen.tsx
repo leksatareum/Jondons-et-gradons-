@@ -61,14 +61,20 @@ function EntreeJournal({ entree, onSupprimer }: { entree: JournalEntry; onSuppri
 }
 
 export function JournalScreen({
-  entries, notes, estMj,
+  entries, notes, estMj, notesOwnerName,
   onAjouterEntree, onSupprimerEntree,
   onAjouterNote, onModifierNote, onSupprimerNote,
 }: {
   entries: JournalEntry[];
-  /** Absentes côté MJ : cet écran n'en reçoit jamais quand `estMj` est vrai. */
+  /**
+   * Côté joueur : les siennes. Côté MJ : celles du personnage dont la fiche
+   * est ouverte — la RLS l'autorise à les lire, jamais à les écrire, donc
+   * aucun contrôle d'édition ne lui est proposé ici.
+   */
   notes: Note[];
   estMj: boolean;
+  /** Nom du personnage dont on lit les notes, pour titrer la section côté MJ. */
+  notesOwnerName?: string;
   onAjouterEntree?: (entree: { title: string | null; body: string }) => void;
   onSupprimerEntree?: (id: string) => void;
   onAjouterNote?: (note: { title: string | null; body: string }) => void;
@@ -175,7 +181,7 @@ export function JournalScreen({
             </button>
           </div>
           <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)' }}>
-            Personnelles — personne d’autre ne les voit, pas même le MJ.
+            Personnelles — seul le MJ peut aussi les lire, pour garder un œil sur la table.
           </div>
 
           {noteOuverte && (
@@ -238,6 +244,32 @@ export function JournalScreen({
                 Supprimer
               </span>
             </button>
+          ))}
+        </>
+      )}
+
+      {/*
+        Côté MJ : lecture seule, jamais d'édition — la RLS ne lui donne que le
+        droit de lire. Rien à afficher tant que ce joueur n'a écrit aucune
+        note, plutôt qu'une section vide sans intérêt.
+      */}
+      {estMj && notes.length > 0 && (
+        <>
+          <h2 className="ttl" style={{ fontSize: 17, marginTop: 18 }}>
+            Notes {notesOwnerName ? `de ${notesOwnerName}` : 'personnelles'}
+          </h2>
+          {parDateDecroissante(notes).map((note) => (
+            <div key={note.id} style={carte}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                {note.title && <div className="ttl" style={{ fontSize: 15, flexGrow: 1 }}>{note.title}</div>}
+                <div className="lbl" style={note.title ? undefined : { flexGrow: 1, textAlign: 'right' }}>
+                  {dateCourte(note.createdAt)}
+                </div>
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                {note.body}
+              </p>
+            </div>
           ))}
         </>
       )}
