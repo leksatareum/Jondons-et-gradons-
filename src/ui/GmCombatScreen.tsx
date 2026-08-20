@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
-  activeCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
+import { AddAdversaryDialog } from './AddAdversaryDialog';
 
 /**
  * Écran de combat du MJ.
@@ -246,8 +247,17 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
   onOpenSheet?: (combatantId: string) => void;
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [ajoutEnCours, setAjoutEnCours] = useState(false);
   const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
     onChange(typeof suivant === 'function' ? suivant(state) : suivant);
+
+  const ajouterAdversaire = (combatant: Omit<Combatant, 'id'>) => {
+    setState((current) => addCombatant(current, {
+      ...combatant,
+      id: `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    }));
+    setAjoutEnCours(false);
+  };
 
   const ordered = useMemo(() => orderedCombatants(state), [state]);
   const running = isRunning(state);
@@ -301,6 +311,18 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
             </button>
           )}
 
+          <button
+            onClick={() => setAjoutEnCours(true)}
+            aria-label="Ajouter un adversaire"
+            style={{
+              width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+              display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 700,
+              color: 'var(--muted)',
+            }}
+          >
+            +
+          </button>
+
           {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour. */}
           <button
             onClick={() => setState(running ? endEncounter : beginEncounter)}
@@ -341,6 +363,9 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
 
       {target && (
         <DamagePad target={target} onApply={apply} onClose={() => setTargetId(null)} />
+      )}
+      {ajoutEnCours && (
+        <AddAdversaryDialog onAjouter={ajouterAdversaire} onFermer={() => setAjoutEnCours(false)} />
       )}
     </div>
   );

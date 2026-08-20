@@ -182,3 +182,15 @@ export function withDistinctNames(combatants: Combatant[]): Combatant[] {
 /** Remplace un combattant par sa version modifiée, en conservant l'ordre. */
 export const replaceCombatant = (state: EncounterState, combatant: Combatant): EncounterState =>
   ({ ...state, combatants: state.combatants.map((entry) => (entry.id === combatant.id ? combatant : entry)) });
+
+/**
+ * Ajoute un combattant — un adversaire que le MJ vient de saisir, une
+ * créature invoquée en cours de combat. Renomme au passage s'il porte déjà le
+ * nom d'un autre : deux « Gobelin » à la table sont invivables à cibler.
+ *
+ * L'ordre d'initiative n'a rien à recalculer : `orderedCombatants` le fait à
+ * la lecture, et un combattant qui rejoint milieu de round y prend
+ * naturellement sa place au tour suivant.
+ */
+export const addCombatant = (state: EncounterState, combatant: Combatant): EncounterState =>
+  ({ ...state, combatants: withDistinctNames([...state.combatants, combatant]) });

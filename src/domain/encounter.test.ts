@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activeCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
   withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
@@ -166,5 +166,34 @@ describe('le tour par tour n’existe que si le MJ le lance', () => {
     const relance = beginEncounter(endEncounter(beginEncounter(state)));
     expect(isRunning(relance)).toBe(true);
     expect(relance.combatants).toHaveLength(2);
+  });
+});
+
+describe('ajouter un combattant', () => {
+  const base = (over: Partial<Combatant> = {}): Combatant => ({
+    id: 'x', name: 'Gobelin', side: 'creature', initiative: 10, dexterity: 2,
+    maxHp: 7, damageTaken: 0, temporaryHp: 0, armorClass: 15, conditions: [],
+    ...over,
+  });
+
+  it('ajoute sans toucher aux autres', () => {
+    const etat: EncounterState = { combatants: [base({ id: 'a' })], turnIndex: -1, round: 0 };
+    const apres = addCombatant(etat, base({ id: 'b', name: 'Loup' }));
+    expect(apres.combatants.map((c) => c.name)).toEqual(['Gobelin', 'Loup']);
+  });
+
+  it('renomme deux combattants qui portent le même nom', () => {
+    const etat: EncounterState = { combatants: [base({ id: 'a' })], turnIndex: -1, round: 0 };
+    const apres = addCombatant(etat, base({ id: 'b' }));
+    expect(apres.combatants.map((c) => c.name)).toEqual(['Gobelin 1', 'Gobelin 2']);
+  });
+
+  it('un combattant qui rejoint en cours de round trouve sa place au tour suivant', () => {
+    const etat: EncounterState = {
+      combatants: [base({ id: 'a', initiative: 5 })], turnIndex: 0, round: 2,
+    };
+    const apres = addCombatant(etat, base({ id: 'b', name: 'Loup', initiative: 20 }));
+    expect(orderedCombatants(apres)[0].name).toBe('Loup');
+    expect(apres.turnIndex).toBe(0); // le tour en cours n'est pas perturbé
   });
 });
