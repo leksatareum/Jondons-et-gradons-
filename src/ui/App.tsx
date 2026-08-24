@@ -134,6 +134,7 @@ function Table({ client, compte, campagne }: {
           sync={sync}
           fiche={ouverte}
           rencontre={rencontre}
+          encounterId={snapshot.encounter?.id}
           onglet={onglet}
           onOnglet={setOnglet}
           entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
@@ -204,6 +205,7 @@ function Table({ client, compte, campagne }: {
       sync={sync}
       fiche={maFiche}
       rencontre={rencontre}
+      encounterId={snapshot.encounter?.id}
       onglet={onglet}
       onOnglet={setOnglet}
       entete={bandeau}

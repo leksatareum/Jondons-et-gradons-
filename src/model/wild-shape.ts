@@ -3,6 +3,7 @@ import {
   isMoonDruid, wildShapeArmorClass, wildShapeKnownLimit, wildShapeMaxCr, wildShapeTempHp,
   type WildShapeCharacter, type WildShapeProfile,
 } from '../domain/wild-shape';
+import { grantTemporaryHp } from './damage';
 import { levelInClass, subclassOf, type CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
 
@@ -80,7 +81,7 @@ export function swapForm(sheet: CharacterSheet, derived: DerivedCharacter, fromI
   };
 }
 
-const WILD_SHAPE_RESOURCE_KEY = 'druide:forme-sauvage';
+export const WILD_SHAPE_RESOURCE_KEY = 'druide:forme-sauvage';
 
 export interface WildShapeStatBlock {
   profile: WildShapeProfile;
@@ -112,7 +113,7 @@ export function transform(sheet: CharacterSheet, derived: DerivedCharacter, form
   if (!eligibleForms(sheet, derived).some((profile) => profile.id === formId)) return sheet;
   const ressource = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
   if (!ressource || ressource.remaining <= 0) return sheet;
-  return {
+  const transforme: CharacterSheet = {
     ...sheet,
     live: {
       ...sheet.live,
@@ -123,6 +124,30 @@ export function transform(sheet: CharacterSheet, derived: DerivedCharacter, form
       },
     },
   };
+  // Les PV temporaires de la forme entrent dans le VRAI état vivant, celui
+  // que le pipeline de dégâts consomme — les afficher sur une carte de forme
+  // sans les écrire ici les rendait inexistants en jeu.
+  return grantTemporaryHp(transforme, wildShapeTemporaryHp(sheet));
+}
+
+/**
+ * PV temporaires gagnés en prenant une Forme sauvage (PHB 2024).
+ *
+ * Druide ordinaire : son niveau de Druide.
+ * Cercle de la Lune à partir du niveau 3 : trois fois son niveau de Druide.
+ */
+export function wildShapeTemporaryHp(sheet: CharacterSheet): number {
+  const niveau = druidLevel(sheet);
+  if (niveau <= 0) return 0;
+  return estCercleDeLaLune(sheet) && niveau >= 3 ? niveau * 3 : niveau;
+}
+
+/** Le Cercle de la Lune se lit sur la sous-classe déclarée du niveau de Druide. */
+export function estCercleDeLaLune(sheet: CharacterSheet): boolean {
+  return sheet.classLevels.some((entry) => (
+    entry.classId === 'druide'
+    && (entry.subclassId === 'lune' || entry.subclass === 'Cercle de la Lune')
+  ));
 }
 
 /** Reprend forme humanoïde. Ne rend pas la charge dépensée — sortir de forme est gratuit, pas la transformation elle-même. */

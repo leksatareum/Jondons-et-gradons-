@@ -1,6 +1,7 @@
 import { restoresAllOnShortRest } from '../domain/resource-recovery';
 import { companionsAfterLongRest } from './companions';
-import { druidLevel } from './wild-shape';
+import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
+import { levelInClass } from './character';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
 
@@ -31,8 +32,10 @@ export interface RestOutcome {
  *
  * Ne rend ni points de vie ni emplacements de sort ordinaires : le personnage
  * dépense des dés de vie pour se soigner, et ce geste-là lui appartient. Ce
- * qui revient seul, ce sont les réserves dites « au repos court » — et les
- * emplacements de pacte, que l'Occultiste retrouve à chaque pause.
+ * qui revient seul, ce sont les réserves dites « au repos court », les
+ * emplacements de pacte que l'Occultiste retrouve à chaque pause, UNE
+ * utilisation de Forme sauvage, et un cran d'épuisement pour un Rôdeur de
+ * niveau 10 ou plus (Infatigable).
  */
 export function shortRest(sheet: CharacterSheet, derived: DerivedCharacter): RestOutcome {
   const recovered: string[] = [];
@@ -45,51 +48,46 @@ export function shortRest(sheet: CharacterSheet, derived: DerivedCharacter): Res
     recovered.push(resource.name);
   }
 
+  // ── Forme sauvage : EXACTEMENT une utilisation ────────────────────
+  // PHB 2024, Druide 2 : un repos court rend une seule utilisation
+  // dépensée (le repos long les rend toutes). Une recharge générique
+  // « court ou long » rendrait toute la réserve — c'est pourquoi cette
+  // capacité ne passe pas par la boucle ci-dessus.
+  const formeSauvageDues = resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0;
+  if (formeSauvageDues > 0) {
+    if (formeSauvageDues === 1) delete resourcesSpent[WILD_SHAPE_RESOURCE_KEY];
+    else resourcesSpent[WILD_SHAPE_RESOURCE_KEY] = formeSauvageDues - 1;
+    recovered.push('Une utilisation de Forme sauvage');
+  }
+
   const pacte = derived.spellcasting.slots.some((slot) => slot.pact);
   const pactSlotsSpent = pacte ? 0 : sheet.live.pactSlotsSpent;
   if (pacte && sheet.live.pactSlotsSpent > 0) recovered.push('Emplacements de pacte');
 
+  // ── Infatigable : Rôdeur 10+ ──────────────────────────────────────
+  // PHB 2024 : chaque repos court terminé réduit l'Épuisement de 1.
+  // Distinct de la réduction du repos long, et cumulable avec elle.
+  const avecInfatigable = levelInClass(sheet, 'rodeur') >= 10;
+  const exhaustion = avecInfatigable
+    ? Math.max(0, sheet.live.exhaustion - 1)
+    : sheet.live.exhaustion;
+  if (exhaustion < sheet.live.exhaustion) recovered.push('Un cran d’épuisement (Infatigable)');
+
   return {
-    sheet: { ...sheet, live: { ...sheet.live, resourcesSpent, pactSlotsSpent } },
+    sheet: { ...sheet, live: { ...sheet.live, resourcesSpent, pactSlotsSpent, exhaustion } },
     recovered,
   };
 }
 
 /**
- * Dés de vie récupérés à la fin d'un repos long : la moitié du total, arrondie
- * au supérieur, jamais moins d'un. Répartis sur les classes qui en ont
- * dépensé, en commençant par la première — un multiclassé choisira lui-même
- * quand l'écran le lui permettra ; jusque-là, un ordre stable vaut mieux qu'un
- * ordre arbitraire.
- */
-function recoverHitDice(
-  spent: Record<string, number>,
-  total: number,
-): { hitDiceSpent: Record<string, number>; rendus: number } {
-  const aRendre = Math.max(1, Math.ceil(total / 2));
-  const hitDiceSpent = { ...spent };
-  let restant = aRendre;
-  let rendus = 0;
-  for (const classId of Object.keys(hitDiceSpent)) {
-    if (restant <= 0) break;
-    const dus = hitDiceSpent[classId];
-    const pris = Math.min(dus, restant);
-    if (pris <= 0) continue;
-    restant -= pris;
-    rendus += pris;
-    if (dus - pris <= 0) delete hitDiceSpent[classId];
-    else hitDiceSpent[classId] = dus - pris;
-  }
-  return { hitDiceSpent, rendus };
-}
-
-/**
  * Un repos long.
  *
- * Tout revient, sauf les dés de vie — dont la moitié seulement — et
- * l'épuisement, qui ne descend que d'un cran. Ces deux exceptions sont ce qui
- * fait qu'une journée difficile pèse encore le lendemain ; les gommer
- * changerait l'équilibre du jeu, pas seulement l'affichage.
+ * Tout revient : points de vie, emplacements, réserves, et TOUS les dés de
+ * vie dépensés. Seul l'épuisement fait exception — il ne descend que d'un
+ * cran, ce qui fait qu'une journée difficile pèse encore le lendemain.
+ *
+ * Rendre la moitié des dés de vie était la règle de 2014 ; le PHB 2024 les
+ * rend tous.
  */
 export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): RestOutcome {
   const recovered: string[] = [];
@@ -104,8 +102,8 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
     if ((live.resourcesSpent[resource.key] ?? 0) > 0) recovered.push(resource.name);
   }
 
-  const totalDes = derived.hitDice.reduce((somme, entry) => somme + entry.total, 0);
-  const { hitDiceSpent, rendus } = recoverHitDice(live.hitDiceSpent, totalDes);
+  const rendus = Object.values(live.hitDiceSpent).reduce((somme, n) => somme + n, 0);
+  const hitDiceSpent: Record<string, number> = {};
   if (rendus > 0) recovered.push(`${rendus} dé(s) de vie`);
   if (live.exhaustion > 0) recovered.push('Un cran d’épuisement');
 

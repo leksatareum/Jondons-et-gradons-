@@ -277,7 +277,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
+export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
   /**
@@ -292,8 +292,23 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
    * cet écran (`spent`) — elle n'a de sens que le temps du tour, pas au-delà.
    */
   onPlayCard?: (card: PlayableCard) => void;
+  /**
+   * Identité du tour en cours (`turnIdentity`). Les économies d'action
+   * appartiennent au tour où elles ont été dépensées : quand cette valeur
+   * change, elles sont oubliées. Sans elle, une Action dépensée restait
+   * barrée pour tout le reste du combat.
+   */
+  turnId?: string;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
+  const [tourSuivi, setTourSuivi] = useState(turnId);
+
+  // Remise à zéro pendant le rendu, sans effet différé : l'écran ne doit
+  // jamais afficher, même un instant, l'économie du tour précédent.
+  if (turnId !== tourSuivi) {
+    setTourSuivi(turnId);
+    setSpent({});
+  }
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
   const layout = useMemo(() => layoutCombatCards(cards, { turn, spent }), [cards, turn, spent]);
   const inCombat = turn.mode === 'combat';

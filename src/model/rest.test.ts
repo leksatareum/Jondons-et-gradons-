@@ -40,10 +40,12 @@ describe('repos long — tout revient, sauf ce qui doit peser le lendemain', () 
     expect(sheet.live.resourcesSpent).toEqual({});
   });
 
-  it('ne rend que la moitié des dés de vie', () => {
-    // Druide 6 : six dés au total, trois reviennent, il en reste deux dépensés.
+  it('rend TOUS les dés de vie dépensés', () => {
+    // PHB 2024 : le repos long rend la totalité des dés de vie. La moitié
+    // était la règle de 2014 — ce test l'encodait, et la faisait donc passer
+    // pour correcte.
     const { sheet } = longRest(use, deriveCharacter(use));
-    expect(sheet.live.hitDiceSpent).toEqual({ druide: 2 });
+    expect(sheet.live.hitDiceSpent).toEqual({});
   });
 
   it('ne descend l’épuisement que d’un cran', () => {
@@ -101,10 +103,19 @@ describe('repos court — ce qui revient, et ce qui ne revient pas', () => {
     expect(sheet.live.spellSlotsSpent).toEqual({ 1: 3 });
   });
 
-  it('ne rend pas une ressource qui attend le repos long', () => {
+  it('rend EXACTEMENT une utilisation de Forme sauvage, pas la réserve', () => {
+    // PHB 2024, Druide 2 : un repos court rend une seule utilisation
+    // dépensée. Ce test affirmait l'inverse (rien ne revenait), ce qui
+    // faisait passer la non-conformité pour un choix.
     const use = fiche('druide', 6, { resourcesSpent: { 'druide:forme-sauvage': 2 } });
     const { sheet } = shortRest(use, deriveCharacter(use));
-    expect(sheet.live.resourcesSpent['druide:forme-sauvage']).toBe(2);
+    expect(sheet.live.resourcesSpent['druide:forme-sauvage']).toBe(1);
+  });
+
+  it('une seule utilisation dépensée revient entièrement, sans clé résiduelle', () => {
+    const use = fiche('druide', 6, { resourcesSpent: { 'druide:forme-sauvage': 1 } });
+    const { sheet } = shortRest(use, deriveCharacter(use));
+    expect(sheet.live.resourcesSpent['druide:forme-sauvage']).toBeUndefined();
   });
 
   it('rend une ressource dite « au repos court »', () => {

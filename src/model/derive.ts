@@ -107,23 +107,37 @@ export interface DerivedCharacter {
   hitDice: { classId: string; die: number; total: number; spent: number; remaining: number }[];
 }
 
-const CASTER_WEIGHT: Record<string, number> = { full: 1, half: 0.5 };
+/**
+ * Contribution d'une classe au niveau de lanceur multiclassé, PHB 2024.
+ *
+ * L'ARRONDI SE FAIT PAR CLASSE, jamais sur la somme. Un lanceur complet
+ * (Barde, Clerc, Druide, Ensorceleur, Magicien) apporte tous ses niveaux ;
+ * un demi-lanceur (Paladin, Rôdeur) apporte la moitié ARRONDIE AU SUPÉRIEUR.
+ *
+ * Sommer les fractions puis arrondir une seule fois donne un niveau trop
+ * bas — c'est ce que faisait ce module : Rôdeur 9 / Druide 4 valait
+ * floor(4,5 + 4) = 8 au lieu de ceil(9/2) + 4 = 9.
+ */
+export const casterContribution = (caster: string | null | undefined, level: number): number => {
+  if (caster === 'full') return level;
+  if (caster === 'half') return Math.ceil(level / 2);
+  // Un tiers arrondi à l'inférieur (Chevalier occulte, Escroc arcanique).
+  if (caster === 'third') return Math.floor(level / 3);
+  return 0;
+};
 
 /** Emplacements de sort combinés, règle de multiclassage. Le pacte est à part. */
 const multiclassSlots = (sheet: CharacterSheet): number[] => {
-  let weighted = 0;
+  let casterLevel = 0;
   let hasCaster = false;
   for (const entry of sheet.classLevels) {
     const caster = classById(entry.classId)?.caster;
     if (!caster || caster === 'pact') continue;
     hasCaster = true;
-    weighted += entry.level * (CASTER_WEIGHT[caster] ?? 0);
+    casterLevel += casterContribution(caster, entry.level);
   }
   if (!hasCaster) return [];
-  // Un lanceur partiel seul arrondit au supérieur ; en mélange, on arrondit au
-  // niveau entier atteint, conformément à la table de multiclassage.
-  const casterLevel = Math.max(1, Math.floor(weighted));
-  return fullCasterSlots(casterLevel);
+  return fullCasterSlots(Math.max(1, casterLevel));
 };
 
 const singleCasterSlots = (sheet: CharacterSheet): number[] | null => {

@@ -12,6 +12,7 @@ import { cardsFromCharacter } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
+import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
   createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
@@ -28,6 +29,7 @@ import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompan
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
+import { turnIdentity } from '../domain/turn-identity';
 
 /**
  * La vue d'une fiche : combat, fiche, grimoire, sac, repos, réglages.
@@ -46,13 +48,15 @@ import type { EncounterState } from '../domain/encounter';
 export type SheetTab = MainTab;
 
 export function SheetView({
-  client, sync, fiche, rencontre, onglet, onOnglet, entete, estMj,
+  client, sync, fiche, rencontre, encounterId, onglet, onOnglet, entete, estMj,
   campaignId, userId, userEmail, journalEntries, notes, messages, correspondants,
 }: {
   client: SupabaseClient;
   sync: CampaignSync;
   fiche: StoredSheet;
   rencontre: EncounterState | undefined;
+  /** Pour identifier le tour en cours — l'économie d'action s'y raccroche. */
+  encounterId?: string;
   onglet: SheetTab;
   onOnglet: (onglet: SheetTab) => void;
   /** Rendu au-dessus de l'écran : bandeau de synchronisation, retour du MJ… */
@@ -116,12 +120,16 @@ export function SheetView({
    * rétroactivement sans toucher aux fiches.
    */
   const soignerOuBlesser = (delta: number) => {
-    const subis = Math.max(0, Math.min(derivee.maxHp, fiche.data.live.damageTaken - delta));
-    if (subis === fiche.data.live.damageTaken) return;
-    void saveSheet(client, sync, fiche.id, {
-      ...fiche.data,
-      live: { ...fiche.data.live, damageTaken: subis },
-    });
+    // Jamais d'écriture directe sur `damageTaken` : les dégâts passent par la
+    // transition canonique, qui consomme d'abord les PV temporaires. L'écran
+    // les affichait sans qu'ils n'absorbent quoi que ce soit.
+    const suivante = delta < 0
+      ? takeDamage(fiche.data, derivee, -delta).sheet
+      : heal(fiche.data, delta);
+    if (suivante === fiche.data) return;
+    if (suivante.live.damageTaken === fiche.data.live.damageTaken
+      && suivante.live.temporaryHp === fiche.data.live.temporaryHp) return;
+    void saveSheet(client, sync, fiche.id, suivante);
   };
 
   /**
@@ -303,6 +311,7 @@ export function SheetView({
         cards={cartes}
         onSpendHp={soignerOuBlesser}
         onPlayCard={jouerCarte}
+        turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat
             ? {
