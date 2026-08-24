@@ -9,15 +9,27 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * aura une vraie à proposer ; un réglage qui ne change rien encore n'aide
  * personne.
  */
-export function SettingsScreen({ email, onDeconnexion }: {
+export function SettingsScreen({ email, onDeconnexion, onRetour }: {
   email: string;
   onDeconnexion: () => void;
+  /** Cet écran s'ouvre depuis la Fiche : le chemin du retour doit se voir. */
+  onRetour: () => void;
 }) {
   return (
     <main style={{
       flexGrow: 1, padding: `16px 16px calc(${TAB_BAR_CLEARANCE} + 8px)`,
       overflowY: 'auto', WebkitOverflowScrolling: 'touch',
     }}>
+      <button
+        onClick={onRetour}
+        className="lbl"
+        style={{
+          display: 'block', width: 'fit-content', minHeight: 34, padding: '0 12px', marginBottom: 12,
+          borderRadius: 999, border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+        }}
+      >
+        ← Fiche
+      </button>
       <h2 className="ttl" style={{ margin: 0, fontSize: 18 }}>Réglages</h2>
 
       <div style={{

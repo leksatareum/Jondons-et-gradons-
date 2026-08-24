@@ -235,6 +235,8 @@ export function SheetView({
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
           onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
+          onRepos={() => onOnglet('repos')}
+          onReglages={() => onOnglet('parametres')}
         />
       );
     }
@@ -286,11 +288,11 @@ export function SheetView({
     }
 
     if (onglet === 'repos') {
-      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} />;
+      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} />;
     }
 
     if (onglet === 'parametres') {
-      return <SettingsScreen email={userEmail} onDeconnexion={() => void seDeconnecter(client)} />;
+      return <SettingsScreen email={userEmail} onDeconnexion={() => void seDeconnecter(client)} onRetour={() => onOnglet('fiche')} />;
     }
 
     const enCombat = rencontre != null && rencontre.turnIndex >= 0;

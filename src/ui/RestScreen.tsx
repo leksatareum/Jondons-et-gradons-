@@ -15,10 +15,12 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * récupère, ni ce qu'on perd. Les dés de vie non rendus et le cran
  * d'épuisement qui reste sont précisément ce qu'on découvre trop tard.
  */
-export function RestScreen({ sheet, derived, onRepos }: {
+export function RestScreen({ sheet, derived, onRepos, onRetour }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   onRepos: (kind: RestKind) => void;
+  /** Cet écran s'ouvre depuis la Fiche : le chemin du retour doit se voir. */
+  onRetour: () => void;
 }) {
   const [kind, setKind] = useState<RestKind>('long');
 
@@ -37,6 +39,16 @@ export function RestScreen({ sheet, derived, onRepos }: {
       flexGrow: 1, padding: `16px 16px calc(${TAB_BAR_CLEARANCE} + 8px)`,
       overflowY: 'auto', WebkitOverflowScrolling: 'touch',
     }}>
+      <button
+        onClick={onRetour}
+        className="lbl"
+        style={{
+          display: 'block', width: 'fit-content', minHeight: 34, padding: '0 12px', marginBottom: 12,
+          borderRadius: 999, border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+        }}
+      >
+        ← Fiche
+      </button>
       <h2 className="ttl" style={{ margin: 0, fontSize: 18 }}>Repos</h2>
 
       <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>

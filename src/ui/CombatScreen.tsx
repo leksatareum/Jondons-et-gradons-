@@ -9,8 +9,9 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * Écran de combat du joueur.
  *
  * Structure retenue avec l'utilisateur (« le rouleau ») :
- *  - une zone FIGÉE qui ne défile jamais : identité, points de vie
- *    manipulables, classe d'armure, sauvegardes, économie d'action ;
+ *  - une zone FIGÉE qui ne défile jamais : points de vie manipulables, classe
+ *    d'armure, sauvegardes, économie d'action — ce qui bouge en combat, et
+ *    rien de plus : l'identité vit dans la Fiche ;
  *  - un rouleau qui se RÉORDONNE selon le contexte (cf. `combat-layout.ts`) ;
  *  - une barre basse dans la zone du pouce.
  *
@@ -239,11 +240,21 @@ function ActionCard({ card, playable, hero, onPlay }: {
 
       {playable && (
         <div style={{ display: 'flex', gap: 8, marginTop: hero && hasNumbers ? 0 : 12 }}>
+          {/*
+            Bouton cerné, pas plein : l'accent plein signifie « l'action de
+            cet écran », et un rouleau de sorts n'en a pas une seule — quatre
+            barres pleines côte à côte se disputaient l'œil sans que rien ne
+            prime. Cerné, il reste évidemment cliquable (c'est la plainte
+            qu'on ne veut pas rejouer) sans crier plus fort que son voisin.
+            La mise en avant de la première carte passe par sa bordure et ses
+            grands chiffres — jamais par une recommandation déguisée.
+          */}
           <button
             onClick={() => onPlay(card)}
             style={{
               flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 10,
-              background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 13, fontWeight: 700,
+              border: '1.5px solid var(--accent)', color: 'var(--accent)',
+              fontSize: 13, fontWeight: 700,
             }}
           >
             {card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
@@ -292,7 +303,6 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
     setSpent((current) => ({ ...current, [card.economy]: true }));
     if (card.resource) onPlayCard?.(card);
   };
-  const className = sheet.classLevels[0]?.classId ?? '';
 
   return (
     <div style={{
@@ -306,14 +316,13 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
         boxShadow: 'var(--raise)', padding: '11px 14px 12px',
         paddingTop: 'calc(11px + env(safe-area-inset-top))',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11 }}>
-          <div className="ttl" style={{ fontSize: 16 }}>{sheet.name}</div>
-          <div className="lbl" style={{ flexGrow: 1 }}>
-            {className} {derived.level}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 9, marginBottom: 11 }}>
+        {/*
+          Pas de nom ni de classe ici : la Fiche les porte désormais en tête,
+          et le MJ a le bandeau « Tu modifies la fiche de X » juste au-dessus.
+          Dans un en-tête qui ne défile jamais, une ligne purement décorative
+          se paie sur toute la hauteur restante.
+        */}
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 9, marginBottom: 10 }}>
           <HitPoints
             current={derived.currentHp}
             max={derived.maxHp}
@@ -333,7 +342,7 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard }: {
           </div>
         </div>
 
-        <div style={{ marginBottom: 11 }}>
+        <div style={{ marginBottom: 10 }}>
           <div className="lbl" style={{ marginBottom: 4 }}>Jets de sauvegarde</div>
           <SaveStrip
             modifiers={derived.modifiers}

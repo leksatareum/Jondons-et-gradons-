@@ -3,9 +3,15 @@ import type { DerivedCharacter } from '../model/derive';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
 import { TAB_BAR_CLEARANCE } from './TabBar';
+import { speciesById } from '../content/species';
+import { classById } from '../content/classes';
 
 /**
- * La fiche : caractéristiques, compétences, formes et créature liée.
+ * La fiche : l'identité du personnage, ses caractéristiques, ses compétences,
+ * ses formes — et les deux portes qui n'avaient pas leur place dans la barre
+ * d'onglets : le repos (une action qu'on fait à son personnage) et les
+ * réglages (un utilitaire, rangé ici comme les réglages d'Instagram vivent
+ * dans le profil).
  *
  * Le journal et les notes en sont partis pour leur propre onglet — ils n'ont
  * rien de commun avec un score de Force, et les empiler ici obligeait à
@@ -17,7 +23,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
-  onNiveauSuperieur,
+  onNiveauSuperieur, onRepos, onReglages,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -32,13 +38,77 @@ export function FicheScreen({
   onDetacherCompagnon: (companionId: string) => void;
   /** MJ seulement : ouvre la fenêtre de montée de niveau. */
   onNiveauSuperieur?: () => void;
+  /** Ouvrent les écrans fils : la barre d'onglets, elle, ne les liste plus. */
+  onRepos: () => void;
+  onReglages: () => void;
 }) {
+  const espece = speciesById(sheet.speciesId)?.name;
+  const classes = sheet.classLevels
+    .map((entry) => `${classById(entry.classId)?.name ?? entry.classId} ${entry.level}`)
+    .join(' / ');
+
   return (
     <main style={{
       flexGrow: 1, padding: `12px 14px calc(${TAB_BAR_CLEARANCE} + 8px)`,
       display: 'flex', flexDirection: 'column', gap: 20,
       overflowY: 'auto', WebkitOverflowScrolling: 'touch',
     }}>
+      {/* ───── Identité : qui l'on est, et les gestes qui s'y rattachent ───── */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ flexGrow: 1, minWidth: 0 }}>
+            <h1 className="ttl" style={{ margin: 0, fontSize: 21 }}>{sheet.name}</h1>
+            <div className="lbl" style={{ textTransform: 'none', marginTop: 3, fontSize: 13 }}>
+              {[espece, classes].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+          <button
+            onClick={onReglages}
+            aria-label="Réglages"
+            style={{
+              flexShrink: 0, width: 40, height: 40, borderRadius: 10,
+              border: '1px solid var(--line)', color: 'var(--muted)',
+              display: 'grid', placeItems: 'center',
+            }}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M12 2.8 v2.6 M12 18.6 v2.6 M2.8 12 h2.6 M18.6 12 h2.6 M5.5 5.5 l1.85 1.85 M16.65 16.65 l1.85 1.85 M18.5 5.5 l-1.85 1.85 M7.35 16.65 L5.5 18.5" />
+            </svg>
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button
+            onClick={onRepos}
+            style={{
+              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--line)', background: 'var(--surface)',
+              color: 'var(--ink)', fontSize: 14, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M20 13.5 A8.3 8.3 0 1 1 10.5 4 A6.6 6.6 0 0 0 20 13.5 Z" />
+            </svg>
+            Prendre un repos
+          </button>
+          {estMj && (
+            <button
+              onClick={onNiveauSuperieur}
+              style={{
+                flexShrink: 0, minHeight: 'var(--tap)', padding: '0 16px',
+                borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)',
+                color: 'var(--accent)', fontSize: 14, fontWeight: 700,
+              }}
+            >
+              Niveau +
+            </button>
+          )}
+        </div>
+      </section>
+
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <h2 className="ttl" style={{ fontSize: 17, flexGrow: 1 }}>Caractéristiques</h2>
@@ -48,18 +118,6 @@ export function FicheScreen({
           <AbilityScoresStrip abilities={derived.abilities} modifiers={derived.modifiers} />
           <SkillsGrid skills={derived.skills} />
         </div>
-        {estMj && (
-          <button
-            onClick={onNiveauSuperieur}
-            className="lbl"
-            style={{
-              marginTop: 12, minHeight: 'var(--tap)', padding: '0 16px', borderRadius: 999,
-              border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700,
-            }}
-          >
-            Niveau +
-          </button>
-        )}
       </section>
 
       {avecAllies && (
