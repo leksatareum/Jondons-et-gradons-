@@ -105,6 +105,41 @@ export interface LiveState {
    * repos long si le joueur ne s'en sert pas.
    */
   wildShapeSwapOpen?: boolean;
+  /**
+   * Identité du tour (`turnIdentity`) où Résurgence sauvage a déjà converti un
+   * emplacement en utilisation de Forme sauvage. La règle l'autorise « une
+   * fois au maximum pendant chacun des tours du Druide » : il faut donc savoir
+   * DE QUEL tour on parle, pas seulement qu'elle a servi.
+   */
+  wildResurgenceTurn?: string | null;
+  /**
+   * La marque du chasseur en cours, s'il y en a une.
+   *
+   * C'est un véritable état de jeu, pas une condition textuelle : quatre
+   * capacités du Rôdeur le lisent (Chasseur implacable 13, Chasseur précis 17,
+   * Tueur d'ennemis 20, Maître des bêtes 11).
+   */
+  huntersMark?: HuntersMark | null;
+}
+
+/**
+ * Marque du chasseur — sort de niveau 1, Divination, concentration.
+ *
+ * `dieSides` n'est pas stocké : il se dérive du niveau de Rôdeur (1d6, et
+ * 1d10 au niveau 20 par Tueur d'ennemis). Stocker un dé fige une valeur qui
+ * doit suivre le personnage.
+ */
+export interface HuntersMark {
+  /** Qui est marqué. L'identifiant d'un combattant de la rencontre, ou un nom saisi. */
+  targetId: string;
+  /** Nom lisible de la cible, pour l'afficher sans dépendre de la rencontre. */
+  targetName: string;
+  /** Ce qui a payé le lancement : une utilisation gratuite d'Ennemi juré, ou un emplacement. */
+  source: 'ennemi-jure' | 'emplacement';
+  /** Rang de l'emplacement dépensé, quand c'en est un — il fixe la durée. */
+  slotLevel?: number;
+  /** Durée en heures : 1, 8 ou 24 selon le rang employé. */
+  durationHours: number;
 }
 
 /**
@@ -271,6 +306,8 @@ export const EMPTY_LIVE_STATE: LiveState = {
   deathSaves: { success: 0, fail: 0 },
   heroicInspiration: false,
   concentration: null,
+  wildResurgenceTurn: null,
+  huntersMark: null,
 };
 
 /** Modificateur d'une valeur de caractéristique. */

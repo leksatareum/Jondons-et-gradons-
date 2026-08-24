@@ -2,6 +2,7 @@ import { restoresAllOnShortRest } from '../domain/resource-recovery';
 import { companionsAfterLongRest } from './companions';
 import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
 import { levelInClass } from './character';
+import { resilienceCeleste, resilienceCelestePourSoi } from './occultiste';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
 
@@ -73,10 +74,20 @@ export function shortRest(sheet: CharacterSheet, derived: DerivedCharacter): Res
     : sheet.live.exhaustion;
   if (exhaustion < sheet.live.exhaustion) recovered.push('Un cran d’épuisement (Infatigable)');
 
-  return {
-    sheet: { ...sheet, live: { ...sheet.live, resourcesSpent, pactSlotsSpent, exhaustion } },
-    recovered,
+  const apres: CharacterSheet = {
+    ...sheet,
+    live: { ...sheet.live, resourcesSpent, pactSlotsSpent, exhaustion },
   };
+
+  // ── Résilience céleste : Occultiste Céleste 10+ ───────────────────
+  // PHB 2024 : la fin d'un repos court OU long accorde des PV
+  // temporaires. C'est un gain automatique, pas une case à cocher.
+  const avecResilience = resilienceCeleste(apres);
+  if (avecResilience !== apres) {
+    recovered.push(`${resilienceCelestePourSoi(sheet)} PV temporaires (Résilience céleste)`);
+  }
+
+  return { sheet: avecResilience, recovered };
 }
 
 /**
@@ -115,7 +126,7 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
   const avantCompagnons = sheet.companions ?? [];
   const apresRepos = companionsAfterLongRest({
     ...sheet,
-    live: { ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {}, hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 }, concentration: null, wildShapeSwapOpen },
+    live: { ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {}, hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 }, concentration: null, wildShapeSwapOpen, wildResurgenceTurn: null, huntersMark: null },
   });
   for (const companion of avantCompagnons) {
     if (companion.expiresOnLongRest && !apresRepos.companions?.some((c) => c.id === companion.id)) {
@@ -123,7 +134,14 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
     }
   }
 
-  return { sheet: apresRepos, recovered };
+  // Résilience céleste s'applique APRÈS la remise à zéro des PV
+  // temporaires du repos long : c'est le repos qui les accorde.
+  const avecResilience = resilienceCeleste(apresRepos);
+  if (avecResilience !== apresRepos) {
+    recovered.push(`${resilienceCelestePourSoi(sheet)} PV temporaires (Résilience céleste)`);
+  }
+
+  return { sheet: avecResilience, recovered };
 }
 
 export const rest = (sheet: CharacterSheet, derived: DerivedCharacter, kind: RestKind): RestOutcome =>
