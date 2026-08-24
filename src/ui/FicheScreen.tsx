@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
@@ -45,7 +46,9 @@ export function FicheScreen({
   /** Enregistre une décision de classe (Ordre primordial, terrain du cercle…). */
   onChoixDeClasse: (classId: string, key: string, optionId: string) => void;
 }) {
-  const decisions = decisionsDeClasse(sheet);
+  // Décisions que le MJ a rouvertes pour correction, le temps de l'écran.
+  const [aCorriger, setACorriger] = useState<ReadonlySet<string>>(new Set());
+  const decisions = decisionsDeClasse(sheet, derived);
   const espece = speciesById(sheet.speciesId)?.name;
   const classes = sheet.classLevels
     .map((entry) => `${classById(entry.classId)?.name ?? entry.classId} ${entry.level}`)
@@ -132,29 +135,59 @@ export function FicheScreen({
         <section>
           <h2 className="ttl" style={{ fontSize: 17, marginBottom: 10 }}>Choix de classe</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {decisions.map((decision) => (
-              <div key={`${decision.classId}-${decision.key}`}>
+            {decisions.map((decision) => {
+              const cle = `${decision.classId}-${decision.key}`;
+              // Verrouillée : le choix est fait et définitif. On n'affiche
+              // alors QUE l'option retenue — montrer l'autre en grisé, c'est
+              // proposer un geste qui n'aboutira pas.
+              const fige = Boolean(decision.verrouillee) && !aCorriger.has(cle);
+              const montrees = fige
+                ? decision.options.filter((option) => option.id === decision.choisi)
+                : decision.options;
+              return (
+              <div key={cle}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div className="lbl" style={{ flexGrow: 1 }}>{decision.label}</div>
                   {!decision.choisi && (
                     <div className="lbl" style={{ color: 'var(--accent)' }}>à choisir</div>
+                  )}
+                  {/* Seul le MJ peut revenir sur un choix définitif — c'est déjà
+                      lui qui déclenche les montées de niveau. */}
+                  {fige && estMj && (
+                    <button
+                      onClick={() => setACorriger((courant) => new Set(courant).add(cle))}
+                      className="lbl"
+                      style={{ color: 'var(--accent)', minHeight: 28, padding: '0 4px' }}
+                    >
+                      Corriger
+                    </button>
                   )}
                 </div>
                 <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
                   {decision.help}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
-                  {decision.options.map((option) => {
+                  {montrees.map((option) => {
                     const actif = decision.choisi === option.id;
                     return (
                       <button
                         key={option.id}
-                        onClick={() => onChoixDeClasse(decision.classId, decision.key, option.id)}
+                        onClick={() => {
+                          if (fige) return;
+                          onChoixDeClasse(decision.classId, decision.key, option.id);
+                          setACorriger((courant) => {
+                            const suite = new Set(courant);
+                            suite.delete(cle);
+                            return suite;
+                          });
+                        }}
                         className="card"
+                        aria-disabled={fige || undefined}
                         style={{
                           textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
                           border: `1px solid ${actif ? 'var(--accent)' : 'var(--line)'}`,
                           background: actif ? 'var(--accent-wash)' : 'var(--surface)',
+                          cursor: fige ? 'default' : 'pointer',
                         }}
                       >
                         <div style={{ fontSize: 15, fontWeight: 600 }}>{option.name}</div>
@@ -165,8 +198,20 @@ export function FicheScreen({
                     );
                   })}
                 </div>
+                {/* Ce que la décision donne réellement sur cette fiche. Sans
+                    cette ligne, choisir « Mage » n'avait aucun effet visible. */}
+                {decision.effet && (
+                  <div style={{
+                    marginTop: 8, padding: '8px 11px', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45,
+                    color: 'var(--muted)',
+                  }}>
+                    {decision.effet}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

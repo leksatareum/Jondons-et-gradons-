@@ -1438,3 +1438,72 @@ describe('p. 161 — Résilience fiélonne : un type de dégâts rechoisi à cha
     expect(decisionsDeClasse(apres).find((d) => d.key === 'fiendishResilience')?.choisi).toBe('feu');
   });
 });
+
+describe('p. 80 — l’Ordre primordial se choisit une fois, et son effet se voit', () => {
+  const druide1 = fiche(druide(1));
+
+  it('tant qu’il n’est pas pris, il n’est pas verrouillé', () => {
+    const decision = decisionsDeClasse(druide1).find((d) => d.key === 'primalOrder')!;
+    expect(decision.verrouillee).toBeUndefined();
+    expect(decision.options).toHaveLength(2);
+  });
+
+  it('une fois pris, il se verrouille et ne rebascule plus', () => {
+    const mage = choisirDeClasse(druide1, 'druide', 'primalOrder', 'mage');
+    expect(decisionsDeClasse(mage).find((d) => d.key === 'primalOrder')?.verrouillee).toBe(true);
+    // Le joueur ne peut plus passer Gardien.
+    expect(choisirDeClasse(mage, 'druide', 'primalOrder', 'gardien')).toBe(mage);
+    // Le MJ, lui, corrige.
+    const corrige = choisirDeClasse(mage, 'druide', 'primalOrder', 'gardien', { parLeMj: true });
+    expect(decisionsDeClasse(corrige).find((d) => d.key === 'primalOrder')?.choisi).toBe('gardien');
+  });
+
+  it('le basculement libre laissait la fiche hors quota', () => {
+    // Un Druide 1 Mage connaît 3 sorts mineurs ; Gardien n'en autorise que 2.
+    const mage = choisirDeClasse(druide1, 'druide', 'primalOrder', 'mage');
+    const avecTrois: CharacterSheet = {
+      ...mage,
+      cantrips: [
+        { id: 'gourdin-magique', sourceClass: 'druide' },
+        { id: 'flamme-eternelle', sourceClass: 'druide' },
+        { id: 'assistance', sourceClass: 'druide' },
+      ],
+    };
+    expect(deriveCharacter(avecTrois).spellcasting.cantripsKnown.druide).toBe(3);
+    expect(choisirDeClasse(avecTrois, 'druide', 'primalOrder', 'gardien')).toBe(avecTrois);
+  });
+
+  it('une décision rechoisissable, elle, ne se verrouille jamais', () => {
+    const terre = choisirDeClasse(druideAvec(5, 'terre'), 'druide', 'terrain', 'aride');
+    expect(decisionsDeClasse(terre).find((d) => d.key === 'terrain')?.verrouillee).toBeUndefined();
+    const change = choisirDeClasse(terre, 'druide', 'terrain', 'polaire');
+    expect(decisionsDeClasse(change).find((d) => d.key === 'terrain')?.choisi).toBe('polaire');
+  });
+
+  it('l’effet dit où en est le quota de sorts mineurs', () => {
+    const mage = choisirDeClasse(druide1, 'druide', 'primalOrder', 'mage');
+    const effetSansSort = decisionsDeClasse(mage, deriveCharacter(mage))
+      .find((d) => d.key === 'primalOrder')?.effet;
+    expect(effetSansSort).toMatch(/0\/3/);
+    expect(effetSansSort).toMatch(/reste 3/);
+
+    const complet: CharacterSheet = {
+      ...mage,
+      cantrips: [
+        { id: 'gourdin-magique', sourceClass: 'druide' },
+        { id: 'flamme-eternelle', sourceClass: 'druide' },
+        { id: 'assistance', sourceClass: 'druide' },
+      ],
+    };
+    const effetPlein = decisionsDeClasse(complet, deriveCharacter(complet))
+      .find((d) => d.key === 'primalOrder')?.effet;
+    expect(effetPlein).toMatch(/3\/3/);
+    expect(effetPlein).toMatch(/déjà choisi/);
+  });
+
+  it('le Gardien dit ce qu’il donne, lui aussi', () => {
+    const gardien = choisirDeClasse(druide1, 'druide', 'primalOrder', 'gardien');
+    expect(decisionsDeClasse(gardien, deriveCharacter(gardien)).find((d) => d.key === 'primalOrder')?.effet)
+      .toMatch(/armures intermédiaires/i);
+  });
+});

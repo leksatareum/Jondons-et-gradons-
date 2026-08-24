@@ -1,4 +1,5 @@
 import { choiceList, choicesFor, levelInClass, subclassOf, type CharacterSheet } from './character';
+import type { DerivedCharacter } from './derive';
 import { ELEMENTAL_FURY, PRIMAL_ORDER, type ChoiceOption } from '../content/class-choices';
 import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
 import { DAMAGE_TYPES } from '../content/reference-lists';
@@ -35,6 +36,27 @@ export interface DecisionDeClasse {
    * une décision définitive.
    */
   rechoisissable?: 'repos' | 'repos-long';
+  /**
+   * Verrouillée : la décision est prise et ne se rechoisit pas.
+   *
+   * L'Ordre primordial se choisit au niveau 1 « for good » (PHB 2024, p. 80),
+   * la Furie élémentaire au niveau 7. Les laisser basculer d'un appui, c'était
+   * pouvoir passer Mage → Gardien après avoir appris le sort mineur que Mage
+   * accorde : la fiche se retrouvait avec plus de sorts mineurs que son quota,
+   * sans que rien ne le signale.
+   *
+   * Le MJ, lui, peut corriger — c'est déjà lui qui déclenche les montées de
+   * niveau.
+   */
+  verrouillee?: boolean;
+  /**
+   * Ce que la décision fait sur CETTE fiche, une fois prise.
+   *
+   * Sans cette ligne, choisir Mage n'avait aucun effet visible : le sort
+   * mineur supplémentaire s'ajoutait à un quota qu'il fallait aller lire dans
+   * le Grimoire. On pouvait raisonnablement croire que rien ne s'était passé.
+   */
+  effet?: string;
 }
 
 const TERRAINS: ChoiceOption[] = [
@@ -60,12 +82,40 @@ const choisiPour = (sheet: CharacterSheet, classId: string, key: string): string
   choiceList(choicesFor(sheet, classId), key)[0] ?? null;
 
 /**
+ * Ce que l'Ordre primordial donne, dit en clair.
+ *
+ * Pour le Mage, le sort mineur supplémentaire n'est visible qu'au Grimoire,
+ * dans un quota. Quand ce quota est déjà rempli — c'est le cas d'un
+ * personnage importé de l'ancienne application, qui avait déjà choisi son
+ * sort — il ne se passe rien de visible du tout.
+ */
+function effetOrdrePrimordial(
+  sheet: CharacterSheet,
+  derived?: DerivedCharacter,
+): string | undefined {
+  const ordre = choisiPour(sheet, 'druide', 'primalOrder');
+  if (ordre === 'gardien') return 'Armes de guerre et armures intermédiaires.';
+  if (ordre !== 'mage') return undefined;
+  const max = derived?.spellcasting.cantripsKnown.druide;
+  if (max === undefined) return 'Un sort mineur de Druide supplémentaire.';
+  const connus = sheet.cantrips.filter((cantrip) => cantrip.sourceClass === 'druide').length;
+  const reste = max - connus;
+  if (reste > 0) {
+    return `Sorts mineurs ${connus}/${max} — il t’en reste ${reste} à choisir dans le Grimoire.`;
+  }
+  return `Sorts mineurs ${connus}/${max} — le sort supplémentaire est déjà choisi.`;
+}
+
+/**
  * Toutes les décisions dues au niveau actuel, prises ou non.
  *
  * Elles restent listées une fois prises : un joueur doit pouvoir relire ce
  * qu'il a choisi sans rouvrir la montée de niveau.
  */
-export function decisionsDeClasse(sheet: CharacterSheet): DecisionDeClasse[] {
+export function decisionsDeClasse(
+  sheet: CharacterSheet,
+  derived?: DerivedCharacter,
+): DecisionDeClasse[] {
   const decisions: DecisionDeClasse[] = [];
   const druide = levelInClass(sheet, 'druide');
 
@@ -76,6 +126,7 @@ export function decisionsDeClasse(sheet: CharacterSheet): DecisionDeClasse[] {
       help: 'Choisi au niveau 1, pour de bon.',
       options: PRIMAL_ORDER,
       choisi: choisiPour(sheet, 'druide', 'primalOrder'),
+      effet: effetOrdrePrimordial(sheet, derived),
     });
   }
 
@@ -144,7 +195,12 @@ export function decisionsDeClasse(sheet: CharacterSheet): DecisionDeClasse[] {
     });
   }
 
-  return decisions;
+  // Une décision qui ne se rechoisit pas et qui est prise est verrouillée.
+  // La règle est la même pour toutes : c'est `rechoisissable` qui la porte,
+  // pas une liste à tenir à jour ailleurs.
+  return decisions.map((decision) => (
+    decision.choisi && !decision.rechoisissable ? { ...decision, verrouillee: true } : decision
+  ));
 }
 
 /** Le Chasseur, quelle que soit la façon dont la fiche le nomme. */
@@ -158,16 +214,24 @@ export const estChasseur = (sheet: CharacterSheet): boolean => {
 export const decisionsEnAttente = (sheet: CharacterSheet): DecisionDeClasse[] =>
   decisionsDeClasse(sheet).filter((decision) => !decision.choisi);
 
-/** Enregistre un choix. Une option inconnue est refusée plutôt que stockée. */
+/**
+ * Enregistre un choix. Une option inconnue est refusée plutôt que stockée.
+ *
+ * Une décision verrouillée — prise et non rechoisissable — ne change plus,
+ * sauf correction du MJ. Sans ce garde-fou, passer Mage → Gardien laissait la
+ * fiche avec un sort mineur de trop, hors quota et sans avertissement.
+ */
 export function choisirDeClasse(
   sheet: CharacterSheet,
   classId: string,
   key: string,
   optionId: string,
+  options: { parLeMj?: boolean } = {},
 ): CharacterSheet {
   const decision = decisionsDeClasse(sheet).find((d) => d.classId === classId && d.key === key);
   if (!decision) return sheet;
   if (!decision.options.some((option) => option.id === optionId)) return sheet;
+  if (decision.verrouillee && !options.parLeMj) return sheet;
   return {
     ...sheet,
     classChoices: {

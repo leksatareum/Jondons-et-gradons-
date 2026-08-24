@@ -186,7 +186,12 @@ export function SheetView({
    * vivant : elle part en base comme la préparation d'un sort.
    */
   const enregistrerChoixDeClasse = (classId: string, key: string, optionId: string) => {
-    void saveSheet(client, sync, fiche.id, choisirDeClasse(fiche.data, classId, key, optionId));
+    // Un choix définitif ne se reprend que par le MJ : le modèle refuse le
+    // reste. L'écran ne propose « Corriger » qu'à lui, mais c'est ici que la
+    // règle s'applique — un joueur ne doit pas pouvoir la contourner.
+    const suivante = choisirDeClasse(fiche.data, classId, key, optionId, { parLeMj: Boolean(estMj) });
+    if (suivante === fiche.data) return;
+    void saveSheet(client, sync, fiche.id, suivante);
   };
 
   const accorder = (grant: SpellGrant) => {
