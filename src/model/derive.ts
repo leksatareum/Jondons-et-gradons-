@@ -16,6 +16,7 @@ import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } fr
 import { spellById } from '../content/spell-catalogue';
 import { grantResourceKey } from './spell-grants';
 import { arcanumChoisis, arcanumResourceKey } from './invocations';
+import { sortMineurSupplementaireDuDruide } from './choix-de-classe';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
 import { armorById, SHIELD } from '../content/armor';
@@ -167,6 +168,21 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   const druide = levelInClass(sheet, 'druide');
   if (druide) push('druide:forme-sauvage', 'Forme sauvage', wildShapeUses(druide), 'long', 'druide');
 
+  // ── Cercles druidiques ────────────────────────────────────────────
+  // Ces réserves existaient dans les tables du domaine sans jamais être
+  // déclarées ici : aucune pastille, aucun repos ne les rendait.
+  const cercle = subclassOf(sheet, 'druide');
+  const sagesse = abilityModifier(abilities.wis);
+  if (druide >= 10 && /cercle de la lune/i.test(cercle ?? '')) {
+    push('druide:pas-clair-lune', 'Pas de clair de lune', Math.max(1, sagesse), 'long', 'druide');
+  }
+  if (druide >= 3 && /cercle des étoiles|cercle des etoiles/i.test(cercle ?? '')) {
+    push('druide:carte-etoiles', 'Trait guidé (carte des étoiles)', Math.max(1, sagesse), 'long', 'druide');
+  }
+  if (druide >= 6 && /cercle des étoiles|cercle des etoiles/i.test(cercle ?? '')) {
+    push('druide:presage-cosmique', 'Présage cosmique', Math.max(1, sagesse), 'long', 'druide');
+  }
+
   const rodeur = levelInClass(sheet, 'rodeur');
   if (rodeur) {
     push('rodeur:marque-chasseur', 'Marque du chasseur (sans emplacement)', hunterMarkFreeCastUses(rodeur), 'long', 'rodeur');
@@ -303,7 +319,11 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
   const preparedMax: Record<string, number> = {};
   const numbers: Record<string, SpellcastingNumbers> = {};
   for (const entry of sheet.classLevels) {
-    const known = cantripsKnown(entry.classId as never, entry.level);
+    // Ordre primordial · Mage : un sort mineur de Druide en plus. C'est le
+    // seul effet chiffré d'une décision de classe qui touche la magie ; le
+    // laisser hors de la table rendait la décision purement décorative.
+    const known = cantripsKnown(entry.classId as never, entry.level)
+      + (entry.classId === 'druide' ? sortMineurSupplementaireDuDruide(sheet) : 0);
     if (known > 0) cantripCounts[entry.classId] = known;
     const klass = classById(entry.classId);
     if (!klass?.caster) continue;

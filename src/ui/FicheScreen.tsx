@@ -3,6 +3,7 @@ import type { DerivedCharacter } from '../model/derive';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
 import { TAB_BAR_CLEARANCE } from './TabBar';
+import { decisionsDeClasse } from '../model/choix-de-classe';
 import { speciesById } from '../content/species';
 import { classById } from '../content/classes';
 
@@ -23,7 +24,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
-  onNiveauSuperieur, onRepos, onReglages,
+  onNiveauSuperieur, onRepos, onReglages, onChoixDeClasse,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -41,7 +42,10 @@ export function FicheScreen({
   /** Ouvrent les écrans fils : la barre d'onglets, elle, ne les liste plus. */
   onRepos: () => void;
   onReglages: () => void;
+  /** Enregistre une décision de classe (Ordre primordial, terrain du cercle…). */
+  onChoixDeClasse: (classId: string, key: string, optionId: string) => void;
 }) {
+  const decisions = decisionsDeClasse(sheet);
   const espece = speciesById(sheet.speciesId)?.name;
   const classes = sheet.classLevels
     .map((entry) => `${classById(entry.classId)?.name ?? entry.classId} ${entry.level}`)
@@ -119,6 +123,53 @@ export function FicheScreen({
           <SkillsGrid skills={derived.skills} />
         </div>
       </section>
+
+      {/* ───── Décisions de classe ─────
+          Elles ne se dérivent pas du niveau : elles appartiennent au joueur.
+          Sans cet écran, un Druide du Cercle de la Terre n'avait aucun moyen
+          de choisir son terrain — donc aucun sort de cercle, jamais. */}
+      {decisions.length > 0 && (
+        <section>
+          <h2 className="ttl" style={{ fontSize: 17, marginBottom: 10 }}>Choix de classe</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {decisions.map((decision) => (
+              <div key={`${decision.classId}-${decision.key}`}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <div className="lbl" style={{ flexGrow: 1 }}>{decision.label}</div>
+                  {!decision.choisi && (
+                    <div className="lbl" style={{ color: 'var(--accent)' }}>à choisir</div>
+                  )}
+                </div>
+                <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
+                  {decision.help}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
+                  {decision.options.map((option) => {
+                    const actif = decision.choisi === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => onChoixDeClasse(decision.classId, decision.key, option.id)}
+                        className="card"
+                        style={{
+                          textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
+                          border: `1px solid ${actif ? 'var(--accent)' : 'var(--line)'}`,
+                          background: actif ? 'var(--accent-wash)' : 'var(--surface)',
+                        }}
+                      >
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>{option.name}</div>
+                        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--muted)', marginTop: 2 }}>
+                          {option.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {avecAllies && (
         <section>

@@ -27,6 +27,12 @@ import {
   invocationsDues, peutRetirerInvocation, remplacerArcanum, sortsArcanumPossibles,
 } from './invocations';
 import { applyLevelUp, levelUpBlockers, levelUpPlan, type LevelUpChoice } from './level-up';
+import {
+  conversionsMagicienNaturePossibles, dureeFormeSauvageHeures, MAGICIEN_NATURE_KEY,
+  magicienDeLaNature, rangMagicienNature,
+} from './druide';
+import { choisirDeClasse, decisionsDeClasse, decisionsEnAttente } from './choix-de-classe';
+import { eligibleForms, wildShapeAccess } from './wild-shape';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -880,5 +886,255 @@ describe('§21 — les invocations proposées sont celles du niveau ATTEINT', ()
     expect(ids).toContain('thirsting-blade');
     // …alors qu'elle n'est pas encore prenable au niveau où il se trouve.
     expect(invocationsDisponibles(avant).map((o) => o.id)).not.toContain('thirsting-blade');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// DRUIDE — CHAPITRE COMPLET (PHB 2024, p. 79 à 89)
+//
+// À partir d'ici, les règles ne viennent plus d'un message : elles sont
+// lues dans le PDF fourni par l'utilisateur. Chaque test cite sa page.
+// ═══════════════════════════════════════════════════════════════════════
+
+const druideAvec = (level: number, cercle: 'terre' | 'lune' | 'mer' | 'etoiles', choix: Record<string, string> = {}): CharacterSheet => {
+  const nom = {
+    terre: 'Cercle de la Terre', lune: 'Cercle de la Lune',
+    mer: 'Cercle de la Mer', etoiles: 'Cercle des Étoiles',
+  }[cercle];
+  return {
+    ...fiche([{ classId: 'druide', level, subclass: nom, subclassId: cercle }]),
+    classChoices: { druide: choix },
+  };
+};
+
+describe('p. 80 — table du Druide : Forme sauvage, sorts mineurs, emplacements', () => {
+  it.each([[2, 2], [5, 2], [6, 3], [16, 3], [17, 4], [20, 4]])(
+    'Druide %i → %i utilisations de Forme sauvage', (niveau, attendues) => {
+      const sheet = fiche(druide(niveau));
+      expect(deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')?.max)
+        .toBe(attendues);
+    },
+  );
+
+  it.each([[1, 4], [2, 5], [3, 6], [5, 9], [9, 14], [12, 16], [17, 19], [20, 22]])(
+    'Druide %i → %i sorts préparés', (niveau, attendus) => {
+      const sheet = fiche(druide(niveau));
+      expect(deriveCharacter(sheet).spellcasting.preparedMax.druide).toBe(attendus);
+    },
+  );
+
+  it('la durée d’une Forme sauvage est la moitié du niveau, en heures', () => {
+    expect(dureeFormeSauvageHeures(fiche(druide(2)))).toBe(1);
+    expect(dureeFormeSauvageHeures(fiche(druide(8)))).toBe(4);
+    expect(dureeFormeSauvageHeures(fiche(druide(20)))).toBe(10);
+    expect(dureeFormeSauvageHeures(fiche(druide(1)))).toBe(0);
+  });
+});
+
+describe('p. 80 — Druidique : Parler aux animaux est toujours préparé', () => {
+  it('dès le niveau 1, sans consommer le budget de sorts préparés', () => {
+    const derivee = deriveCharacter(fiche(druide(1)));
+    expect(derivee.spellcasting.alwaysPrepared).toContain('parler-animaux');
+    expect(derivee.spellcasting.preparedMax.druide).toBe(4);
+  });
+});
+
+describe('p. 80 — Ordre primordial : le Mage connaît un sort mineur de plus', () => {
+  it('Druide 1 sans ordre : 2 sorts mineurs ; Mage : 3', () => {
+    expect(deriveCharacter(fiche(druide(1))).spellcasting.cantripsKnown.druide).toBe(2);
+    const mage = { ...fiche(druide(1)), classChoices: { druide: { primalOrder: 'mage' } } };
+    expect(deriveCharacter(mage).spellcasting.cantripsKnown.druide).toBe(3);
+  });
+
+  it('le Gardien n’en gagne pas', () => {
+    const gardien = { ...fiche(druide(1)), classChoices: { druide: { primalOrder: 'gardien' } } };
+    expect(deriveCharacter(gardien).spellcasting.cantripsKnown.druide).toBe(2);
+  });
+
+  it('la décision est proposée dès le niveau 1 et retenue une fois prise', () => {
+    const vierge = fiche(druide(1));
+    const ordre = decisionsDeClasse(vierge).find((d) => d.key === 'primalOrder');
+    expect(ordre?.choisi).toBeNull();
+    expect(ordre?.options.map((o) => o.id)).toEqual(['mage', 'gardien']);
+    const apres = choisirDeClasse(vierge, 'druide', 'primalOrder', 'mage');
+    expect(decisionsDeClasse(apres).find((d) => d.key === 'primalOrder')?.choisi).toBe('mage');
+    expect(decisionsEnAttente(apres).some((d) => d.key === 'primalOrder')).toBe(false);
+  });
+
+  it('une option inventée n’est pas enregistrée', () => {
+    const vierge = fiche(druide(1));
+    expect(choisirDeClasse(vierge, 'druide', 'primalOrder', 'archimage')).toBe(vierge);
+  });
+});
+
+describe('p. 81 — Formes de bête : formes connues, FP maximale, vol', () => {
+  it.each([
+    [2, 4, 0.25, false], [3, 4, 0.25, false],
+    [4, 6, 0.5, false], [7, 6, 0.5, false],
+    [8, 8, 1, true], [20, 8, 1, true],
+  ])('Druide %i → %i formes, FP %s, vol %s', (niveau, formes, fp, vol) => {
+    const sheet = fiche(druide(niveau));
+    const acces = wildShapeAccess(sheet, deriveCharacter(sheet));
+    expect(acces.knownLimit).toBe(formes);
+    expect(acces.maxCr).toBe(fp);
+    expect(eligibleForms(sheet, deriveCharacter(sheet)).some((f) => /vol/i.test(f.speed))).toBe(vol);
+  });
+});
+
+describe('p. 86 — Cercle de la Lune : Formes du cercle', () => {
+  it('la FP maximale devient le niveau divisé par 3', () => {
+    const lune = (niveau: number) => druideAvec(niveau, 'lune');
+    expect(wildShapeAccess(lune(3), deriveCharacter(lune(3))).maxCr).toBe(1);
+    expect(wildShapeAccess(lune(9), deriveCharacter(lune(9))).maxCr).toBe(3);
+    expect(wildShapeAccess(lune(20), deriveCharacter(lune(20))).maxCr).toBe(6);
+  });
+
+  it('les PV temporaires valent trois fois le niveau, contre une fois ailleurs', () => {
+    expect(wildShapeTemporaryHp(druideAvec(6, 'lune'))).toBe(18);
+    expect(wildShapeTemporaryHp(druideAvec(6, 'mer'))).toBe(6);
+    // Avant le niveau 3, le Cercle n'est pas encore choisi : la règle de base.
+    expect(wildShapeTemporaryHp(fiche(druide(2)))).toBe(2);
+  });
+
+  it('Pas de clair de lune : Sagesse utilisations, au repos long, à partir du niveau 10', () => {
+    const neuf = druideAvec(9, 'lune');
+    expect(deriveCharacter(neuf).resources.some((r) => r.key === 'druide:pas-clair-lune')).toBe(false);
+    const dix = druideAvec(10, 'lune');
+    // La fiche de conformité a 16 en Sagesse, soit +3.
+    expect(deriveCharacter(dix).resources.find((r) => r.key === 'druide:pas-clair-lune'))
+      .toMatchObject({ max: 3, recharge: 'long' });
+  });
+});
+
+describe('p. 84 — Cercle de la Terre : le terrain décide des sorts du cercle', () => {
+  it('sans terrain choisi, aucun sort de cercle — et la décision est signalée', () => {
+    const sansTerrain = druideAvec(5, 'terre');
+    expect(deriveCharacter(sansTerrain).spellcasting.alwaysPrepared).not.toContain('eclair');
+    expect(decisionsEnAttente(sansTerrain).some((d) => d.key === 'terrain')).toBe(true);
+  });
+
+  it.each([
+    ['aride', 5, ['flou', 'mains-brulantes', 'trait-feu', 'boule-feu']],
+    ['polaire', 5, ['brouillard', 'immobilisation-personne', 'rayon-givre', 'tempete-neige']],
+    ['temperee', 5, ['pas-brumeux', 'toucher-choc', 'sommeil', 'eclair']],
+    ['tropicale', 5, ['aspersion-acide', 'rayon-maladie', 'toile-araignee', 'nuage-poison']],
+  ])('terrain %s au niveau %i → %j', (terrain, niveau, attendus) => {
+    const sheet = choisirDeClasse(druideAvec(niveau, 'terre'), 'druide', 'terrain', terrain);
+    const accordes = deriveCharacter(sheet).spellcasting.alwaysPrepared;
+    for (const id of attendus) expect(accordes).toContain(id);
+  });
+
+  it('les paliers 7 et 9 n’arrivent qu’à leur niveau', () => {
+    const sept = choisirDeClasse(druideAvec(7, 'terre'), 'druide', 'terrain', 'temperee');
+    expect(deriveCharacter(sept).spellcasting.alwaysPrepared).toContain('liberte-mouvement');
+    expect(deriveCharacter(sept).spellcasting.alwaysPrepared).not.toContain('foulee-arbres');
+    const neuf = choisirDeClasse(druideAvec(9, 'terre'), 'druide', 'terrain', 'temperee');
+    expect(deriveCharacter(neuf).spellcasting.alwaysPrepared).toContain('foulee-arbres');
+  });
+
+  it('le terrain se rechoisit à chaque repos long : la décision le dit', () => {
+    const sheet = choisirDeClasse(druideAvec(5, 'terre'), 'druide', 'terrain', 'aride');
+    expect(decisionsDeClasse(sheet).find((d) => d.key === 'terrain')?.auReposLong).toBe(true);
+  });
+
+  it('un autre cercle n’a pas de terrain à choisir', () => {
+    expect(decisionsDeClasse(druideAvec(5, 'lune')).some((d) => d.key === 'terrain')).toBe(false);
+  });
+});
+
+describe('p. 88 — Cercle des Étoiles : Carte stellaire et Présage cosmique', () => {
+  it('Trait guidé : Sagesse lancements, rendus au repos long, dès le niveau 3', () => {
+    const trois = druideAvec(3, 'etoiles');
+    expect(deriveCharacter(trois).resources.find((r) => r.key === 'druide:carte-etoiles'))
+      .toMatchObject({ max: 3, recharge: 'long' });
+  });
+
+  it('Présage cosmique n’arrive qu’au niveau 6', () => {
+    expect(deriveCharacter(druideAvec(5, 'etoiles')).resources
+      .some((r) => r.key === 'druide:presage-cosmique')).toBe(false);
+    expect(deriveCharacter(druideAvec(6, 'etoiles')).resources
+      .find((r) => r.key === 'druide:presage-cosmique')).toMatchObject({ max: 3, recharge: 'long' });
+  });
+
+  it('les sorts de la Carte stellaire sont toujours préparés', () => {
+    const accordes = deriveCharacter(druideAvec(3, 'etoiles')).spellcasting.alwaysPrepared;
+    expect(accordes).toContain('assistance');
+    expect(accordes).toContain('trait-lumiere');
+  });
+});
+
+describe('p. 82 — Archidruide : Magicien de la nature', () => {
+  const aSecPartiel = (level: number, dejaDepensees: number) => {
+    const base = fiche(druide(level));
+    return { ...base, live: { ...base.live, resourcesSpent: { 'druide:forme-sauvage': dejaDepensees } } };
+  };
+
+  it('deux utilisations donnent UN emplacement de rang 4', () => {
+    expect(rangMagicienNature(1)).toBe(2);
+    expect(rangMagicienNature(2)).toBe(4);
+    const avant = { ...fiche(druide(20)), live: { ...fiche(druide(20)).live, spellSlotsSpent: { 4: 1 } } };
+    const apres = magicienDeLaNature(avant, deriveCharacter(avant), 2);
+    expect(apres.live.spellSlotsSpent[4]).toBe(0);
+    expect(apres.live.resourcesSpent['druide:forme-sauvage']).toBe(2);
+  });
+
+  it('rien avant le niveau 20', () => {
+    const dixneuf = fiche(druide(19));
+    expect(conversionsMagicienNaturePossibles(dixneuf, deriveCharacter(dixneuf))).toEqual([]);
+  });
+
+  it('une seule fois avant un repos long', () => {
+    const avant = fiche(druide(20));
+    const apres = magicienDeLaNature(avant, deriveCharacter(avant), 1);
+    expect(conversionsMagicienNaturePossibles(apres, deriveCharacter(apres))).toEqual([]);
+    const { sheet } = longRest(apres, deriveCharacter(apres));
+    expect(sheet.live.resourcesSpent[MAGICIEN_NATURE_KEY]).toBeUndefined();
+  });
+
+  it('on ne convertit que ce qui reste, et jamais au-delà du rang 9', () => {
+    // Druide 20 : 4 utilisations, dont 2 déjà dépensées → 2 restantes.
+    const partiel = aSecPartiel(20, 2);
+    expect(conversionsMagicienNaturePossibles(partiel, deriveCharacter(partiel))).toEqual([1, 2]);
+    // 5 utilisations donneraient un rang 10 : hors de portée, donc jamais proposé.
+    const plein = fiche(druide(20));
+    expect(conversionsMagicienNaturePossibles(plein, deriveCharacter(plein))).toEqual([1, 2, 3, 4]);
+    expect(magicienDeLaNature(plein, deriveCharacter(plein), 5)).toBe(plein);
+  });
+});
+
+describe('Appendice B (p. 346-359) — les formes que la règle autorise existent vraiment', () => {
+  const formes = (sheet: CharacterSheet) =>
+    eligibleForms(sheet, deriveCharacter(sheet)).map((profile) => profile.id);
+
+  it('un Druide 8 a enfin des formes volantes à choisir', () => {
+    const huit = formes(fiche(druide(8)));
+    for (const id of ['bat', 'hawk', 'owl', 'raven']) expect(huit).toContain(id);
+  });
+
+  it('…et aucune avant le niveau 8', () => {
+    expect(formes(fiche(druide(7))).some((id) => ['bat', 'hawk', 'owl', 'raven'].includes(id))).toBe(false);
+  });
+
+  it('un Druide 8 a des formes de FP 1', () => {
+    const huit = formes(fiche(druide(8)));
+    for (const id of ['brown-bear', 'dire-wolf', 'giant-spider', 'lion', 'tiger']) {
+      expect(huit).toContain(id);
+    }
+    expect(formes(fiche(druide(7)))).not.toContain('lion');
+  });
+
+  it('un Druide de la Lune atteint l’Éléphant (FP 4) au niveau 12', () => {
+    const onze = druideAvec(11, 'lune');
+    const douze = druideAvec(12, 'lune');
+    expect(wildShapeAccess(onze, deriveCharacter(onze)).maxCr).toBe(3);
+    expect(formes(onze)).not.toContain('elephant');
+    expect(wildShapeAccess(douze, deriveCharacter(douze)).maxCr).toBe(4);
+    expect(formes(douze)).toContain('elephant');
+  });
+
+  it('l’Ours brun frappe deux fois, le Loup sanguinaire une seule', () => {
+    const huit = eligibleForms(fiche(druide(8)), deriveCharacter(fiche(druide(8))));
+    expect(huit.find((f) => f.id === 'brown-bear')?.attacksPerAction).toBe(2);
+    expect(huit.find((f) => f.id === 'dire-wolf')?.attacksPerAction ?? 1).toBe(1);
   });
 });

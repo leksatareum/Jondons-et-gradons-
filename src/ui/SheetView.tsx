@@ -12,6 +12,7 @@ import { cardsFromCharacter } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
+import { choisirDeClasse } from '../model/choix-de-classe';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
@@ -180,6 +181,14 @@ export function SheetView({
     void saveSheet(client, sync, fiche.id, transfererMarque(fiche.data, cible));
   };
 
+  /**
+   * Une décision de classe est une décision de PERSONNAGE, pas de l'état
+   * vivant : elle part en base comme la préparation d'un sort.
+   */
+  const enregistrerChoixDeClasse = (classId: string, key: string, optionId: string) => {
+    void saveSheet(client, sync, fiche.id, choisirDeClasse(fiche.data, classId, key, optionId));
+  };
+
   const accorder = (grant: SpellGrant) => {
     void saveSheet(client, sync, fiche.id, withGrant(fiche.data, grant));
     setDonEnCours(false);
@@ -282,6 +291,7 @@ export function SheetView({
           onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
           onRepos={() => onOnglet('repos')}
           onReglages={() => onOnglet('parametres')}
+          onChoixDeClasse={enregistrerChoixDeClasse}
         />
       );
     }

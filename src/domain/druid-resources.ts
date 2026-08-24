@@ -24,10 +24,15 @@ export const wildShapeUses = (level: number): number => {
 export const wildShapeShortRestRecovery = 1;
 
 /**
- * Résurgence sauvage (niveau 5+) : à l'initiative sans Forme sauvage active,
- * récupère une utilisation gratuitement. Une fois par repos long, échange
- * aussi une utilisation de Forme sauvage contre un emplacement de niveau 1,
- * ou l'inverse.
+ * Résurgence sauvage (niveau 5+).
+ *
+ * ⚠️ Ce commentaire décrivait la mauvaise règle : il confondait Résurgence
+ * sauvage avec Forme sauvage pérenne de l'Archidruide (niveau 20), qui elle
+ * rend une utilisation à l'Initiative. PHB 2024 p. 81 : Résurgence sauvage
+ * permet, une fois par tour et SEULEMENT s'il ne reste aucune utilisation,
+ * de dépenser un emplacement pour en retrouver une ; et, une fois avant un
+ * repos long, de convertir une utilisation en un emplacement de rang 1.
+ * La règle appliquée vit dans `src/model/druide.ts`.
  */
 export const hasWildResurgence = (level: number): boolean => clampLevel(level) >= 5;
 

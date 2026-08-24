@@ -12,7 +12,7 @@ export type WildShapeAttack = {
 export type WildShapeProfile = {
   id: string;
   name: string;
-  size: 'TP' | 'P' | 'M' | 'G';
+  size: 'TP' | 'P' | 'M' | 'G' | 'TG';
   cr: string;
   ac: number;
   hp: number;
@@ -76,20 +76,34 @@ const make = (
   return { id, name: base.name, size, cr: base.cr, ac: base.ac, hp: base.hp, speed: base.speed, abilities, attacks, ...extra };
 };
 
-// Appendix B 2024, beasts usable by a level 2-5 Druid without a Fly Speed.
-// The app stores only compact mechanical data; it does not reproduce prose stat blocks.
+// Appendice B du PHB 2024, lu dans le PDF de l'utilisateur (p. 346 à 359).
+//
+// La liste couvrait au départ les seules bêtes d'un Druide de niveau 2 à 5,
+// sans vitesse de vol. Elle laissait donc sans rien un Druide de niveau 8,
+// qui a droit au vol, et un Druide du Cercle de la Lune, qui a droit à des
+// FP bien plus élevées : la règle existait, les formes manquaient.
+//
+// L'application ne stocke que des données mécaniques compactes ; elle ne
+// reproduit pas les blocs de statistiques en prose.
 export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('ape', 'M', { str: 16, dex: 14, con: 14 }, [
     { id: 'fist', name: 'Poing', toHit: 5, dice: '1d4+3', type: 'contondants' },
     { id: 'rock', name: 'Rocher (Recharge 6)', toHit: 5, dice: '2d6+3', type: 'contondants', props: 'distance 7,5/15 m' },
   ], { skillOverrides: { athletisme: 5, perception: 3 }, senses: 'Perception passive 13', attacksPerAction: 2 }),
   make('badger', 'TP', { str: 10, dex: 11, con: 16 }, [], { skillOverrides: { perception: 3 }, senses: 'Vision dans le noir 9 m · Perception passive 13', resistances: ['poison'] }),
+  make('bat', 'TP', { str: 2, dex: 15, con: 8 }, [
+    { id: 'bite', name: 'Morsure', toHit: 4, dice: '1', type: 'perforants' },
+  ], { senses: 'Vision aveugle 18 m · Perception passive 11' }),
   make('black-bear', 'M', { str: 15, dex: 12, con: 14 }, [
     { id: 'rend', name: 'Lacération', toHit: 4, dice: '1d6+2', type: 'tranchants' },
   ], { skillOverrides: { perception: 5 }, senses: 'Vision dans le noir 18 m · Perception passive 15', attacksPerAction: 2 }),
   make('boar', 'M', { str: 13, dex: 11, con: 14 }, [
     { id: 'gore', name: 'Défenses', toHit: 3, dice: '1d6+1', type: 'perforants', props: 'Après 6 m en ligne droite: +1d6 et À terre si G ou moins' },
   ], { senses: 'Perception passive 9', traits: ['Furie sanglante: avantage aux attaques quand le sanglier est à la moitié de ses PV ou moins.'] }),
+  make('brown-bear', 'G', { str: 17, dex: 12, con: 15 }, [
+    { id: 'bite', name: 'Morsure', toHit: 5, dice: '1d8+3', type: 'perforants' },
+    { id: 'claw', name: 'Griffe', toHit: 5, dice: '1d4+3', type: 'tranchants', props: 'Cible TG ou moins: À terre' },
+  ], { skillOverrides: { perception: 3 }, senses: 'Vision dans le noir 18 m · Perception passive 13', attacksPerAction: 2 }),
   make('camel', 'G', { str: 15, dex: 8, con: 17 }, [
     { id: 'bite', name: 'Morsure', toHit: 4, dice: '1d4+2', type: 'contondants' },
   ], { saveOverrides: { con: 5 }, senses: 'Vision dans le noir 18 m · Perception passive 10' }),
@@ -106,9 +120,15 @@ export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('crocodile', 'G', { str: 15, dex: 10, con: 13 }, [
     { id: 'bite', name: 'Morsure', toHit: 4, dice: '1d8+2', type: 'perforants', props: 'Cible M ou moins: Agrippé (DD 12) et Entravé tant qu’elle est agrippée' },
   ], { saveOverrides: { con: 3 }, skillOverrides: { discretion: 2 }, senses: 'Perception passive 10', traits: ['Retient son souffle 1 heure.'] }),
+  make('dire-wolf', 'G', { str: 17, dex: 15, con: 15 }, [
+    { id: 'bite', name: 'Morsure', toHit: 5, dice: '1d10+3', type: 'perforants', props: 'Cible TG ou moins: À terre' },
+  ], { skillOverrides: { perception: 5, discretion: 4 }, senses: 'Vision dans le noir 18 m · Perception passive 15', traits: ['Tactique de meute'] }),
   make('draft-horse', 'G', { str: 18, dex: 10, con: 15 }, [
     { id: 'hooves', name: 'Sabots', toHit: 6, dice: '1d4+4', type: 'contondants' },
   ], { senses: 'Perception passive 10' }),
+  make('elephant', 'TG', { str: 22, dex: 9, con: 17 }, [
+    { id: 'gore', name: 'Encornement', toHit: 8, dice: '2d8+6', type: 'perforants', props: 'Après 6 m en ligne droite: À terre' },
+  ], { senses: 'Perception passive 10', attacksPerAction: 2, traits: ['Piétinement (action bonus): JS Dextérité DD 16 contre une créature à terre à 1,50 m — 2d10+6 contondants, moitié en cas de réussite.'] }),
   make('elk', 'G', { str: 16, dex: 10, con: 11 }, [
     { id: 'ram', name: 'Coup de bois', toHit: 5, dice: '1d6+3', type: 'contondants', props: 'Après 6 m en ligne droite: +1d6 et À terre si TG ou moins' },
   ], { skillOverrides: { perception: 2 }, senses: 'Vision dans le noir 18 m · Perception passive 12' }),
@@ -127,12 +147,21 @@ export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('giant-seahorse', 'G', { str: 15, dex: 12, con: 11 }, [
     { id: 'ram', name: 'Coup de tête', toHit: 4, dice: '2d6+2', type: 'contondants', props: 'Après 6 m en ligne droite: 2d8+2' },
   ], { senses: 'Perception passive 11', traits: ['Respiration aquatique uniquement.', 'Sous l’eau, action bonus: déplacement égal à la moitié de la nage sans attaque d’opportunité.'] }),
+  make('giant-spider', 'G', { str: 14, dex: 16, con: 12 }, [
+    { id: 'bite', name: 'Morsure', toHit: 5, dice: '1d8+3+2d6', type: 'perforants + poison' },
+  ], { skillOverrides: { perception: 4, discretion: 7 }, senses: 'Vision dans le noir 18 m · Perception passive 14', traits: ['Pattes d’araignée', 'Marche sur les toiles', 'Toile (recharge 5-6): JS Dextérité DD 13 à 18 m — Entravé jusqu’à destruction de la toile (CA 10, 5 PV, vulnérable au feu, immunisée au poison et au psychique).'] }),
   make('giant-weasel', 'M', { str: 11, dex: 17, con: 10 }, [
     { id: 'bite', name: 'Morsure', toHit: 5, dice: '1d4+3', type: 'perforants' },
   ], { skillOverrides: { acrobaties: 5, perception: 3, discretion: 5 }, senses: 'Vision dans le noir 18 m · Perception passive 13' }),
   make('goat', 'M', { str: 11, dex: 10, con: 11 }, [
     { id: 'ram', name: 'Coup de cornes', toHit: 2, dice: '1', type: 'contondants', props: 'Après 6 m en ligne droite: 1d4' },
   ], { saveOverrides: { str: 2 }, skillOverrides: { perception: 2 }, senses: 'Vision dans le noir 18 m · Perception passive 12' }),
+  make('hawk', 'TP', { str: 5, dex: 16, con: 8 }, [
+    { id: 'talons', name: 'Serres', toHit: 5, dice: '1', type: 'tranchants' },
+  ], { skillOverrides: { perception: 6 }, senses: 'Perception passive 16' }),
+  make('lion', 'G', { str: 17, dex: 15, con: 11 }, [
+    { id: 'rend', name: 'Lacération', toHit: 5, dice: '1d8+3', type: 'tranchants' },
+  ], { skillOverrides: { perception: 3, discretion: 4 }, senses: 'Vision dans le noir 18 m · Perception passive 13', attacksPerAction: 2, traits: ['Tactique de meute', 'Bond avec élan: avec 3 m d’élan, saut en longueur jusqu’à 7,50 m.', 'Rugissement (remplace une attaque): JS Sagesse DD 11 à 4,50 m — Effrayé jusqu’au début du prochain tour du lion.'] }),
   make('lizard', 'TP', { str: 2, dex: 11, con: 10 }, [
     { id: 'bite', name: 'Morsure', toHit: 2, dice: '1', type: 'perforants' },
   ], { senses: 'Vision dans le noir 9 m · Perception passive 9', traits: ['Pattes d’araignée: grimpe sur surfaces difficiles et plafonds sans test.'] }),
@@ -145,6 +174,9 @@ export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('octopus', 'P', { str: 4, dex: 15, con: 11 }, [
     { id: 'tentacles', name: 'Tentacules', toHit: 4, dice: '1', type: 'contondants' },
   ], { skillOverrides: { perception: 2, discretion: 6 }, senses: 'Vision dans le noir 9 m · Perception passive 12', traits: ['Compression: passe dans un espace de 2,5 cm sans se faufiler.', 'Respiration aquatique uniquement.', 'Nuage d’encre 1/jour sous l’eau.'] }),
+  make('owl', 'TP', { str: 3, dex: 13, con: 8 }, [
+    { id: 'talons', name: 'Serres', toHit: 3, dice: '1', type: 'tranchants' },
+  ], { skillOverrides: { perception: 5, discretion: 5 }, senses: 'Vision dans le noir 36 m · Perception passive 15', traits: ['Vol effleurant: ne provoque pas d’attaque d’opportunité en s’envolant hors de portée.'] }),
   make('panther', 'M', { str: 14, dex: 15, con: 10 }, [
     { id: 'pounce', name: 'Bond', toHit: 4, dice: '1d4+2', type: 'tranchants', props: 'Avec avantage: 2d4+2' },
   ], { skillOverrides: { perception: 4, discretion: 6 }, senses: 'Vision dans le noir 18 m · Perception passive 14', traits: ['Rôder: dans son Multiattaque, se déplace de la moitié de sa vitesse sans attaque d’opportunité puis peut Se cacher.'] }),
@@ -154,6 +186,9 @@ export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('rat', 'TP', { str: 2, dex: 11, con: 9 }, [
     { id: 'bite', name: 'Morsure', toHit: 2, dice: '1', type: 'perforants' },
   ], { skillOverrides: { perception: 2 }, senses: 'Vision dans le noir 9 m · Perception passive 12', traits: ['Agile: ne provoque pas d’attaque d’opportunité en quittant l’allonge ennemie.'] }),
+  make('raven', 'TP', { str: 2, dex: 14, con: 10 }, [
+    { id: 'beak', name: 'Bec', toHit: 4, dice: '1', type: 'perforants' },
+  ], { skillOverrides: { perception: 3 }, senses: 'Perception passive 13', traits: ['Imitation: imite des sons simples ; un test de Sagesse (Perspicacité) DD 10 discerne la supercherie.'] }),
   make('reef-shark', 'M', { str: 14, dex: 15, con: 13 }, [
     { id: 'bite', name: 'Morsure', toHit: 4, dice: '2d4+2', type: 'perforants' },
   ], { skillOverrides: { perception: 2 }, senses: 'Vision aveugle 9 m · Perception passive 12', traits: ['Tactique de meute', 'Respiration aquatique uniquement.'] }),
@@ -166,6 +201,9 @@ export const WILD_SHAPE_PROFILES: WildShapeProfile[] = [
   make('spider', 'TP', { str: 2, dex: 14, con: 8 }, [
     { id: 'bite', name: 'Morsure', toHit: 4, dice: '1+1d4', type: 'perforants + poison' },
   ], { skillOverrides: { discretion: 4 }, senses: 'Vision dans le noir 9 m · Perception passive 10', traits: ['Pattes d’araignée', 'Marche sur les toiles'] }),
+  make('tiger', 'G', { str: 17, dex: 16, con: 14 }, [
+    { id: 'pounce', name: 'Bond', toHit: 5, dice: '1d6+3', type: 'tranchants', props: 'Avec avantage: +1d6 et À terre si TG ou moins' },
+  ], { skillOverrides: { perception: 3, discretion: 7 }, senses: 'Vision dans le noir 18 m · Perception passive 13', traits: ['Rôder: dans son Multiattaque, se déplace de la moitié de sa vitesse sans attaque d’opportunité puis peut Se cacher.'] }),
   make('venomous-snake', 'TP', { str: 2, dex: 15, con: 11 }, [
     { id: 'bite', name: 'Morsure', toHit: 4, dice: '1d4+2+1d6', type: 'perforants + poison' },
   ], { senses: 'Vision aveugle 3 m · Perception passive 10' }),

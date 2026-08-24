@@ -1,5 +1,5 @@
 import { levelInClass, type CharacterSheet } from './character';
-import { WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
+import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
 import type { DerivedCharacter } from './derive';
 
 /**
@@ -192,4 +192,79 @@ export function archidruideSurInitiative(
   if (levelInClass(sheet, 'druide') < 20) return sheet;
   if (formesRestantes(derived) > 0) return sheet;
   return rendreFormeSauvage(sheet);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FORME SAUVAGE — DURÉE  (PHB 2024, p. 80)
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Durée d'une Forme sauvage, en heures : la moitié du niveau de Druide.
+ *
+ * « You stay in that form for a number of hours equal to half your Druid
+ * level. » Un Druide 2 ou 3 tient donc une heure : la règle ne descend pas
+ * en dessous tant qu'on a accès à la capacité.
+ */
+export function dureeFormeSauvageHeures(sheet: CharacterSheet): number {
+  const niveau = druidLevel(sheet);
+  if (niveau < 2) return 0;
+  return Math.max(1, Math.floor(niveau / 2));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ARCHIDRUIDE — MAGICIEN DE LA NATURE  (niveau 20, PHB 2024, p. 82)
+// ═══════════════════════════════════════════════════════════════════════
+
+export const MAGICIEN_NATURE_KEY = 'druide:magicien-nature';
+
+/**
+ * Rang de l'emplacement obtenu en convertissant `utilisations` Formes
+ * sauvages : deux niveaux de sort par utilisation, en UN SEUL emplacement.
+ *
+ * Distinct de l'effet 2 de Résurgence sauvage, qui rend un emplacement de
+ * rang 1 pour une utilisation : ici deux utilisations donnent un rang 4, pas
+ * deux rangs 2.
+ */
+export const rangMagicienNature = (utilisations: number): number =>
+  Math.max(0, Math.floor(utilisations)) * 2;
+
+/** Le plus haut nombre d'utilisations convertibles : celles qui restent, et pas au-delà du rang 9. */
+export function conversionsMagicienNaturePossibles(sheet: CharacterSheet, derived: DerivedCharacter): number[] {
+  if (druidLevel(sheet) < 20) return [];
+  if ((sheet.live.resourcesSpent[MAGICIEN_NATURE_KEY] ?? 0) > 0) return [];
+  const restantes = derived.resources.find((r) => r.key === WILD_SHAPE_RESOURCE_KEY)?.remaining ?? 0;
+  const possibles: number[] = [];
+  for (let n = 1; n <= restantes; n += 1) {
+    if (rangMagicienNature(n) <= 9) possibles.push(n);
+  }
+  return possibles;
+}
+
+/**
+ * Convertit des utilisations de Forme sauvage en un emplacement.
+ *
+ * L'emplacement obtenu est rendu en retirant une dépense sur ce rang. Un
+ * Druide 20 n'a d'emplacements que jusqu'au rang 9 : convertir cinq
+ * utilisations n'ouvre pas un rang 10, et la conversion est refusée.
+ */
+export function magicienDeLaNature(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  utilisations: number,
+): CharacterSheet {
+  if (!conversionsMagicienNaturePossibles(sheet, derived).includes(utilisations)) return sheet;
+  const rang = rangMagicienNature(utilisations);
+  const depensesRang = sheet.live.spellSlotsSpent[rang] ?? 0;
+  return {
+    ...sheet,
+    live: {
+      ...sheet.live,
+      spellSlotsSpent: { ...sheet.live.spellSlotsSpent, [rang]: Math.max(0, depensesRang - 1) },
+      resourcesSpent: {
+        ...sheet.live.resourcesSpent,
+        [WILD_SHAPE_RESOURCE_KEY]: (sheet.live.resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0) + utilisations,
+        [MAGICIEN_NATURE_KEY]: 1,
+      },
+    },
+  };
 }
