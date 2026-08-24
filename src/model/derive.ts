@@ -187,6 +187,25 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   if (rodeur) {
     push('rodeur:marque-chasseur', 'Marque du chasseur (sans emplacement)', hunterMarkFreeCastUses(rodeur), 'long', 'rodeur');
     push('rodeur:voile-nature', 'Voile de la nature', natureVeilUses(rodeur, abilityModifier(abilities.wis)), 'long', 'rodeur');
+    // Infatigable (niveau 10) a DEUX effets : le cran d'épuisement rendu au
+    // repos court, déjà appliqué, et une réserve de PV temporaires que rien
+    // ne comptait — 1d8 + Sagesse, Sagesse fois par repos long (p. 121).
+    if (rodeur >= 10) {
+      push('rodeur:infatigable', 'Infatigable (PV temporaires)', Math.max(1, abilityModifier(abilities.wis)), 'long', 'rodeur');
+    }
+  }
+
+  // ── Archétypes du Rôdeur ──────────────────────────────────────────
+  const archetype = subclassOf(sheet, 'rodeur');
+  const sagesseRodeur = Math.max(1, abilityModifier(abilities.wis));
+  if (rodeur >= 3 && /traqueur des ténèbres|traqueur des tenebres/i.test(archetype ?? '')) {
+    push('rodeur:frappe-redoutable', 'Frappe redoutable', sagesseRodeur, 'long', 'rodeur');
+  }
+  if (rodeur >= 11 && /vagabond féerique|vagabond feerique/i.test(archetype ?? '')) {
+    push('rodeur:renforts-feeriques', 'Renforts féeriques (Invocation de fée)', 1, 'long', 'rodeur');
+  }
+  if (rodeur >= 15 && /vagabond féerique|vagabond feerique/i.test(archetype ?? '')) {
+    push('rodeur:vagabond-brumeux', 'Vagabond brumeux (Pas brumeux)', sagesseRodeur, 'long', 'rodeur');
   }
 
   const occultiste = levelInClass(sheet, 'occultiste');

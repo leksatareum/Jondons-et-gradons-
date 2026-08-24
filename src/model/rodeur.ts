@@ -1,4 +1,5 @@
-import { levelInClass, type CharacterSheet, type HuntersMark } from './character';
+import { abilityModifier, effectiveAbilities, levelInClass, type CharacterSheet, type HuntersMark } from './character';
+import { grantTemporaryHp } from './damage';
 import type { DerivedCharacter } from './derive';
 
 /**
@@ -171,4 +172,49 @@ export function avantageContre(sheet: CharacterSheet, targetId: string): boolean
 /** Lancements gratuits restants, lus sur la ressource dérivée. */
 export function lancementsGratuitsRestants(derived: DerivedCharacter): number {
   return derived.resources.find((resource) => resource.key === MARQUE_LIBRE_KEY)?.remaining ?? 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INFATIGABLE — PV TEMPORAIRES  (niveau 10, PHB 2024, p. 121)
+// ═══════════════════════════════════════════════════════════════════════
+
+export const INFATIGABLE_KEY = 'rodeur:infatigable';
+
+/**
+ * Ce que rapporte une utilisation : le jet de d8 du joueur, plus son
+ * modificateur de Sagesse, minimum 1.
+ *
+ * L'application ne lance pas le dé — le joueur le jette et le déclare, comme
+ * partout ailleurs.
+ */
+export function infatigablePvTemporaires(sheet: CharacterSheet, jetDeD8: number): number {
+  const sagesse = abilityModifier(effectiveAbilities(sheet).wis);
+  return Math.max(1, Math.max(1, Math.min(8, Math.floor(jetDeD8))) + sagesse);
+}
+
+/**
+ * Dépense une utilisation d'Infatigable et accorde les PV temporaires.
+ *
+ * Le second effet de la capacité — un cran d'épuisement à chaque repos court —
+ * vit dans `model/rest.ts` : il n'a rien à voir avec cette réserve.
+ */
+export function utiliserInfatigable(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  jetDeD8: number,
+): CharacterSheet {
+  if (niveauRodeur(sheet) < 10) return sheet;
+  const reserve = derived.resources.find((resource) => resource.key === INFATIGABLE_KEY);
+  if (!reserve || reserve.remaining <= 0) return sheet;
+  const avecDepense: CharacterSheet = {
+    ...sheet,
+    live: {
+      ...sheet.live,
+      resourcesSpent: {
+        ...sheet.live.resourcesSpent,
+        [INFATIGABLE_KEY]: (sheet.live.resourcesSpent[INFATIGABLE_KEY] ?? 0) + 1,
+      },
+    },
+  };
+  return grantTemporaryHp(avecDepense, infatigablePvTemporaires(sheet, jetDeD8));
 }

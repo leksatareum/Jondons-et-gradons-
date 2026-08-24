@@ -33,6 +33,9 @@ import {
 } from './druide';
 import { choisirDeClasse, decisionsDeClasse, decisionsEnAttente } from './choix-de-classe';
 import { eligibleForms, wildShapeAccess } from './wild-shape';
+import { INFATIGABLE_KEY, infatigablePvTemporaires, utiliserInfatigable } from './rodeur';
+import { linkedCreatureOptionsFor } from '../domain/linked-creatures';
+import { effectiveAbilities } from './character';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -1034,7 +1037,7 @@ describe('p. 84 — Cercle de la Terre : le terrain décide des sorts du cercle'
 
   it('le terrain se rechoisit à chaque repos long : la décision le dit', () => {
     const sheet = choisirDeClasse(druideAvec(5, 'terre'), 'druide', 'terrain', 'aride');
-    expect(decisionsDeClasse(sheet).find((d) => d.key === 'terrain')?.auReposLong).toBe(true);
+    expect(decisionsDeClasse(sheet).find((d) => d.key === 'terrain')?.rechoisissable).toBe('repos-long');
   });
 
   it('un autre cercle n’a pas de terrain à choisir', () => {
@@ -1136,5 +1139,148 @@ describe('Appendice B (p. 346-359) — les formes que la règle autorise existen
     const huit = eligibleForms(fiche(druide(8)), deriveCharacter(fiche(druide(8))));
     expect(huit.find((f) => f.id === 'brown-bear')?.attacksPerAction).toBe(2);
     expect(huit.find((f) => f.id === 'dire-wolf')?.attacksPerAction ?? 1).toBe(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// RÔDEUR — CHAPITRE COMPLET (PHB 2024, p. 119 à 127)
+// ═══════════════════════════════════════════════════════════════════════
+
+const rodeurAvec = (level: number, archetype: 'chasseur' | 'bestial' | 'feerique' | 'tenebres'): CharacterSheet => {
+  const nom = {
+    chasseur: 'Chasseur', bestial: 'Maître des bêtes',
+    feerique: 'Vagabond féerique', tenebres: 'Traqueur des ténèbres',
+  }[archetype];
+  return fiche([{ classId: 'rodeur', level, subclass: nom, subclassId: archetype }]);
+};
+
+describe('p. 120 — table du Rôdeur : Ennemi juré et sorts préparés', () => {
+  it.each([[1, 2], [4, 2], [5, 3], [8, 3], [9, 4], [12, 4], [13, 5], [16, 5], [17, 6], [20, 6]])(
+    'Rôdeur %i → %i lancements gratuits', (niveau, attendus) => {
+      const sheet = fiche(rodeur(niveau));
+      expect(deriveCharacter(sheet).resources.find((r) => r.key === MARQUE_LIBRE_KEY)?.max).toBe(attendus);
+    },
+  );
+
+  it.each([[1, 2], [2, 3], [3, 4], [5, 6], [9, 9], [13, 11], [17, 14], [20, 15]])(
+    'Rôdeur %i → %i sorts préparés', (niveau, attendus) => {
+      expect(deriveCharacter(fiche(rodeur(niveau))).spellcasting.preparedMax.rodeur).toBe(attendus);
+    },
+  );
+});
+
+describe('p. 121 — Infatigable : deux effets distincts au niveau 10', () => {
+  it('la réserve de PV temporaires vaut le modificateur de Sagesse', () => {
+    // La fiche de conformité a 16 en Sagesse, soit +3.
+    expect(deriveCharacter(fiche(rodeur(9))).resources.some((r) => r.key === INFATIGABLE_KEY)).toBe(false);
+    expect(deriveCharacter(fiche(rodeur(10))).resources.find((r) => r.key === INFATIGABLE_KEY))
+      .toMatchObject({ max: 3, recharge: 'long' });
+  });
+
+  it('une utilisation donne 1d8 + Sagesse en PV temporaires', () => {
+    const avant = fiche(rodeur(10));
+    expect(infatigablePvTemporaires(avant, 5)).toBe(8);
+    const apres = utiliserInfatigable(avant, deriveCharacter(avant), 5);
+    expect(apres.live.temporaryHp).toBe(8);
+    expect(apres.live.resourcesSpent[INFATIGABLE_KEY]).toBe(1);
+  });
+
+  it('la réserve s’épuise', () => {
+    let sheet = fiche(rodeur(10));
+    for (let i = 0; i < 3; i += 1) sheet = utiliserInfatigable(sheet, deriveCharacter(sheet), 1);
+    expect(sheet.live.resourcesSpent[INFATIGABLE_KEY]).toBe(3);
+    const apres = utiliserInfatigable(sheet, deriveCharacter(sheet), 8);
+    expect(apres).toBe(sheet);
+  });
+
+  it('le cran d’épuisement du repos court reste un effet séparé', () => {
+    const base = fiche(rodeur(10));
+    const epuise = { ...base, live: { ...base.live, exhaustion: 2 } };
+    const { sheet } = shortRest(epuise, deriveCharacter(epuise));
+    expect(sheet.live.exhaustion).toBe(1);
+    // …et il ne consomme aucune utilisation de la réserve.
+    expect(sheet.live.resourcesSpent[INFATIGABLE_KEY]).toBeUndefined();
+  });
+});
+
+describe('p. 124-126 — réserves des archétypes', () => {
+  it('Traqueur des ténèbres 3 : Frappe redoutable, Sagesse fois, repos long', () => {
+    expect(deriveCharacter(rodeurAvec(3, 'tenebres')).resources.find((r) => r.key === 'rodeur:frappe-redoutable'))
+      .toMatchObject({ max: 3, recharge: 'long' });
+    expect(deriveCharacter(rodeurAvec(3, 'chasseur')).resources.some((r) => r.key === 'rodeur:frappe-redoutable')).toBe(false);
+  });
+
+  it('Vagabond féerique : Renforts féeriques au 11, Vagabond brumeux au 15', () => {
+    const onze = deriveCharacter(rodeurAvec(11, 'feerique')).resources;
+    expect(onze.find((r) => r.key === 'rodeur:renforts-feeriques')).toMatchObject({ max: 1, recharge: 'long' });
+    expect(onze.some((r) => r.key === 'rodeur:vagabond-brumeux')).toBe(false);
+    const quinze = deriveCharacter(rodeurAvec(15, 'feerique')).resources;
+    expect(quinze.find((r) => r.key === 'rodeur:vagabond-brumeux')).toMatchObject({ max: 3, recharge: 'long' });
+  });
+
+  it('Voile de la nature n’arrive qu’au niveau 14', () => {
+    expect(deriveCharacter(fiche(rodeur(13))).resources.some((r) => r.key === 'rodeur:voile-nature')).toBe(false);
+    expect(deriveCharacter(fiche(rodeur(14))).resources.find((r) => r.key === 'rodeur:voile-nature'))
+      .toMatchObject({ max: 3, recharge: 'long' });
+  });
+});
+
+describe('p. 127 — Chasseur : deux décisions, rechoisies à chaque repos', () => {
+  it('Proie du chasseur au niveau 3, Tactique défensive au niveau 7', () => {
+    const trois = decisionsDeClasse(rodeurAvec(3, 'chasseur')).map((d) => d.key);
+    expect(trois).toContain('hunterPrey');
+    expect(trois).not.toContain('hunterDefense');
+    expect(decisionsDeClasse(rodeurAvec(7, 'chasseur')).map((d) => d.key)).toContain('hunterDefense');
+  });
+
+  it('les deux se rechoisissent à chaque repos, court ou long', () => {
+    for (const decision of decisionsDeClasse(rodeurAvec(7, 'chasseur'))) {
+      expect(decision.rechoisissable).toBe('repos');
+    }
+  });
+
+  it('Tactique défensive ne propose que deux options, sans « Bond du chasseur »', () => {
+    const decision = decisionsDeClasse(rodeurAvec(7, 'chasseur')).find((d) => d.key === 'hunterDefense')!;
+    expect(decision.options.map((o) => o.id)).toEqual(['escape-horde', 'multiattack-defense']);
+  });
+
+  it('le choix s’enregistre et se relit', () => {
+    const avant = rodeurAvec(7, 'chasseur');
+    const apres = choisirDeClasse(avant, 'rodeur', 'hunterPrey', 'horde-breaker');
+    expect(decisionsDeClasse(apres).find((d) => d.key === 'hunterPrey')?.choisi).toBe('horde-breaker');
+  });
+
+  it('un autre archétype n’a aucune de ces décisions', () => {
+    expect(decisionsDeClasse(rodeurAvec(7, 'bestial')).length).toBe(0);
+  });
+});
+
+describe('p. 122-123 — Compagnon primordial : les trois blocs suivent le niveau', () => {
+  const bete = (level: number, kind: 'land' | 'sea' | 'sky') => {
+    const sheet = rodeurAvec(level, 'bestial');
+    return linkedCreatureOptionsFor({
+      classLevels: sheet.classLevels.map((e) => ({ classId: e.classId, level: e.level, subclass: e.subclass })),
+      abilities: effectiveAbilities(sheet),
+      classSelections: sheet.classChoices,
+    } as never).find((option) => option.id === `primal-companion:${kind}`)!;
+  };
+
+  it('Bête terrestre : 5 + 5 × niveau PV, CA 13 + Sagesse, 1d8 + 2 + Sagesse', () => {
+    const terrestre = bete(5, 'land');
+    expect(terrestre.hp).toBe(30);
+    expect(terrestre.ac).toBe(16);
+    expect(terrestre.damageFormula).toBe('1d8+5');
+  });
+
+  it('Bête volante : 4 + 4 × niveau PV, 1d4 + 3 + Sagesse', () => {
+    const volante = bete(5, 'sky');
+    expect(volante.hp).toBe(24);
+    expect(volante.damageFormula).toBe('1d4+6');
+  });
+
+  it('Bête marine : 5 + 5 × niveau PV, 1d6 + 2 + Sagesse', () => {
+    const marine = bete(5, 'sea');
+    expect(marine.hp).toBe(30);
+    expect(marine.damageFormula).toBe('1d6+5');
   });
 });

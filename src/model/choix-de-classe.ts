@@ -1,5 +1,6 @@
 import { choiceList, choicesFor, levelInClass, subclassOf, type CharacterSheet } from './character';
 import { ELEMENTAL_FURY, PRIMAL_ORDER, type ChoiceOption } from '../content/class-choices';
+import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
 import { DRUID_TERRAINS } from '../content/always-prepared-spells';
 
 /**
@@ -27,11 +28,12 @@ export interface DecisionDeClasse {
   options: ChoiceOption[];
   choisi: string | null;
   /**
-   * Se rechoisit à chaque repos long plutôt qu'une fois pour toutes : le
-   * terrain du Cercle de la Terre. Ne pas le dire ferait croire à une
-   * décision définitive.
+   * Quand la décision se rechoisit, si elle se rechoisit. Le terrain du
+   * Cercle de la Terre se reprend à chaque repos long, les options du
+   * Chasseur à chaque repos, court ou long. Ne pas le dire ferait croire à
+   * une décision définitive.
    */
-  auReposLong?: boolean;
+  rechoisissable?: 'repos' | 'repos-long';
 }
 
 const TERRAINS: ChoiceOption[] = [
@@ -47,6 +49,11 @@ export const estCercleDeLaTerre = (sheet: CharacterSheet): boolean => {
   if (entree?.subclassId === 'terre') return true;
   return /cercle de la terre/i.test(subclassOf(sheet, 'druide') ?? '');
 };
+
+/** Les options du Chasseur ont leur propre type ; elles décrivent la même chose. */
+const enOption = (option: { id: string; name: string; desc: string }): ChoiceOption => ({
+  id: option.id, name: option.name, desc: option.desc,
+});
 
 const choisiPour = (sheet: CharacterSheet, classId: string, key: string): string | null =>
   choiceList(choicesFor(sheet, classId), key)[0] ?? null;
@@ -88,12 +95,45 @@ export function decisionsDeClasse(sheet: CharacterSheet): DecisionDeClasse[] {
       help: 'À la fin de chaque repos long, tu choisis un type de terrain ; tu as ses sorts préparés.',
       options: TERRAINS,
       choisi: choisiPour(sheet, 'druide', 'terrain'),
-      auReposLong: true,
+      rechoisissable: 'repos-long',
+    });
+  }
+
+  // ── Rôdeur ────────────────────────────────────────────────────────
+  const rodeur = levelInClass(sheet, 'rodeur');
+  const chasseur = estChasseur(sheet);
+
+  if (rodeur >= 3 && chasseur) {
+    decisions.push({
+      classId: 'rodeur', key: 'hunterPrey',
+      label: 'Proie du chasseur',
+      help: 'Rechoisissable à la fin de chaque repos, court ou long.',
+      options: HUNTER_PREY.map(enOption),
+      choisi: choisiPour(sheet, 'rodeur', 'hunterPrey'),
+      rechoisissable: 'repos',
+    });
+  }
+
+  if (rodeur >= 7 && chasseur) {
+    decisions.push({
+      classId: 'rodeur', key: 'hunterDefense',
+      label: 'Tactique défensive',
+      help: 'Rechoisissable à la fin de chaque repos, court ou long.',
+      options: HUNTER_DEFENSE.map(enOption),
+      choisi: choisiPour(sheet, 'rodeur', 'hunterDefense'),
+      rechoisissable: 'repos',
     });
   }
 
   return decisions;
 }
+
+/** Le Chasseur, quelle que soit la façon dont la fiche le nomme. */
+export const estChasseur = (sheet: CharacterSheet): boolean => {
+  const entree = sheet.classLevels.find((e) => e.classId === 'rodeur');
+  if (entree?.subclassId === 'chasseur') return true;
+  return /^chasseur$/i.test((subclassOf(sheet, 'rodeur') ?? '').trim());
+};
 
 /** Décisions encore à prendre — celles qui manquent réellement à la fiche. */
 export const decisionsEnAttente = (sheet: CharacterSheet): DecisionDeClasse[] =>
