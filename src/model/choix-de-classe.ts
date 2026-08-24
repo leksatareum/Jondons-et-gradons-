@@ -4,6 +4,7 @@ import { ELEMENTAL_FURY, PRIMAL_ORDER, type ChoiceOption } from '../content/clas
 import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
 import { DAMAGE_TYPES } from '../content/reference-lists';
 import { DRUID_TERRAINS } from '../content/always-prepared-spells';
+import { cantripsKnown } from '../domain/spellcasting-progression';
 
 /**
  * Les décisions de classe qu'un personnage doit prendre — et que rien ne lui
@@ -244,6 +245,33 @@ export function choisirDeClasse(
 // ═══════════════════════════════════════════════════════════════════════
 // Effets dérivés des décisions
 // ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Le sort mineur que l'Ordre primordial · Mage paie, quand on peut le nommer.
+ *
+ * Deux façons de le savoir, dans cet ordre :
+ *
+ * 1. Une fiche importée de l'ancienne application le nomme explicitement
+ *    (`primalOrderCantrip`). Cette information existait et n'était plus lue
+ *    par personne.
+ * 2. Sinon, c'est le premier sort mineur appris AU-DELÀ de ce que la table de
+ *    classe accorde. `cantrips` conserve l'ordre d'apprentissage : le sort à
+ *    l'indice du quota de base est exactement celui que le bonus a permis de
+ *    prendre. Attribution stable, et vraie.
+ *
+ * Rend `null` quand rien ne permet de trancher — un Druide Mage qui n'a pas
+ * encore rempli son quota de base n'a pas de sort « en trop » à désigner.
+ */
+export function cantripDeLOrdrePrimordial(sheet: CharacterSheet): string | null {
+  if (sortMineurSupplementaireDuDruide(sheet) === 0) return null;
+
+  const mineursDeDruide = sheet.cantrips.filter((cantrip) => cantrip.sourceClass === 'druide');
+  const nomme = choisiPour(sheet, 'druide', 'primalOrderCantrip');
+  if (nomme && mineursDeDruide.some((cantrip) => cantrip.id === nomme)) return nomme;
+
+  const base = cantripsKnown('druide', levelInClass(sheet, 'druide'));
+  return mineursDeDruide[base]?.id ?? null;
+}
 
 /** Mage : un sort mineur de Druide supplémentaire (PHB 2024, Ordre primordial). */
 export const sortMineurSupplementaireDuDruide = (sheet: CharacterSheet): number =>

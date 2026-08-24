@@ -106,9 +106,11 @@ function Fiche({ spell, onFermer }: { spell: Spell; onFermer: () => void }) {
   );
 }
 
-function Ligne({ spell, etat, onOuvrir, onBasculer }: {
+function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
   spell: Spell;
   etat: ChoiceState;
+  /** Ce qui a payé ce sort quand ce n'est pas le simple quota de la table. */
+  origine?: string;
   onOuvrir: () => void;
   onBasculer: (() => void) | null;
 }) {
@@ -135,6 +137,7 @@ function Ligne({ spell, etat, onOuvrir, onBasculer }: {
         </div>
         <div className="lbl" style={{ color: COULEUR[etat.kind], marginTop: 3 }}>
           {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` par ${sourceLisible(etat.par)}` : ''}
+          {origine ? ` · ${origine}` : ''}
         </div>
       </button>
 
@@ -300,6 +303,14 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
               <div className="num lbl" style={{ color: mineurs.room ? 'var(--muted)' : 'var(--accent)' }}>
                 {mineurs.known}/{mineurs.max}
               </div>
+              {/* Une capacité qui augmente le quota le dit ici : sans ça, un
+                  Druide Mage voyait « 3 » là où sa table de classe en annonce
+                  2, sans explication nulle part. */}
+              {mineurs.bonus && (
+                <div className="lbl" style={{ color: 'var(--accent)', textTransform: 'none' }}>
+                  dont +{mineurs.bonus.nombre} · {mineurs.bonus.de}
+                </div>
+              )}
               {mineurs.free > 0 && (
                 <div className="lbl" style={{ color: 'var(--ok)', textTransform: 'none' }}>
                   +{mineurs.free} hors quota
@@ -312,6 +323,7 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
                 key={entry.spell.id}
                 spell={entry.spell}
                 etat={entry.state}
+                origine={entry.origine}
                 onOuvrir={() => setOuvert(entry.spell)}
                 onBasculer={onToggle && entry.state.kind === 'prepare'
                   ? () => onToggle(entry.spell.id, classId) : null}

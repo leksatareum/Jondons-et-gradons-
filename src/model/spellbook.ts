@@ -2,6 +2,7 @@ import { spellById, spellsForClass, type Spell } from '../content/spell-catalogu
 import { spellManagementMode } from '../domain/spellcasting';
 import type { CharacterSheet, ChosenSpell } from './character';
 import type { DerivedCharacter } from './derive';
+import { cantripDeLOrdrePrimordial, sortMineurSupplementaireDuDruide } from './choix-de-classe';
 
 /**
  * Le grimoire : ce qu'un personnage a le droit de préparer, et ce qu'il en a
@@ -159,6 +160,13 @@ export type ChoiceState =
 export interface SpellChoice {
   spell: Spell;
   state: ChoiceState;
+  /**
+   * Ce qui a payé ce sort, quand ce n'est pas le simple quota de la table.
+   *
+   * Distinct de `accorde` : ce sort-là consomme bien le budget et se retire
+   * comme un autre — c'est le budget lui-même qui a été augmenté.
+   */
+  origine?: string;
 }
 
 /**
@@ -199,6 +207,14 @@ export interface CantripBudget {
   /** Sorts mineurs présents sans consommer le quota — don, lignage, espèce. */
   free: number;
   room: boolean;
+  /**
+   * Ce qu'une capacité ajoute au quota de la table, et laquelle.
+   *
+   * L'Ordre primordial · Mage accorde un sort mineur de plus. Sans le dire,
+   * le quota passait de 2 à 3 sans explication — on pouvait croire à un
+   * défaut de comptage.
+   */
+  bonus?: { de: string; nombre: number };
 }
 
 /**
@@ -215,7 +231,12 @@ export function cantripBudget(sheet: CharacterSheet, derived: DerivedCharacter):
     .map((entry) => {
       const max = derived.spellcasting.cantripsKnown[entry.classId];
       const known = sheet.cantrips.filter((cantrip) => cantrip.sourceClass === entry.classId).length;
-      return { classId: entry.classId, known, max, free: sheet.cantrips.length - known, room: known < max };
+      const supplement = entry.classId === 'druide' ? sortMineurSupplementaireDuDruide(sheet) : 0;
+      return {
+        classId: entry.classId, known, max,
+        free: sheet.cantrips.length - known, room: known < max,
+        ...(supplement > 0 ? { bonus: { de: 'Ordre primordial', nombre: supplement } } : {}),
+      };
     });
 }
 
@@ -248,9 +269,14 @@ export function cantripChoices(
   const budget = cantripBudget(sheet, derived).find((entry) => entry.classId === classId);
   const plein = budget ? !budget.room : false;
 
+  // Le sort mineur que l'Ordre primordial paie porte sa provenance, comme
+  // n'importe quel autre sort de la fiche.
+  const duMage = classId === 'druide' ? cantripDeLOrdrePrimordial(sheet) : null;
+
   return liste.cantrips.map((spell): SpellChoice => {
     const source = choisis.get(spell.id);
-    if (source === classId) return { spell, state: { kind: 'prepare' } };
+    const origine = spell.id === duMage ? { origine: 'Ordre primordial · Mage' } : {};
+    if (source === classId) return { spell, state: { kind: 'prepare' }, ...origine };
     if (source) return { spell, state: { kind: 'accorde', par: source } };
     return { spell, state: plein ? { kind: 'budget-plein' } : { kind: 'disponible' } };
   });

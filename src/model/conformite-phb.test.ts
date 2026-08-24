@@ -31,7 +31,8 @@ import {
   conversionsMagicienNaturePossibles, dureeFormeSauvageHeures, MAGICIEN_NATURE_KEY,
   magicienDeLaNature, rangMagicienNature,
 } from './druide';
-import { choisirDeClasse, decisionsDeClasse, decisionsEnAttente } from './choix-de-classe';
+import { cantripDeLOrdrePrimordial, choisirDeClasse, decisionsDeClasse, decisionsEnAttente } from './choix-de-classe';
+import { cantripBudget, cantripChoices } from './spellbook';
 import { eligibleForms, wildShapeAccess } from './wild-shape';
 import { INFATIGABLE_KEY, infatigablePvTemporaires, utiliserInfatigable } from './rodeur';
 import { linkedCreatureOptionsFor } from '../domain/linked-creatures';
@@ -1505,5 +1506,74 @@ describe('p. 80 — l’Ordre primordial se choisit une fois, et son effet se vo
     const gardien = choisirDeClasse(druide1, 'druide', 'primalOrder', 'gardien');
     expect(decisionsDeClasse(gardien, deriveCharacter(gardien)).find((d) => d.key === 'primalOrder')?.effet)
       .toMatch(/armures intermédiaires/i);
+  });
+});
+
+describe('p. 80 — le Grimoire nomme le sort mineur que l’Ordre primordial paie', () => {
+  const troisMineurs = [
+    { id: 'epargner-mourants', sourceClass: 'druide' },
+    { id: 'assistance', sourceClass: 'druide' },
+    { id: 'coup-tonnerre', sourceClass: 'druide' },
+  ];
+
+  /** Un Druide 2 · Mage, dans l’état d’une fiche importée de l’ancienne app. */
+  const importe = (choix: Record<string, string>): CharacterSheet => ({
+    ...fiche(druide(2)),
+    classChoices: { druide: choix },
+    cantrips: troisMineurs,
+  });
+
+  it('la clé de l’ancienne application désigne le sort, et elle est relue', () => {
+    const sheet = importe({ primalOrder: 'mage', primalOrderCantrip: 'assistance' });
+    expect(cantripDeLOrdrePrimordial(sheet)).toBe('assistance');
+    const ligne = cantripChoices(sheet, deriveCharacter(sheet), 'druide')
+      .find((entry) => entry.spell.id === 'assistance');
+    expect(ligne?.origine).toBe('Ordre primordial · Mage');
+    expect(ligne?.state.kind).toBe('prepare');
+  });
+
+  it('les deux autres sorts mineurs ne portent aucune origine', () => {
+    const sheet = importe({ primalOrder: 'mage', primalOrderCantrip: 'assistance' });
+    const choix = cantripChoices(sheet, deriveCharacter(sheet), 'druide');
+    for (const id of ['epargner-mourants', 'coup-tonnerre']) {
+      expect(choix.find((entry) => entry.spell.id === id)?.origine).toBeUndefined();
+    }
+  });
+
+  it('sans la clé, c’est le premier sort appris au-delà du quota de la table', () => {
+    // Un Druide 2 a droit à 2 sorts mineurs ; le troisième vient du Mage.
+    const sheet = importe({ primalOrder: 'mage' });
+    expect(cantripDeLOrdrePrimordial(sheet)).toBe('coup-tonnerre');
+  });
+
+  it('un Gardien n’a aucun sort à désigner', () => {
+    expect(cantripDeLOrdrePrimordial(importe({ primalOrder: 'gardien' }))).toBeNull();
+  });
+
+  it('un Mage qui n’a pas rempli son quota de base non plus', () => {
+    const deuxSeulement: CharacterSheet = {
+      ...fiche(druide(2)),
+      classChoices: { druide: { primalOrder: 'mage' } },
+      cantrips: troisMineurs.slice(0, 2),
+    };
+    expect(cantripDeLOrdrePrimordial(deuxSeulement)).toBeNull();
+  });
+
+  it('le compteur annonce la composition du quota', () => {
+    const mage = importe({ primalOrder: 'mage' });
+    expect(cantripBudget(mage, deriveCharacter(mage))[0])
+      .toMatchObject({ known: 3, max: 3, bonus: { de: 'Ordre primordial', nombre: 1 } });
+
+    const gardien = importe({ primalOrder: 'gardien' });
+    expect(cantripBudget(gardien, deriveCharacter(gardien))[0].bonus).toBeUndefined();
+  });
+
+  it('ce sort reste dans le quota et reste retirable — ce n’est pas un sort accordé', () => {
+    const sheet = importe({ primalOrder: 'mage', primalOrderCantrip: 'assistance' });
+    const ligne = cantripChoices(sheet, deriveCharacter(sheet), 'druide')
+      .find((entry) => entry.spell.id === 'assistance')!;
+    // `accorde` voudrait dire hors budget et non retirable : ce n'est pas le cas.
+    expect(ligne.state.kind).not.toBe('accorde');
+    expect(cantripBudget(sheet, deriveCharacter(sheet))[0].free).toBe(0);
   });
 });
