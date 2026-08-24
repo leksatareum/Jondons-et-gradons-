@@ -6,6 +6,8 @@ import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PayableResource, PlayableCard } from './combat-layout';
 import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
 import { arcanumChoisis, arcanumResourceKey } from '../model/invocations';
+import { SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
+import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -104,17 +106,42 @@ export function paiementsPourRang(rank: number, derived: DerivedCharacter): Paya
  * Sans cela, la carte cherchait un emplacement et laissait la réserve
  * intacte — la capacité de niveau 1 du Rôdeur n'existait pas en jeu.
  */
-export function paiementsPourSort(spell: Spell, derived: DerivedCharacter): PayableResource[] {
+export function paiementsPourSort(
+  spell: Spell,
+  derived: DerivedCharacter,
+  sheet?: CharacterSheet,
+): PayableResource[] {
   const paiements = paiementsPourRang(spell.level, derived);
-  if (spell.id !== MARQUE_CHASSEUR_SPELL_ID) return paiements;
-  const gratuits = derived.resources.find((resource) => resource.key === MARQUE_LIBRE_KEY);
-  if (!gratuits) return paiements;
-  return [{
-    key: gratuits.key,
-    remaining: gratuits.remaining,
-    max: gratuits.max,
-    label: 'Ennemi juré · sans emplacement',
-  }, ...paiements];
+
+  // Ennemi juré : des lancements de Marque du chasseur sans emplacement.
+  if (spell.id === MARQUE_CHASSEUR_SPELL_ID) {
+    const gratuits = derived.resources.find((resource) => resource.key === MARQUE_LIBRE_KEY);
+    if (gratuits) {
+      return [{
+        key: gratuits.key,
+        remaining: gratuits.remaining,
+        max: gratuits.max,
+        label: 'Ennemi juré · sans emplacement',
+      }, ...paiements];
+    }
+  }
+
+  // Récupération naturelle : un sort de cercle de rang 1+ se lance sans
+  // emplacement, une fois par repos long. Ce sont les sorts du TERRAIN
+  // choisi — pas n'importe quel sort accordé d'office.
+  if (sheet && spell.level >= 1 && sortDuCercleDeLaTerre(sheet, spell.id)) {
+    const gratuit = derived.resources.find((resource) => resource.key === SORT_DE_CERCLE_GRATUIT_KEY);
+    if (gratuit) {
+      return [{
+        key: gratuit.key,
+        remaining: gratuit.remaining,
+        max: gratuit.max,
+        label: 'Récupération naturelle · sans emplacement',
+      }, ...paiements];
+    }
+  }
+
+  return paiements;
 }
 
 export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharacter): PlayableCard[] {
@@ -136,7 +163,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
   for (const entree of spellbookOf(sheet, derived)) {
     const { spell, standing } = entree;
     if (spell.level === 0) continue;
-    const paiements = paiementsPourSort(spell, derived);
+    const paiements = paiementsPourSort(spell, derived, sheet);
     cartes.push({
       id: spell.id,
       name: spell.name,

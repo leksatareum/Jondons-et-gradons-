@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { longRest, shortRest, type RestKind } from '../model/rest';
+import {
+  blocagesRecuperationNaturelle, budgetRecuperationNaturelle,
+  RECUPERATION_NATURELLE_KEY, type ChoixRecuperation,
+} from '../model/druide';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 import { TAB_BAR_CLEARANCE } from './TabBar';
@@ -18,11 +22,16 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
 export function RestScreen({ sheet, derived, onRepos, onRetour }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
-  onRepos: (kind: RestKind) => void;
+  /**
+   * Récupération naturelle se compose PENDANT le repos court : la règle dit
+   * « quand tu termines un repos court ». Le choix part donc avec le repos.
+   */
+  onRepos: (kind: RestKind, recuperation?: ChoixRecuperation) => void;
   /** Cet écran s'ouvre depuis la Fiche : le chemin du retour doit se voir. */
   onRetour: () => void;
 }) {
   const [kind, setKind] = useState<RestKind>('long');
+  const [recuperation, setRecuperation] = useState<ChoixRecuperation>({});
 
   // Calculé à blanc : le même code que celui qui appliquera le repos, donc
   // l'aperçu ne peut pas mentir sur le résultat.
@@ -33,6 +42,19 @@ export function RestScreen({ sheet, derived, onRepos, onRetour }: {
 
   const desRestants = derived.hitDice.reduce((somme, entry) => somme + entry.remaining, 0);
   const desTotal = derived.hitDice.reduce((somme, entry) => somme + entry.total, 0);
+
+  // ── Récupération naturelle ────────────────────────────────────────
+  const budget = budgetRecuperationNaturelle(sheet);
+  const dejaUtilisee = (sheet.live.resourcesSpent[RECUPERATION_NATURELLE_KEY] ?? 0) > 0;
+  const rangsRecuperables = Object.entries(sheet.live.spellSlotsSpent)
+    .map(([rang, depenses]) => ({ rang: Number(rang), depenses }))
+    .filter(({ rang, depenses }) => rang <= 5 && depenses > 0)
+    .sort((a, b) => a.rang - b.rang);
+  const totalChoisi = Object.entries(recuperation)
+    .reduce((somme, [rang, nombre]) => somme + Number(rang) * (nombre ?? 0), 0);
+  const blocages = totalChoisi > 0
+    ? blocagesRecuperationNaturelle(sheet, derived, recuperation)
+    : [];
 
   return (
     <main style={{
@@ -85,9 +107,12 @@ export function RestScreen({ sheet, derived, onRepos, onRetour }: {
           marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
           border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
         }}>
-          Un repos long ne rend que la moitié des dés de vie, et ne descend
-          l’épuisement que d’un cran — c’est ce qui fait qu’une journée
-          difficile pèse encore le lendemain.
+          {/* Ce texte affirmait « ne rend que la moitié des dés de vie » :
+              c'était la règle de 2014, corrigée dans le moteur mais restée
+              ici. Le PHB 2024 les rend tous. */}
+          Un repos long rend tous les dés de vie, mais ne descend l’épuisement
+          que d’un cran — c’est ce qui fait qu’une journée difficile pèse
+          encore le lendemain.
         </div>
       )}
 
@@ -102,8 +127,88 @@ export function RestScreen({ sheet, derived, onRepos, onRetour }: {
         </div>
       )}
 
+      {/* ───── Récupération naturelle (Cercle de la Terre 6) ─────
+          Le budget est un nombre de NIVEAUX, pas d'emplacements : la règle
+          laisse le joueur composer. L'application ne compose pas à sa place,
+          elle compte et refuse ce qui dépasse. */}
+      {kind === 'court' && budget > 0 && (
+        <div style={{
+          marginTop: 12, padding: '12px 13px', borderRadius: 'var(--radius-sm)',
+          border: `1px solid ${dejaUtilisee ? 'var(--line)' : 'var(--accent)'}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <div className="lbl" style={{ flexGrow: 1, color: dejaUtilisee ? 'var(--muted)' : 'var(--accent)' }}>
+              Récupération naturelle
+            </div>
+            {!dejaUtilisee && (
+              <div className="num lbl" style={{ color: totalChoisi > budget ? 'var(--vital)' : 'var(--muted)' }}>
+                {totalChoisi}/{budget} niveaux
+              </div>
+            )}
+          </div>
+
+          {dejaUtilisee ? (
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+              Déjà utilisée — il faut un repos long pour la retrouver.
+            </div>
+          ) : rangsRecuperables.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+              Aucun emplacement dépensé à récupérer.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.45 }}>
+                Choisis les emplacements à retrouver, dans la limite de {budget} niveaux
+                cumulés. Le rang 6 et au-delà en sont exclus.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
+                {rangsRecuperables.map(({ rang, depenses }) => {
+                  const pris = recuperation[rang] ?? 0;
+                  const bouton = (delta: number, libelle: string, actif: boolean) => (
+                    <button
+                      disabled={!actif}
+                      onClick={() => setRecuperation((courant) => ({
+                        ...courant, [rang]: Math.max(0, (courant[rang] ?? 0) + delta),
+                      }))}
+                      aria-label={`${libelle} rang ${rang}`}
+                      style={{
+                        width: 36, height: 36, borderRadius: 9,
+                        border: '1px solid var(--line)',
+                        color: actif ? 'var(--ink)' : 'var(--muted)',
+                        opacity: actif ? 1 : 0.4, fontSize: 17, fontWeight: 700,
+                      }}
+                    >
+                      {delta < 0 ? '−' : '+'}
+                    </button>
+                  );
+                  return (
+                    <div key={rang} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <div style={{ flexGrow: 1, fontSize: 14 }}>
+                        Rang {rang}
+                        <span className="lbl" style={{ textTransform: 'none', marginLeft: 6 }}>
+                          {depenses} dépensé(s)
+                        </span>
+                      </div>
+                      {bouton(-1, 'Retirer', pris > 0)}
+                      <div className="num" style={{ minWidth: 18, textAlign: 'center', fontWeight: 700 }}>{pris}</div>
+                      {bouton(+1, 'Ajouter', pris < depenses && totalChoisi + rang <= budget)}
+                    </div>
+                  );
+                })}
+              </div>
+              {blocages.length > 0 && totalChoisi > 0 && (
+                <div style={{ fontSize: 12.5, color: 'var(--vital)', marginTop: 8 }}>
+                  {blocages[0]}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <button
-        onClick={() => onRepos(kind)}
+        onClick={() => onRepos(kind, kind === 'court' && totalChoisi > 0 && blocages.length === 0
+          ? recuperation : undefined)}
         style={{
           width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
           background: 'var(--accent)', color: 'var(--accent-ink)',

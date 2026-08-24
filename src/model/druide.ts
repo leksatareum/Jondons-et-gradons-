@@ -1,5 +1,6 @@
 import { levelInClass, type CharacterSheet } from './character';
 import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
+import { estCercleDeLaTerre } from './choix-de-classe';
 import type { DerivedCharacter } from './derive';
 
 /**
@@ -265,6 +266,112 @@ export function magicienDeLaNature(
         [WILD_SHAPE_RESOURCE_KEY]: (sheet.live.resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0) + utilisations,
         [MAGICIEN_NATURE_KEY]: 1,
       },
+    },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RÉCUPÉRATION NATURELLE — Cercle de la Terre 6  (PHB 2024, p. 85)
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Le lancement gratuit d'un sort de cercle, une fois par repos long. */
+export const SORT_DE_CERCLE_GRATUIT_KEY = 'druide:sort-cercle-gratuit';
+
+/** La récupération d'emplacements au repos court, une fois par repos long. */
+export const RECUPERATION_NATURELLE_KEY = 'druide:recuperation-naturelle';
+
+/**
+ * Le total de NIVEAUX d'emplacements récupérables : la moitié du niveau de
+ * Druide, arrondie au supérieur.
+ *
+ * « The spell slots can have a combined level that is equal to or less than
+ * half your Druid level (round up) » — un Druide 6 récupère trois niveaux :
+ * un emplacement de rang 3, ou un rang 2 et un rang 1, ou trois rangs 1.
+ */
+export function budgetRecuperationNaturelle(sheet: CharacterSheet): number {
+  if (druidLevel(sheet) < 6 || !estCercleDeLaTerre(sheet)) return 0;
+  return Math.ceil(druidLevel(sheet) / 2);
+}
+
+/** Aucun emplacement de rang 6 ou plus ne peut être récupéré. */
+export const RANG_MAX_RECUPERATION_NATURELLE = 5;
+
+export interface ChoixRecuperation {
+  /** Combien d'emplacements récupérer, par rang. */
+  [rang: number]: number;
+}
+
+/**
+ * Ce qui empêche cette récupération, en clair. Vide : elle est légale.
+ *
+ * Rendre les raisons plutôt qu'un simple booléen : c'est le joueur qui
+ * compose sa récupération, il doit savoir laquelle des trois limites il vient
+ * de dépasser.
+ */
+export function blocagesRecuperationNaturelle(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  choix: ChoixRecuperation,
+): string[] {
+  const blocages: string[] = [];
+  const budget = budgetRecuperationNaturelle(sheet);
+  if (budget === 0) return ['Récupération naturelle n’est pas disponible.'];
+  if ((sheet.live.resourcesSpent[RECUPERATION_NATURELLE_KEY] ?? 0) > 0) {
+    return ['Déjà utilisée : il faut un repos long.'];
+  }
+
+  let total = 0;
+  for (const [cle, nombre] of Object.entries(choix)) {
+    const rang = Number(cle);
+    if (nombre <= 0) continue;
+    if (rang > RANG_MAX_RECUPERATION_NATURELLE) {
+      blocages.push(`Le rang ${rang} ne peut pas être récupéré (rang 6 et au-delà exclus).`);
+      continue;
+    }
+    const depenses = sheet.live.spellSlotsSpent[rang] ?? 0;
+    if (nombre > depenses) {
+      blocages.push(`Rang ${rang} : ${nombre} demandé(s) pour ${depenses} dépensé(s).`);
+    }
+    total += rang * nombre;
+  }
+
+  if (total === 0) blocages.push('Aucun emplacement choisi.');
+  else if (total > budget) blocages.push(`${total} niveaux choisis pour un budget de ${budget}.`);
+
+  // Le budget se lit sur `derived` pour rester cohérent si un jour une
+  // capacité l'augmente ; aujourd'hui il ne dépend que du niveau.
+  void derived;
+  return blocages;
+}
+
+/**
+ * Récupère les emplacements choisis, à la fin d'un repos court.
+ *
+ * Le choix appartient au joueur : la règle donne un budget de niveaux, pas
+ * une répartition. L'application ne compose pas à sa place.
+ */
+export function recuperationNaturelle(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  choix: ChoixRecuperation,
+): CharacterSheet {
+  if (blocagesRecuperationNaturelle(sheet, derived, choix).length > 0) return sheet;
+
+  const spellSlotsSpent = { ...sheet.live.spellSlotsSpent };
+  for (const [cle, nombre] of Object.entries(choix)) {
+    const rang = Number(cle);
+    if (nombre <= 0) continue;
+    const restant = (spellSlotsSpent[rang] ?? 0) - nombre;
+    if (restant > 0) spellSlotsSpent[rang] = restant;
+    else delete spellSlotsSpent[rang];
+  }
+
+  return {
+    ...sheet,
+    live: {
+      ...sheet.live,
+      spellSlotsSpent,
+      resourcesSpent: { ...sheet.live.resourcesSpent, [RECUPERATION_NATURELLE_KEY]: 1 },
     },
   };
 }

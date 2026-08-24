@@ -103,6 +103,23 @@ export interface DerivedCharacter {
   skillProficiencies: string[];
   /** Les 18 compétences du PHB, bonus final déjà calculé — rien à recalculer à l'écran. */
   skills: DerivedSkill[];
+  /**
+   * L'Épuisement, et ce qu'il coûte (PHB 2024, glossaire p. 365).
+   *
+   * Exposé plutôt que fondu dans `modifiers` : la pénalité frappe les TESTS
+   * D20 — compétences, sauvegardes, initiative — et rien d'autre. La glisser
+   * dans les modificateurs de caractéristique l'aurait aussi appliquée aux
+   * dégâts et au DD des sorts, où elle n'a rien à faire.
+   */
+  exhaustion: {
+    level: number;
+    /** À soustraire de tout test d20 : deux fois le niveau. */
+    d20Penalty: number;
+    /** Vitesse perdue, en mètres : 1,50 m par cran. */
+    speedPenaltyMeters: number;
+    /** Le personnage meurt au sixième cran. */
+    fatal: boolean;
+  };
   features: { level: number; name: string; source: string; desc?: string }[];
   resources: DerivedResource[];
   spellcasting: DerivedSpellcasting;
@@ -175,6 +192,12 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   const sagesse = abilityModifier(abilities.wis);
   if (druide >= 10 && /cercle de la lune/i.test(cercle ?? '')) {
     push('druide:pas-clair-lune', 'Pas de clair de lune', Math.max(1, sagesse), 'long', 'druide');
+  }
+  // Récupération naturelle (Cercle de la Terre 6) : deux effets, deux
+  // réserves, chacune une fois par repos long.
+  if (druide >= 6 && /cercle de la terre/i.test(cercle ?? '')) {
+    push('druide:sort-cercle-gratuit', 'Sort de cercle sans emplacement', 1, 'long', 'druide');
+    push('druide:recuperation-naturelle', 'Récupération naturelle', 1, 'long', 'druide');
   }
   if (druide >= 3 && /cercle des étoiles|cercle des etoiles/i.test(cercle ?? '')) {
     push('druide:carte-etoiles', 'Trait guidé (carte des étoiles)', Math.max(1, sagesse), 'long', 'druide');
@@ -316,10 +339,20 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
   // L'Expertise double un bonus de maîtrise existant — elle ne le crée pas :
   // une compétence marquée en Expertise sans être elle-même maîtrisée reste
   // un simple modificateur de caractéristique, jamais deux fois le bonus.
+  // ── Épuisement ─────────────────────────────────────────────────────
+  // PHB 2024, glossaire p. 365 : « quand tu fais un test d20, le jet est
+  // réduit de 2 fois ton niveau d'Épuisement ». L'application comptait les
+  // crans et les rendait au repos, mais n'en appliquait jamais la pénalité :
+  // un personnage à 3 d'Épuisement affichait les mêmes bonus qu'à 0.
+  const exhaustion = Math.max(0, sheet.live.exhaustion ?? 0);
+  const penaliteEpuisement = exhaustion * 2;
+
   const skills: DerivedSkill[] = SKILLS.map((skill) => {
     const proficient = skillProficiencies.includes(skill.id);
     const expertise = proficient && sheet.expertise.includes(skill.id);
-    const bonus = modifiers[skill.ability] + (expertise ? prof * 2 : proficient ? prof : 0);
+    const bonus = modifiers[skill.ability]
+      + (expertise ? prof * 2 : proficient ? prof : 0)
+      - penaliteEpuisement;
     return { id: skill.id, name: skill.name, ability: skill.ability, proficient, expertise, bonus };
   });
 
@@ -413,6 +446,12 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     resistances: speciesResistancesFor(sheet.speciesId, sheet.lineageId, sheet.ancestryId),
     saveProficiencies,
     skillProficiencies,
+    exhaustion: {
+      level: exhaustion,
+      d20Penalty: penaliteEpuisement,
+      speedPenaltyMeters: exhaustion * 1.5,
+      fatal: exhaustion >= 6,
+    },
     features,
     resources: derivedResources(sheet, abilities),
     spellcasting: {

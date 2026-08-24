@@ -59,7 +59,8 @@ gardant les traductions déjà employées par la table.
 |---|---|---|---|
 | 3 | Sorts du cercle — terrain choisi à chaque repos long | 84 | **AUTOMATISÉ** — `model/choix-de-classe.ts` + `content/always-prepared-spells.ts` |
 | 3 | Aide de la terre — 2d6, +1d6 aux niveaux 10 et 14 | 85 | **ASSISTÉ** — dépense une Forme sauvage |
-| 6 | Récupération naturelle — sort de cercle gratuit, et emplacements au repos court | 85 | **MANQUANT** |
+| 6 | Récupération naturelle — un sort de cercle sans emplacement, 1×/repos long | 85 | **AUTOMATISÉ** |
+| 6 | Récupération naturelle — emplacements récupérés au repos court | 85 | **ASSISTÉ** — le joueur compose, l'app compte et refuse ce qui dépasse |
 | 10 | Garde de la nature — immunité Empoisonné, résistance selon le terrain | 85 | **RÉFÉRENCE** |
 | 14 | Sanctuaire de la nature | 86 | **RÉFÉRENCE** |
 

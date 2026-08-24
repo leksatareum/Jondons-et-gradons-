@@ -3,7 +3,7 @@ import type { DerivedCharacter } from './derive';
 import { ELEMENTAL_FURY, PRIMAL_ORDER, type ChoiceOption } from '../content/class-choices';
 import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
 import { DAMAGE_TYPES } from '../content/reference-lists';
-import { DRUID_TERRAINS } from '../content/always-prepared-spells';
+import { alwaysPreparedSpellsFor, DRUID_TERRAINS } from '../content/always-prepared-spells';
 import { cantripsKnown } from '../domain/spellcasting-progression';
 
 /**
@@ -282,3 +282,19 @@ export const terrainDuCercle = (sheet: CharacterSheet): string | null =>
   (estCercleDeLaTerre(sheet) ? choisiPour(sheet, 'druide', 'terrain') : null);
 
 export const TERRAINS_CONNUS = DRUID_TERRAINS;
+
+/**
+ * Vrai si ce sort est un sort du terrain actuellement choisi.
+ *
+ * Récupération naturelle ne rend gratuit qu'un sort « de la capacité Sorts du
+ * cercle » — pas n'importe quel sort accordé d'office. Un Druide de la Terre
+ * a aussi Parler aux animaux toujours préparé, et celui-là ne compte pas.
+ */
+export function sortDuCercleDeLaTerre(sheet: CharacterSheet, spellId: string): boolean {
+  const terrain = terrainDuCercle(sheet);
+  if (!terrain) return false;
+  return alwaysPreparedSpellsFor({
+    terrain,
+    level: levelInClass(sheet, 'druide'),
+  }).includes(spellId);
+}

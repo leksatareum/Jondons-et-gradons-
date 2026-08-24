@@ -41,7 +41,9 @@ export const CONDITIONS: Record<ConditionId, ConditionEffect> = {
   'effraye': { name: 'Effrayé', note: 'Tant que la source de ta peur est en vue : désavantage aux attaques et tests de caractéristique, et tu ne peux pas t\'en approcher.' },
   'empoisonne': { name: 'Empoisonné', attack: 'dis', check: 'dis', note: 'Désavantage aux attaques et aux tests de caractéristique.' },
   'a-terre': { name: 'À terre', attack: 'dis', note: 'Attaquants à 1,50 m : avantage. Attaquants à distance : désavantage. Te relever coûte la moitié de ton mouvement.' },
-  'entrave': { name: 'Entravé', attack: 'dis', incoming: 'adv', saveDis: ['dex'], note: 'Ta vitesse tombe à 0.' },
+  // `speed0` manquait alors que la note le disait : Agrippé le portait, pas
+  // Entravé. Tout ce qui lit le champ structuré ratait donc la moitié des cas.
+  'entrave': { name: 'Entravé', attack: 'dis', incoming: 'adv', speed0: true, saveDis: ['dex'], note: 'Ta vitesse tombe à 0.' },
   'etourdi': { name: 'Étourdi', incoming: 'adv', incapacitated: true, autoFail: ['str', 'dex'], note: 'Tu es Incapable d\'agir, rates automatiquement les sauvegardes de Force et de Dextérité, et les attaques contre toi ont l\'avantage. L\'état Étourdi ne réduit pas ta vitesse à 0 en 2024.' },
   'inconscient': { name: 'Inconscient', incoming: 'adv', incapacitated: true, speed0: true, prone: true, autoFail: ['str', 'dex'], note: 'Incapable d\'agir, À terre, vitesse 0 : tu lâches ce que tu tiens. Quand l\'état prend fin, tu restes À terre. Une attaque qui touche à 1,50 m est un critique.' },
   'agrippe': { name: 'Agrippé', speed0: true, note: 'Ta vitesse tombe à 0. Désavantage seulement aux attaques contre une autre cible que celle qui t\'agrippe.' },

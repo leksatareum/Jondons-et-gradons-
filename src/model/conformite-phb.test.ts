@@ -33,11 +33,19 @@ import {
 } from './druide';
 import { cantripDeLOrdrePrimordial, choisirDeClasse, decisionsDeClasse, decisionsEnAttente } from './choix-de-classe';
 import { cantripBudget, cantripChoices } from './spellbook';
+import {
+  blocagesRecuperationNaturelle, budgetRecuperationNaturelle, RECUPERATION_NATURELLE_KEY,
+  recuperationNaturelle, SORT_DE_CERCLE_GRATUIT_KEY,
+} from './druide';
+import { sortDuCercleDeLaTerre } from './choix-de-classe';
+import { paiementsPourSort } from '../ui/spell-cards';
+import { spellById } from '../content/spell-catalogue';
 import { eligibleForms, wildShapeAccess } from './wild-shape';
 import { INFATIGABLE_KEY, infatigablePvTemporaires, utiliserInfatigable } from './rodeur';
 import { linkedCreatureOptionsFor } from '../domain/linked-creatures';
 import { effectiveAbilities } from './character';
 import { ELDRITCH_INVOCATIONS } from '../content/eldritch-invocations';
+import { CONDITIONS } from '../domain/conditions';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -1575,5 +1583,197 @@ describe('p. 80 — le Grimoire nomme le sort mineur que l’Ordre primordial pa
     // `accorde` voudrait dire hors budget et non retirable : ce n'est pas le cas.
     expect(ligne.state.kind).not.toBe('accorde');
     expect(cantripBudget(sheet, deriveCharacter(sheet))[0].free).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// GLOSSAIRE DES RÈGLES (PHB 2024, appendice C, p. 359 à 376)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('p. 365 — Épuisement : la pénalité s’applique enfin', () => {
+  const avecEpuisement = (crans: number): CharacterSheet => {
+    const base = fiche(druide(5));
+    return { ...base, live: { ...base.live, exhaustion: crans } };
+  };
+
+  it.each([[0, 0], [1, 2], [3, 6], [5, 10]])(
+    '%i cran(s) → −%i à tous les tests d20', (crans, malus) => {
+      expect(deriveCharacter(avecEpuisement(crans)).exhaustion.d20Penalty).toBe(malus);
+    },
+  );
+
+  it('les compétences portent la pénalité', () => {
+    const sain = deriveCharacter(avecEpuisement(0));
+    const epuise = deriveCharacter(avecEpuisement(2));
+    for (const competence of sain.skills) {
+      const meme = epuise.skills.find((s) => s.id === competence.id)!;
+      expect(meme.bonus).toBe(competence.bonus - 4);
+    }
+  });
+
+  it('la vitesse perd 1,50 m par cran', () => {
+    expect(deriveCharacter(avecEpuisement(2)).exhaustion.speedPenaltyMeters).toBe(3);
+    expect(deriveCharacter(avecEpuisement(4)).exhaustion.speedPenaltyMeters).toBe(6);
+  });
+
+  it('le sixième cran est mortel, le cinquième non', () => {
+    expect(deriveCharacter(avecEpuisement(5)).exhaustion.fatal).toBe(false);
+    expect(deriveCharacter(avecEpuisement(6)).exhaustion.fatal).toBe(true);
+  });
+
+  it('la pénalité ne touche PAS les modificateurs de caractéristique', () => {
+    // Elle frappe les tests d20, pas les dégâts ni le DD des sorts.
+    const sain = deriveCharacter(avecEpuisement(0));
+    const epuise = deriveCharacter(avecEpuisement(3));
+    expect(epuise.modifiers).toEqual(sain.modifiers);
+    expect(epuise.spellcasting.numbers).toEqual(sain.spellcasting.numbers);
+    expect(epuise.armorClass).toBe(sain.armorClass);
+  });
+
+  it('un repos long en retire un cran, et la pénalité suit', () => {
+    const avant = avecEpuisement(3);
+    expect(deriveCharacter(avant).exhaustion.d20Penalty).toBe(6);
+    const { sheet } = longRest(avant, deriveCharacter(avant));
+    expect(deriveCharacter(sheet).exhaustion.d20Penalty).toBe(4);
+  });
+});
+
+describe('p. 360-376 — les 14 états, vérifiés un par un', () => {
+  it('le catalogue en compte exactement 14, l’Épuisement étant compté à part', () => {
+    expect(Object.keys(CONDITIONS)).toHaveLength(14);
+  });
+
+  it.each([
+    ['aveugle', { attack: 'dis', incoming: 'adv' }],
+    ['empoisonne', { attack: 'dis', check: 'dis' }],
+    ['entrave', { attack: 'dis', incoming: 'adv', speed0: true }],
+    ['agrippe', { speed0: true }],
+    ['paralyse', { incoming: 'adv', incapacitated: true, speed0: true }],
+    ['etourdi', { incoming: 'adv', incapacitated: true }],
+    ['inconscient', { incoming: 'adv', incapacitated: true, speed0: true, prone: true }],
+    ['petrifie', { incoming: 'adv', incapacitated: true, speed0: true, resistAll: true }],
+  ] as const)('%s porte les effets du glossaire', (id, attendu) => {
+    expect(CONDITIONS[id]).toMatchObject(attendu);
+  });
+
+  it('Étourdi ne réduit PAS la vitesse à 0 — c’était la règle de 2014', () => {
+    expect(CONDITIONS.etourdi.speed0).toBeUndefined();
+  });
+
+  it('Entravé et Agrippé mettent tous deux la vitesse à 0', () => {
+    // `speed0` manquait sur Entravé : le champ structuré disait le contraire
+    // de la note juste à côté.
+    expect(CONDITIONS.entrave.speed0).toBe(true);
+    expect(CONDITIONS.agrippe.speed0).toBe(true);
+  });
+
+  it('les quatre états qui ratent d’office les sauvegardes de Force et Dextérité', () => {
+    const auto = Object.entries(CONDITIONS)
+      .filter(([, effet]) => effet.autoFail?.includes('str') && effet.autoFail?.includes('dex'))
+      .map(([id]) => id)
+      .sort();
+    expect(auto).toEqual(['etourdi', 'inconscient', 'paralyse', 'petrifie']);
+  });
+
+  it('Effrayé et Agrippé gardent leur effet conditionnel hors des champs structurés', () => {
+    // Le désavantage d'Effrayé ne vaut que si la source est en vue ; celui
+    // d'Agrippé, que contre une autre cible que l'agrippeur. Les poser dans
+    // `attack` les appliquerait à tort.
+    expect(CONDITIONS.effraye.attack).toBeUndefined();
+    expect(CONDITIONS.agrippe.attack).toBeUndefined();
+    expect(CONDITIONS.effraye.note).toMatch(/en vue/i);
+    expect(CONDITIONS.agrippe.note).toMatch(/autre cible/i);
+  });
+});
+
+describe('p. 85 — Récupération naturelle : deux effets, une fois chacun par repos long', () => {
+  const terre = (level: number, depenses: Record<number, number> = {}) => {
+    const base = druideAvec(level, 'terre', { terrain: 'temperee' });
+    return { ...base, live: { ...base.live, spellSlotsSpent: depenses } };
+  };
+
+  it('le budget vaut la moitié du niveau, arrondie au supérieur', () => {
+    expect(budgetRecuperationNaturelle(terre(6))).toBe(3);
+    expect(budgetRecuperationNaturelle(terre(9))).toBe(5);
+    expect(budgetRecuperationNaturelle(terre(20))).toBe(10);
+  });
+
+  it('rien avant le niveau 6, ni pour un autre cercle', () => {
+    expect(budgetRecuperationNaturelle(terre(5))).toBe(0);
+    expect(budgetRecuperationNaturelle(druideAvec(6, 'lune'))).toBe(0);
+  });
+
+  it('les trois répartitions de l’exemple du livre sont toutes légales', () => {
+    // « Si tu es un Druide de niveau 6, tu peux récupérer jusqu'à trois
+    // niveaux : un rang 3, ou un rang 2 et un rang 1, ou trois rangs 1. »
+    const sheet = terre(6, { 1: 3, 2: 1, 3: 1 });
+    const derivee = deriveCharacter(sheet);
+    for (const choix of [{ 3: 1 }, { 2: 1, 1: 1 }, { 1: 3 }]) {
+      expect(blocagesRecuperationNaturelle(sheet, derivee, choix)).toEqual([]);
+    }
+  });
+
+  it('quatre niveaux dépassent le budget d’un Druide 6', () => {
+    const sheet = terre(6, { 1: 4, 2: 2 });
+    const blocages = blocagesRecuperationNaturelle(sheet, deriveCharacter(sheet), { 2: 2 });
+    expect(blocages[0]).toMatch(/4 niveaux choisis pour un budget de 3/);
+  });
+
+  it('le rang 6 et au-delà sont exclus', () => {
+    const sheet = terre(20, { 6: 1 });
+    expect(blocagesRecuperationNaturelle(sheet, deriveCharacter(sheet), { 6: 1 })[0])
+      .toMatch(/rang 6 ne peut pas être récupéré/i);
+  });
+
+  it('on ne récupère pas plus que ce qui a été dépensé', () => {
+    const sheet = terre(9, { 1: 1 });
+    expect(blocagesRecuperationNaturelle(sheet, deriveCharacter(sheet), { 1: 2 })[0])
+      .toMatch(/2 demandé\(s\) pour 1 dépensé\(s\)/);
+  });
+
+  it('la récupération rend bien les emplacements et se marque comme utilisée', () => {
+    const sheet = terre(6, { 1: 2, 2: 1 });
+    const apres = recuperationNaturelle(sheet, deriveCharacter(sheet), { 1: 1, 2: 1 });
+    expect(apres.live.spellSlotsSpent).toEqual({ 1: 1 });
+    expect(apres.live.resourcesSpent[RECUPERATION_NATURELLE_KEY]).toBe(1);
+  });
+
+  it('une seule fois avant un repos long', () => {
+    const sheet = terre(9, { 1: 3 });
+    const apres = recuperationNaturelle(sheet, deriveCharacter(sheet), { 1: 1 });
+    expect(blocagesRecuperationNaturelle(apres, deriveCharacter(apres), { 1: 1 })[0])
+      .toMatch(/Déjà utilisée/i);
+    // …et le repos long la rend.
+    const { sheet: repose } = longRest(apres, deriveCharacter(apres));
+    expect(repose.live.resourcesSpent[RECUPERATION_NATURELLE_KEY]).toBeUndefined();
+  });
+
+  it('les deux réserves sont déclarées au niveau 6', () => {
+    const cinq = deriveCharacter(druideAvec(5, 'terre'));
+    expect(cinq.resources.some((r) => r.key === RECUPERATION_NATURELLE_KEY)).toBe(false);
+    const six = deriveCharacter(druideAvec(6, 'terre'));
+    expect(six.resources.find((r) => r.key === RECUPERATION_NATURELLE_KEY))
+      .toMatchObject({ max: 1, recharge: 'long' });
+    expect(six.resources.find((r) => r.key === SORT_DE_CERCLE_GRATUIT_KEY))
+      .toMatchObject({ max: 1, recharge: 'long' });
+  });
+
+  it('un sort de cercle se lance sans emplacement — mais pas les autres sorts accordés', () => {
+    const sheet = druideAvec(6, 'terre', { terrain: 'temperee' });
+    const derivee = deriveCharacter(sheet);
+
+    // Éclair est un sort du terrain tempéré au niveau 5.
+    const cercle = paiementsPourSort(spellById('eclair')!, derivee, sheet);
+    expect(cercle[0]).toMatchObject({ key: SORT_DE_CERCLE_GRATUIT_KEY, max: 1 });
+
+    // Parler aux animaux est toujours préparé, mais par Druidique — pas par
+    // la capacité Sorts du cercle. Il ne bénéficie pas du lancement gratuit.
+    const autre = paiementsPourSort(spellById('parler-animaux')!, derivee, sheet);
+    expect(autre.some((p) => p.key === SORT_DE_CERCLE_GRATUIT_KEY)).toBe(false);
+  });
+
+  it('sans terrain choisi, aucun sort n’est un sort de cercle', () => {
+    const sansTerrain = druideAvec(6, 'terre');
+    expect(sortDuCercleDeLaTerre(sansTerrain, 'eclair')).toBe(false);
   });
 });

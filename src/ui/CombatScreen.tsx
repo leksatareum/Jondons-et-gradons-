@@ -82,14 +82,16 @@ function HitPoints({ current, max, temporary, onChange }: {
   );
 }
 
-function SaveStrip({ modifiers, proficient, bonus }: {
+function SaveStrip({ modifiers, proficient, bonus, malusD20 = 0 }: {
   modifiers: Record<AbilityId, number>; proficient: string[]; bonus: number;
+  /** Pénalité d'Épuisement : une sauvegarde est un test d20 comme un autre. */
+  malusD20?: number;
 }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 4 }}>
       {ABILITY_ORDER.map((ability) => {
         const isProficient = proficient.includes(ability);
-        const total = modifiers[ability] + (isProficient ? bonus : 0);
+        const total = modifiers[ability] + (isProficient ? bonus : 0) - malusD20;
         return (
           <div
             key={ability}
@@ -484,8 +486,32 @@ export function CombatScreen({
             modifiers={derived.modifiers}
             proficient={derived.saveProficiencies}
             bonus={derived.proficiencyBonus}
+            malusD20={derived.exhaustion.d20Penalty}
           />
         </div>
+
+        {/*
+          L'Épuisement pénalise CHAQUE test d20. Il doit donc se lire au
+          moment du jet, pas seulement dans un écran de repos : l'application
+          le comptait sans jamais l'appliquer ni l'afficher.
+        */}
+        {derived.exhaustion.level > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10,
+            border: `1px solid ${derived.exhaustion.fatal ? 'var(--vital)' : 'var(--line)'}`,
+            borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+            background: derived.exhaustion.fatal ? 'var(--vital-wash)' : 'transparent',
+          }}>
+            <div className="lbl" style={{ color: derived.exhaustion.fatal ? 'var(--vital)' : 'var(--muted)' }}>
+              Épuisement {derived.exhaustion.level}
+            </div>
+            <div style={{ flexGrow: 1, fontSize: 12.5, color: 'var(--muted)' }}>
+              {derived.exhaustion.fatal
+                ? 'Sixième cran : le personnage meurt.'
+                : `−${derived.exhaustion.d20Penalty} à tous les tests d20 · −${derived.exhaustion.speedPenaltyMeters.toLocaleString('fr')} m de vitesse`}
+            </div>
+          </div>
+        )}
 
         {/*
           La marque, dans la zone figée : c'est l'information qu'on relit à

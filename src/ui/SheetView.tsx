@@ -13,6 +13,7 @@ import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
 import { choisirDeClasse } from '../model/choix-de-classe';
+import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
@@ -204,8 +205,14 @@ export function SheetView({
     setARevoquer(null);
   };
 
-  const prendreRepos = (kind: RestKind) => {
-    void saveSheet(client, sync, fiche.id, rest(fiche.data, derivee, kind).sheet);
+  const prendreRepos = (kind: RestKind, recuperation?: ChoixRecuperation) => {
+    const apresRepos = rest(fiche.data, derivee, kind).sheet;
+    // Récupération naturelle se résout à la FIN du repos court : le repos
+    // rend d'abord ce qu'il rend, la capacité récupère ensuite.
+    const suivante = recuperation
+      ? recuperationNaturelle(apresRepos, deriveCharacter(apresRepos), recuperation)
+      : apresRepos;
+    void saveSheet(client, sync, fiche.id, suivante);
   };
 
   const monterDeNiveau = (suivante: CharacterSheet) => {
