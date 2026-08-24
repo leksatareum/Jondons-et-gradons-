@@ -14,6 +14,14 @@ import {
   peutUtiliserRuseMagique, resilienceCeleste, resilienceCelestePourAutrui,
   resilienceCelestePourSoi, ruseMagiqueRecuperables, RUSE_MAGIQUE_KEY, utiliserRuseMagique,
 } from './occultiste';
+import {
+  avantageContre, deBonusMarque, degatsBonusBeteCompagnon, degatsBonusMarque,
+  degatsPeuventBriserLaConcentration, dureeMarqueHeures, finMarque, lancementsGratuitsRestants,
+  MARQUE_LIBRE_KEY, marquer, marqueActiveSur, transfererMarque,
+} from './rodeur';
+import { spendResource } from './cast';
+import { hunterMarkFreeCastUses } from '../domain/ranger-resources';
+import { cardsFromCharacter, paiementsPourRang } from '../ui/spell-cards';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -506,5 +514,198 @@ describe('§20 — Bénédiction du Ténébreux : PV temporaires quand un ennemi
   it('un autre patron ne gagne rien', () => {
     const avant = occ(3, 'celeste');
     expect(benedictionDuTenebreux(avant, { reduitParLOccultiste: true, aPortee: true })).toBe(avant);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// RÔDEUR — §10 à §15
+// ═══════════════════════════════════════════════════════════════════════
+
+const rodeur = (level: number, archetype?: 'chasseur' | 'bestial'): ClassLevel[] => [{
+  classId: 'rodeur', level, subclass: null, subclassId: archetype ?? null,
+}];
+
+const CIBLE = { id: 'gobelin-1', name: 'Gobelin balafré' };
+const AUTRE = { id: 'gobelin-2', name: 'Gobelin porte-étendard' };
+
+describe('§10 — Marque du chasseur : un véritable état, raccordé à la concentration', () => {
+  it('marquer pose la cible, la concentration, la provenance et la durée', () => {
+    const apres = marquer(fiche(rodeur(1)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(apres.live.huntersMark).toEqual({
+      targetId: 'gobelin-1', targetName: 'Gobelin balafré',
+      source: 'emplacement', slotLevel: 1, durationHours: 1,
+    });
+    expect(apres.live.concentration?.spellId).toBe('marque-chasseur');
+  });
+
+  it.each([
+    [1, 1], [2, 1], [3, 8], [4, 8], [5, 24], [9, 24],
+  ])('un emplacement de rang %i fait durer %i heure(s)', (rang, heures) => {
+    expect(dureeMarqueHeures(rang)).toBe(heures);
+  });
+
+  it('un lancement d’Ennemi juré dure une heure et se sait gratuit', () => {
+    const apres = marquer(fiche(rodeur(1)), CIBLE, { key: MARQUE_LIBRE_KEY, slotLevel: null });
+    expect(apres.live.huntersMark?.source).toBe('ennemi-jure');
+    expect(apres.live.huntersMark?.durationHours).toBe(1);
+    expect(apres.live.huntersMark?.slotLevel).toBeUndefined();
+  });
+
+  it('la cible tombe : la marque se déplace sans relancer le sort', () => {
+    const marque = marquer(fiche(rodeur(5)), CIBLE, { key: 'emplacement-3', slotLevel: 3 });
+    const deplacee = transfererMarque(marque, AUTRE);
+    expect(deplacee.live.huntersMark?.targetId).toBe('gobelin-2');
+    // La durée engagée continue de courir : 8 heures, pas 8 nouvelles heures
+    // à recompter, et surtout pas un emplacement de plus.
+    expect(deplacee.live.huntersMark?.durationHours).toBe(8);
+    expect(deplacee.live.huntersMark?.slotLevel).toBe(3);
+    expect(deplacee.live.spellSlotsSpent).toEqual(marque.live.spellSlotsSpent);
+  });
+
+  it('la fin du sort emporte la marque ET la concentration', () => {
+    const marque = marquer(fiche(rodeur(1)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    const finie = finMarque(marque);
+    expect(finie.live.huntersMark).toBeNull();
+    expect(finie.live.concentration).toBeNull();
+  });
+
+  it('un repos long efface la marque', () => {
+    const marque = marquer(fiche(rodeur(5)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    const { sheet } = longRest(marque, deriveCharacter(marque));
+    expect(sheet.live.huntersMark).toBeNull();
+  });
+
+  it('sans concentration, la marque ne compte pas', () => {
+    const marque = marquer(fiche(rodeur(1)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    const distrait = { ...marque, live: { ...marque.live, concentration: { spellId: 'toile-daraignee' } } };
+    expect(marqueActiveSur(distrait, 'gobelin-1')).toBe(false);
+  });
+});
+
+describe('§11 — Ennemi juré : les lancements gratuits sont un paiement offert', () => {
+  it.each([
+    [1, 2], [4, 2], [5, 3], [8, 3], [9, 4], [12, 4], [13, 5], [16, 5], [17, 6], [20, 6],
+  ])('Rôdeur %i → %i lancements gratuits', (niveau, attendus) => {
+    expect(hunterMarkFreeCastUses(niveau)).toBe(attendus);
+  });
+
+  it('la table suit le niveau de RÔDEUR, pas le bonus de maîtrise du personnage', () => {
+    const multi = fiche([
+      { classId: 'rodeur', level: 1, subclass: null, subclassId: null },
+      { classId: 'magicien', level: 10, subclass: null, subclassId: null },
+    ]);
+    const derivee = deriveCharacter(multi);
+    expect(derivee.proficiencyBonus).toBe(4);
+    expect(lancementsGratuitsRestants(derivee)).toBe(2);
+  });
+
+  it('la carte de Marque du chasseur propose le lancement gratuit EN PREMIER', () => {
+    const sheet = fiche(rodeur(5));
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet))
+      .find((c) => c.id === 'marque-chasseur');
+    expect(carte?.resources?.[0]).toMatchObject({ key: MARQUE_LIBRE_KEY, max: 3 });
+    // …et les emplacements restent proposés juste après : le choix est offert.
+    expect(carte?.resources?.length).toBeGreaterThan(1);
+  });
+
+  it('les autres sorts n’ont pas de lancement gratuit', () => {
+    const sheet = fiche(rodeur(5), { spells: [{ id: 'soins', sourceClass: 'rodeur', prepared: true }] });
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'soins');
+    expect(carte?.resources?.some((res) => res.key === MARQUE_LIBRE_KEY)).toBe(false);
+  });
+});
+
+describe('§12 — Chasseur implacable : les dégâts ne brisent plus la concentration', () => {
+  const concentre = (level: number, spellId: string) => {
+    const base = fiche(rodeur(level));
+    return { ...base, live: { ...base.live, concentration: { spellId } } };
+  };
+
+  it('Rôdeur 13 concentré sur Marque du chasseur : aucun jet sur dégâts subis', () => {
+    expect(degatsPeuventBriserLaConcentration(concentre(13, 'marque-chasseur'))).toBe(false);
+  });
+
+  it('Rôdeur 12 : le jet reste dû', () => {
+    expect(degatsPeuventBriserLaConcentration(concentre(12, 'marque-chasseur'))).toBe(true);
+  });
+
+  it('la protection ne vaut QUE pour Marque du chasseur', () => {
+    expect(degatsPeuventBriserLaConcentration(concentre(13, 'toile-daraignee'))).toBe(true);
+  });
+});
+
+describe('§13 — Chasseur précis : Avantage contre la créature marquée', () => {
+  const marqueA = (level: number) =>
+    marquer(fiche(rodeur(level)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+
+  it('Rôdeur 17 contre sa cible marquée', () => {
+    expect(avantageContre(marqueA(17), 'gobelin-1')).toBe(true);
+  });
+
+  it('Rôdeur 16 : rien', () => {
+    expect(avantageContre(marqueA(16), 'gobelin-1')).toBe(false);
+  });
+
+  it('Rôdeur 17 contre une AUTRE créature : rien', () => {
+    expect(avantageContre(marqueA(17), 'gobelin-2')).toBe(false);
+  });
+});
+
+describe('§14 — Tueur d’ennemis : le d6 devient d10 au niveau 20', () => {
+  it('Rôdeur 19 → 1d6, Rôdeur 20 → 1d10', () => {
+    expect(deBonusMarque(fiche(rodeur(19)))).toBe('1d6');
+    expect(deBonusMarque(fiche(rodeur(20)))).toBe('1d10');
+  });
+
+  it('les dégâts bonus ne s’appliquent qu’à la créature marquée', () => {
+    const marque = marquer(fiche(rodeur(20)), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(degatsBonusMarque(marque, 'gobelin-1')).toBe('1d10 force');
+    expect(degatsBonusMarque(marque, 'gobelin-2')).toBeNull();
+  });
+
+  it('la bête du Maître des bêtes 11 hérite du dé, d10 compris', () => {
+    const onze = marquer(fiche(rodeur(11, 'bestial')), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(degatsBonusBeteCompagnon(onze, 'gobelin-1')).toBe('1d6 force');
+    const vingt = marquer(fiche(rodeur(20, 'bestial')), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(degatsBonusBeteCompagnon(vingt, 'gobelin-1')).toBe('1d10 force');
+  });
+
+  it('la bête n’en profite qu’une fois par tour, et pas avant le niveau 11', () => {
+    const onze = marquer(fiche(rodeur(11, 'bestial')), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(degatsBonusBeteCompagnon(onze, 'gobelin-1', true)).toBeNull();
+    const dix = marquer(fiche(rodeur(10, 'bestial')), CIBLE, { key: 'emplacement-1', slotLevel: 1 });
+    expect(degatsBonusBeteCompagnon(dix, 'gobelin-1')).toBeNull();
+  });
+});
+
+describe('§15 — Magie de pacte et Incantation se paient l’une l’autre', () => {
+  const druideOccultiste = fiche([
+    { classId: 'druide', level: 3, subclass: null, subclassId: null },
+    { classId: 'occultiste', level: 3, subclass: null, subclassId: null },
+  ], { spells: [{ id: 'soins', sourceClass: 'druide', prepared: true }] });
+
+  it('un sort de druide de rang 1 accepte l’emplacement de pacte comme les autres', () => {
+    const derivee = deriveCharacter(druideOccultiste);
+    const cles = paiementsPourRang(1, derivee).map((res) => res.key);
+    expect(cles).toContain('pacte');
+    expect(cles).toContain('emplacement-1');
+  });
+
+  it('la carte du sort porte tous les paiements légaux, pas le moins cher', () => {
+    const carte = cardsFromCharacter(druideOccultiste, deriveCharacter(druideOccultiste))
+      .find((c) => c.id === 'soins');
+    expect(carte?.resources?.length).toBeGreaterThan(1);
+    expect(carte?.resources?.some((res) => res.key === 'pacte')).toBe(true);
+  });
+
+  it('un emplacement de rang inférieur au sort n’est jamais proposé', () => {
+    const derivee = deriveCharacter(druideOccultiste);
+    expect(paiementsPourRang(2, derivee).map((res) => res.key)).not.toContain('emplacement-1');
+  });
+
+  it('les réserves restent distinctes : payer avec le pacte n’entame pas les autres', () => {
+    const apres = spendResource(druideOccultiste, 'pacte');
+    expect(apres.live.pactSlotsSpent).toBe(1);
+    expect(apres.live.spellSlotsSpent).toEqual({});
   });
 });

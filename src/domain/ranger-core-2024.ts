@@ -1,3 +1,18 @@
+/**
+ * ⚠ MODULE ORPHELIN — ne pilote rien dans l'application.
+ *
+ * Il travaille sur une forme qui n'existe plus : une cible rangée à la
+ * racine (`hunterMarkTarget`), une concentration lue dans le texte d'une
+ * condition, un `turn` libre. Aucune fiche jouée n'écrit ces champs — ses
+ * tests peuvent donc être verts sans qu'une seule règle agisse en partie.
+ *
+ * Marque du chasseur et tout ce qui en dépend (Chasseur implacable,
+ * Chasseur précis, Tueur d'ennemis, la bête du Maître des bêtes) vivent
+ * désormais dans `src/model/rodeur.ts`, sur `CharacterSheet` + `LiveState`.
+ * Ce fichier n'est conservé que parce que `ranger-subclasses-2024.ts`
+ * s'appuie encore dessus pour des capacités non encore portées.
+ */
+
 export type RangerCoreCharacter = {
   level?: number;
   classId?: string;

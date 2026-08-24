@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { AbilityScores, CharacterSheet } from '../model/character';
 import { deriveCharacter, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
-import { layoutCombatCards, type Economy, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
+import { layoutCombatCards, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
+import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
@@ -186,6 +187,9 @@ function ActionCard({ card, playable, hero, onPlay }: {
   onPlay: (card: PlayableCard) => void;
 }) {
   const hasNumbers = card.toHit !== undefined || card.damage;
+  // Les pastilles montrent le paiement PROPOSÉ — le premier qui reste
+  // disponible. Quand il y en a plusieurs, le joueur tranchera.
+  const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
   return (
     <div
       className="card"
@@ -259,16 +263,25 @@ function ActionCard({ card, playable, hero, onPlay }: {
           >
             {card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
           </button>
-          {card.resource && (
+          {paiementAffiche && (
             <div style={{
               minWidth: 74, minHeight: 'var(--tap)', borderRadius: 10,
               border: '1px solid var(--line)', display: 'grid', placeItems: 'center', gap: 3,
+              padding: '0 8px',
             }}>
               <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: card.resource.max }, (_, index) => (
-                  <Pip key={index} filled={index < card.resource!.remaining} />
+                {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
+                {paiementAffiche.max > 6 ? (
+                  <span className="num" style={{ fontSize: 13, fontWeight: 700 }}>
+                    {paiementAffiche.remaining}/{paiementAffiche.max}
+                  </span>
+                ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
+                  <Pip key={index} filled={index < paiementAffiche.remaining} />
                 ))}
               </div>
+              {(card.resources?.length ?? 0) > 1 && (
+                <div className="lbl" style={{ fontSize: 8.5 }}>au choix</div>
+              )}
             </div>
           )}
         </div>
@@ -277,7 +290,78 @@ function ActionCard({ card, playable, hero, onPlay }: {
   );
 }
 
-export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId }: {
+/**
+ * La feuille de choix : ce qui paie, puis — pour Marque du chasseur — qui
+ * est marqué.
+ *
+ * L'application ne choisit plus à la place du joueur. Un sort de rang 1 peut
+ * partir sur un emplacement de rang 3, un Rôdeur peut préférer garder ses
+ * lancements gratuits, un multiclassé Occultiste peut payer un sort de druide
+ * avec un emplacement de pacte : ce sont trois décisions de joueur, et le
+ * défaut le moins cher en escamotait deux.
+ */
+function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
+  titre: string;
+  sousTitre?: string;
+  options: { key: string; label: string; detail?: string; disabled?: boolean }[];
+  onChoisir: (key: string) => void;
+  onFermer: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-label={titre}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column',
+        justifyContent: 'flex-end', background: 'rgba(0,0,0,.45)',
+      }}
+      onClick={onFermer}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          background: 'var(--surface-raised)', borderTopLeftRadius: 18, borderTopRightRadius: 18,
+          padding: '16px 14px calc(16px + env(safe-area-inset-bottom))',
+          display: 'flex', flexDirection: 'column', gap: 9,
+          maxHeight: '76dvh', overflowY: 'auto',
+        }}
+      >
+        <div className="ttl" style={{ fontSize: 16 }}>{titre}</div>
+        {sousTitre && (
+          <div className="lbl" style={{ textTransform: 'none', marginTop: -4 }}>{sousTitre}</div>
+        )}
+        {options.map((option) => (
+          <button
+            key={option.key}
+            disabled={option.disabled}
+            onClick={() => onChoisir(option.key)}
+            style={{
+              minHeight: 'var(--tap)', borderRadius: 11, padding: '10px 13px', textAlign: 'left',
+              border: '1px solid var(--line)', background: 'var(--surface)',
+              color: option.disabled ? 'var(--muted)' : 'var(--ink)',
+              opacity: option.disabled ? 0.5 : 1,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{option.label}</div>
+            {option.detail && (
+              <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{option.detail}</div>
+            )}
+          </button>
+        ))}
+        <button
+          onClick={onFermer}
+          style={{ minHeight: 'var(--tap)', borderRadius: 11, color: 'var(--muted)', fontSize: 13, fontWeight: 700 }}
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function CombatScreen({
+  sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], onFinMarque, onTransfererMarque,
+}: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
   /**
@@ -291,7 +375,16 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId
    * l'emplacement ou la ressource. L'économie d'action, elle, reste locale à
    * cet écran (`spent`) — elle n'a de sens que le temps du tour, pas au-delà.
    */
-  onPlayCard?: (card: PlayableCard) => void;
+  onPlayCard?: (card: PlayableCard, resourceKey: string, cible?: CibleMarquee) => void;
+  /**
+   * Les créatures que le MJ a mises en jeu, pour Marque du chasseur. Vide
+   * hors combat : on ne marque pas une cible qui n'existe pas.
+   */
+  cibles?: CibleMarquee[];
+  /** La marque tombe : sort dissipé, cible morte, concentration perdue. */
+  onFinMarque?: () => void;
+  /** La cible marquée est tombée à 0 PV : une action bonus déplace la marque. */
+  onTransfererMarque?: (cible: CibleMarquee) => void;
   /**
    * Identité du tour en cours (`turnIdentity`). Les économies d'action
    * appartiennent au tour où elles ont été dépensées : quand cette valeur
@@ -314,10 +407,38 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId
   const inCombat = turn.mode === 'combat';
   const isYourTurn = turn.mode === 'combat' && turn.isYourTurn;
 
-  const play = (card: PlayableCard) => {
+  /**
+   * Jouer une carte, en deux temps quand il y a une décision à prendre :
+   * quelle ressource paie, puis — pour Marque du chasseur — qui est marqué.
+   * L'économie d'action n'est cochée qu'une fois le choix confirmé : ouvrir
+   * une feuille puis l'annuler ne doit rien coûter.
+   */
+  const [choix, setChoix] = useState<
+    { card: PlayableCard; etape: 'paiement' | 'cible'; paiement?: PayableResource } | null
+  >(null);
+  const [transfert, setTransfert] = useState(false);
+
+  const confirmer = (card: PlayableCard, paiement?: PayableResource, cible?: CibleMarquee) => {
     setSpent((current) => ({ ...current, [card.economy]: true }));
-    if (card.resource) onPlayCard?.(card);
+    if (paiement) onPlayCard?.(card, paiement.key, cible);
+    setChoix(null);
   };
+
+  const play = (card: PlayableCard) => {
+    const disponibles = (card.resources ?? []).filter((res) => res.remaining > 0);
+    const demandeUneCible = card.id === MARQUE_CHASSEUR_SPELL_ID && cibles.length > 0;
+    if (disponibles.length > 1) {
+      setChoix({ card, etape: 'paiement' });
+      return;
+    }
+    if (demandeUneCible && disponibles.length === 1) {
+      setChoix({ card, etape: 'cible', paiement: disponibles[0] });
+      return;
+    }
+    confirmer(card, disponibles[0]);
+  };
+
+  const marque = sheet.live.huntersMark ?? null;
 
   return (
     <div style={{
@@ -365,6 +486,46 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId
             bonus={derived.proficiencyBonus}
           />
         </div>
+
+        {/*
+          La marque, dans la zone figée : c'est l'information qu'on relit à
+          chaque jet d'attaque. Le dé vient du niveau — il passe au d10 au
+          niveau 20 sans qu'on ait à retoucher quoi que ce soit ici.
+        */}
+        {marque && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+            border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+          }}>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div className="lbl" style={{ color: 'var(--accent)' }}>
+                Marque · +{deBonusMarque(sheet)} force
+              </div>
+              {/* Le nom sur sa propre ligne : « Gobelin porte-étendard » et le
+                  dé sur la même ligne débordaient sur deux lignes à 390px. */}
+              <div style={{
+                fontSize: 13, fontWeight: 700, marginTop: 1,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {marque.targetName}
+              </div>
+            </div>
+            {cibles.length > 0 && (
+              <button
+                onClick={() => setTransfert(true)}
+                style={{ minHeight: 34, padding: '0 10px', borderRadius: 9, border: '1px solid var(--line)', fontSize: 12, fontWeight: 700 }}
+              >
+                Déplacer
+              </button>
+            )}
+            <button
+              onClick={() => onFinMarque?.()}
+              style={{ minHeight: 34, padding: '0 10px', borderRadius: 9, color: 'var(--muted)', fontSize: 12, fontWeight: 700 }}
+            >
+              Fin
+            </button>
+          </div>
+        )}
 
         {layout.showEconomy && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -441,6 +602,57 @@ export function CombatScreen({ sheet, cards, turn, onSpendHp, onPlayCard, turnId
             {isYourTurn ? 'Fin du tour' : 'Ordre du combat'}
           </button>
         </footer>
+      )}
+
+      {choix?.etape === 'paiement' && (
+        <FeuilleDeChoix
+          titre={`${choix.card.name} — avec quoi ?`}
+          sousTitre="Monter en rang, garder un lancement gratuit : c’est ton choix."
+          options={(choix.card.resources ?? []).map((res) => ({
+            key: res.key,
+            label: res.label,
+            detail: `${res.remaining} sur ${res.max}`,
+            disabled: res.remaining <= 0,
+          }))}
+          onChoisir={(key) => {
+            const paiement = (choix.card.resources ?? []).find((res) => res.key === key);
+            if (!paiement) return;
+            if (choix.card.id === MARQUE_CHASSEUR_SPELL_ID && cibles.length > 0) {
+              setChoix({ ...choix, etape: 'cible', paiement });
+              return;
+            }
+            confirmer(choix.card, paiement);
+          }}
+          onFermer={() => setChoix(null)}
+        />
+      )}
+
+      {choix?.etape === 'cible' && (
+        <FeuilleDeChoix
+          titre="Qui portes-tu comme marque ?"
+          sousTitre={choix.paiement?.label}
+          options={cibles.map((cible) => ({ key: cible.id, label: cible.name }))}
+          onChoisir={(id) => {
+            const cible = cibles.find((candidat) => candidat.id === id);
+            if (!cible) return;
+            confirmer(choix.card, choix.paiement, cible);
+          }}
+          onFermer={() => setChoix(null)}
+        />
+      )}
+
+      {transfert && (
+        <FeuilleDeChoix
+          titre="Déplacer la marque"
+          sousTitre="La cible est tombée : une action bonus, sans relancer le sort."
+          options={cibles.map((cible) => ({ key: cible.id, label: cible.name }))}
+          onChoisir={(id) => {
+            const cible = cibles.find((candidat) => candidat.id === id);
+            setTransfert(false);
+            if (cible) onTransfererMarque?.(cible);
+          }}
+          onFermer={() => setTransfert(false)}
+        />
       )}
     </div>
   );

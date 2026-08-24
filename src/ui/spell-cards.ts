@@ -3,7 +3,8 @@ import { spellbookOf } from '../model/spellbook';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
-import type { Economy, PlayableCard } from './combat-layout';
+import type { Economy, PayableResource, PlayableCard } from './combat-layout';
+import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -56,15 +57,63 @@ export function detailOf(spell: Spell): string {
 }
 
 /**
- * L'emplacement qui paie ce sort.
- *
- * Le plus bas qui suffit : lancer un sort de rang 1 avec un emplacement de
- * rang 3 est un choix du joueur, jamais un défaut. L'occultiste n'a pas ce
- * choix — ses emplacements sont tous au même rang.
+ * L'emplacement le plus bas qui suffit. Conservé pour ce qu'il dit : c'est
+ * le paiement proposé par défaut, pas le seul possible.
  */
 export function slotFor(rank: number, slots: DerivedSlot[]): DerivedSlot | null {
   if (rank === 0) return null;
   return slots.find((slot) => slot.level >= rank) ?? null;
+}
+
+const pastilleEmplacement = (slot: DerivedSlot): PayableResource => ({
+  key: slot.pact ? 'pacte' : `emplacement-${slot.level}`,
+  remaining: slot.remaining,
+  max: slot.max,
+  label: slot.pact ? `Emplacement de pacte (rang ${slot.level})` : `Emplacement de rang ${slot.level}`,
+});
+
+/**
+ * TOUS les paiements légaux d'un sort de ce rang, du moins cher au plus cher.
+ *
+ * Un emplacement paie un sort de son rang ou d'un rang inférieur — d'où la
+ * liste entière plutôt que le seul plus bas : monter en rang est un choix que
+ * l'application n'avait aucun moyen d'offrir.
+ *
+ * Les emplacements de pacte y figurent au même titre. En multiclassage
+ * Incantation + Magie de pacte, chaque réserve peut payer les sorts de
+ * l'autre ; elles ne restent distinctes que pour leur récupération. Le pacte
+ * est trié à son rang réel, ce qui le met souvent en tête pour un sort de bas
+ * rang : c'est bien pour cela que le choix est demandé.
+ */
+export function paiementsPourRang(rank: number, derived: DerivedCharacter): PayableResource[] {
+  if (rank === 0) return [];
+  return derived.spellcasting.slots
+    .filter((slot) => slot.level >= rank)
+    .slice()
+    .sort((a, b) => a.level - b.level)
+    .map(pastilleEmplacement);
+}
+
+/**
+ * Les paiements d'un sort donné, lancements gratuits compris.
+ *
+ * Ennemi juré (Rôdeur 1) donne des lancements de Marque du chasseur sans
+ * emplacement. Ils ne changent pas le sort, seulement son coût : ils
+ * s'ajoutent donc à la liste, en tête puisqu'ils ne coûtent rien d'autre.
+ * Sans cela, la carte cherchait un emplacement et laissait la réserve
+ * intacte — la capacité de niveau 1 du Rôdeur n'existait pas en jeu.
+ */
+export function paiementsPourSort(spell: Spell, derived: DerivedCharacter): PayableResource[] {
+  const paiements = paiementsPourRang(spell.level, derived);
+  if (spell.id !== MARQUE_CHASSEUR_SPELL_ID) return paiements;
+  const gratuits = derived.resources.find((resource) => resource.key === MARQUE_LIBRE_KEY);
+  if (!gratuits) return paiements;
+  return [{
+    key: gratuits.key,
+    remaining: gratuits.remaining,
+    max: gratuits.max,
+    label: 'Ennemi juré · sans emplacement',
+  }, ...paiements];
 }
 
 export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharacter): PlayableCard[] {
@@ -86,21 +135,14 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
   for (const entree of spellbookOf(sheet, derived)) {
     const { spell, standing } = entree;
     if (spell.level === 0) continue;
-    const slot = slotFor(spell.level, derived.spellcasting.slots);
+    const paiements = paiementsPourSort(spell, derived);
     cartes.push({
       id: spell.id,
       name: spell.name,
       economy: economyOf(spell),
       detail: detailOf(spell),
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
-      ...(slot ? {
-        resource: {
-          key: slot.pact ? 'pacte' : `emplacement-${slot.level}`,
-          remaining: slot.remaining,
-          max: slot.max,
-          label: slot.pact ? 'Emplacement de pacte' : `Emplacement de rang ${slot.level}`,
-        },
-      } : {}),
+      ...(paiements.length ? { resources: paiements } : {}),
     });
   }
 
@@ -117,12 +159,12 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       granted: true,
       grantedBy: grant.source,
       ...(ressource ? {
-        resource: {
+        resources: [{
           key: ressource.key,
           remaining: ressource.remaining,
           max: ressource.max,
           label: `Accordé · ${grant.recharge === 'long' ? 'repos long' : 'repos court'}`,
-        },
+        }],
       } : {}),
     });
   }

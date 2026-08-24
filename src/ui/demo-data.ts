@@ -52,7 +52,7 @@ export const demoCards: PlayableCard[] = [
     name: "Armure d'Agathys",
     economy: 'action',
     detail: '5 PV temporaires · représailles de froid',
-    resource: { key: 'pacte', remaining: 2, max: 2, label: 'Emplacement de pacte' },
+    resources: [{ key: 'pacte', remaining: 2, max: 2, label: 'Emplacement de pacte' }],
   },
   {
     id: 'orbe-chromatique',
@@ -67,7 +67,7 @@ export const demoCards: PlayableCard[] = [
     name: 'Réprimande infernale',
     economy: 'reaction',
     detail: 'quand une créature visible te blesse · 2d10 feu',
-    resource: { key: 'pacte', remaining: 2, max: 2, label: 'Emplacement de pacte' },
+    resources: [{ key: 'pacte', remaining: 2, max: 2, label: 'Emplacement de pacte' }],
   },
 ];
 

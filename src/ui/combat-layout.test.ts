@@ -49,7 +49,7 @@ describe('quand ce n’est pas ton tour — l’ordre s’inverse', () => {
 
 describe('ressources épuisées', () => {
   const sansForme = carte('forme-sauvage', 'bonus', {
-    resource: { key: 'druide:forme-sauvage', remaining: 0, max: 2, label: 'Forme sauvage' },
+    resources: [{ key: 'druide:forme-sauvage', remaining: 0, max: 2, label: 'Forme sauvage' }],
   });
 
   it('une carte sans ressource restante est reléguée, jamais retirée', () => {
@@ -59,7 +59,10 @@ describe('ressources épuisées', () => {
   });
 
   it('elle redevient jouable dès qu’il reste une utilisation', () => {
-    expect(isPlayableNow({ ...sansForme, resource: { ...sansForme.resource!, remaining: 1 } }, { turn: combat(true) })).toBe(true);
+    expect(isPlayableNow(
+      { ...sansForme, resources: [{ ...sansForme.resources![0], remaining: 1 }] },
+      { turn: combat(true) },
+    )).toBe(true);
   });
 });
 
@@ -94,7 +97,7 @@ describe('hors combat — le MJ n’a pas lancé le tour par tour', () => {
 
   it('une ressource épuisée reste la seule vraie contrainte', () => {
     const epuise = carte('forme-sauvage', 'bonus', {
-      resource: { key: 'druide:forme-sauvage', remaining: 0, max: 2, label: 'Forme sauvage' },
+      resources: [{ key: 'druide:forme-sauvage', remaining: 0, max: 2, label: 'Forme sauvage' }],
     });
     const { featured, muted } = layoutCombatCards([...jeu, epuise], { turn: libre });
     expect(muted.map((c) => c.id)).toEqual(['forme-sauvage']);

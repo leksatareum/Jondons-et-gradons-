@@ -17,6 +17,13 @@ import type { DerivedCharacter } from '../model/derive';
 
 export type Economy = 'action' | 'bonus' | 'reaction' | 'libre';
 
+export interface PayableResource {
+  key: string;
+  remaining: number;
+  max: number;
+  label: string;
+}
+
 export interface PlayableCard {
   id: string;
   name: string;
@@ -25,8 +32,17 @@ export interface PlayableCard {
   detail?: string;
   toHit?: number;
   damage?: string;
-  /** Ressource consommée, affichée en pastilles. */
-  resource?: { key: string; remaining: number; max: number; label: string };
+  /**
+   * Les paiements LÉGAUX de cette carte, du moins cher au plus cher — pas
+   * un seul. Un sort de rang 1 se lance avec un emplacement de rang 1 ou
+   * de n'importe quel rang supérieur ; un multiclassé Occultiste peut le
+   * payer avec un emplacement de pacte ; un Rôdeur a ses lancements
+   * gratuits de Marque du chasseur. Choisir d'office le moins cher, c'était
+   * décider à la place du joueur.
+   *
+   * Absent ou vide : la carte ne coûte rien.
+   */
+  resources?: PayableResource[];
   /** Accordé par un don ou une invocation : hors budget de sorts préparés. */
   granted?: boolean;
   /** D'où vient ce qui a été accordé, en clair — « Génie du désert ». */
@@ -68,7 +84,9 @@ const priority = (isYourTurn: boolean): Economy[] =>
   isYourTurn ? ['action', 'bonus', 'libre', 'reaction'] : ['reaction', 'libre', 'action', 'bonus'];
 
 export function isPlayableNow(card: PlayableCard, context: TurnContext): boolean {
-  if (card.resource && card.resource.remaining <= 0) return false;
+  // Épuisée seulement si AUCUN paiement légal ne reste : plus d'emplacement
+  // de rang 1 mais un de rang 2 disponible, le sort se lance encore.
+  if (card.resources?.length && card.resources.every((res) => res.remaining <= 0)) return false;
   // Hors combat, rien n'est contraint : seule une ressource épuisée bloque.
   if (context.turn.mode === 'libre') return true;
   if (context.spent?.[card.economy]) return false;

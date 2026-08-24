@@ -86,7 +86,7 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
     });
     const carte = cardsFromCharacter(sheet, deriveCharacter(sheet))
       .find((c) => c.id === 'soins');
-    expect(carte?.resource).toMatchObject({ key: 'emplacement-1', label: 'Emplacement de rang 1' });
+    expect(carte?.resources?.[0]).toMatchObject({ key: 'emplacement-1', label: 'Emplacement de rang 1' });
   });
 
   it('l’occultiste dépense un emplacement de pacte', () => {
@@ -96,8 +96,8 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
     });
     const carte = cardsFromCharacter(sheet, deriveCharacter(sheet))
       .find((c) => c.id === 'armure-agathys');
-    expect(carte?.resource?.key).toBe('pacte');
-    expect(carte?.resource?.label).toBe('Emplacement de pacte');
+    expect(carte?.resources?.[0]?.key).toBe('pacte');
+    expect(carte?.resources?.[0]?.label).toBe('Emplacement de pacte (rang 1)');
   });
 
   it('marque hors budget un sort accordé par un don', () => {

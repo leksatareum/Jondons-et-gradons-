@@ -12,6 +12,7 @@ import { cardsFromCharacter } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { spendResource } from '../model/cast';
+import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
@@ -86,6 +87,18 @@ export function SheetView({
   const cartes = useMemo(() => cardsFromCharacter(fiche.data, derivee), [fiche.data, derivee]);
 
   /**
+   * Les cibles marquables : les combattants de la rencontre, moins soi-même.
+   * On ne restreint pas aux créatures du MJ — Marque du chasseur ne le fait
+   * pas non plus, et une partie où l'on se retourne contre un allié existe.
+   */
+  const ciblesMarquables = useMemo<CibleMarquee[]>(
+    () => (rencontre?.combatants ?? [])
+      .filter((combattant) => combattant.name !== fiche.data.name)
+      .map((combattant) => ({ id: combattant.id, name: combattant.name })),
+    [rencontre, fiche.data.name],
+  );
+
+  /**
    * Préparer un sort est une écriture comme une autre : la fiche part en base
    * et la ligne renvoyée fait foi. La règle qui dit *quand* c'est permis vit
    * dans le modèle ; l'écran ne fait que proposer ce qu'elle autorise.
@@ -138,9 +151,33 @@ export function SheetView({
    * ce qui a payé — l'emplacement ou la ressource — pour que la pastille et
    * les repos restent justes.
    */
-  const jouerCarte = (card: PlayableCard) => {
-    if (!card.resource) return;
-    void saveSheet(client, sync, fiche.id, spendResource(fiche.data, card.resource.key));
+  const jouerCarte = (card: PlayableCard, resourceKey: string, cible?: CibleMarquee) => {
+    let suivante = spendResource(fiche.data, resourceKey);
+    // Marque du chasseur ne se contente pas de coûter : elle pose un état —
+    // cible, concentration, provenance, durée — dont dépendent trois
+    // capacités du Rôdeur. Le rang payé décide de la durée.
+    if (card.id === MARQUE_CHASSEUR_SPELL_ID && cible) {
+      suivante = marquer(suivante, cible, { key: resourceKey, slotLevel: rangPaye(resourceKey) });
+    }
+    void saveSheet(client, sync, fiche.id, suivante);
+  };
+
+  /** Rang de l'emplacement dépensé, `null` pour un lancement gratuit. */
+  const rangPaye = (resourceKey: string): number | null => {
+    const emplacement = /^emplacement-(\d+)$/.exec(resourceKey);
+    if (emplacement) return Number(emplacement[1]);
+    if (resourceKey === 'pacte') {
+      return derivee.spellcasting.slots.find((slot) => slot.pact)?.level ?? 1;
+    }
+    return null;
+  };
+
+  const finDeMarque = () => {
+    void saveSheet(client, sync, fiche.id, finMarque(fiche.data));
+  };
+
+  const deplacerMarque = (cible: CibleMarquee) => {
+    void saveSheet(client, sync, fiche.id, transfererMarque(fiche.data, cible));
   };
 
   const accorder = (grant: SpellGrant) => {
@@ -311,6 +348,9 @@ export function SheetView({
         cards={cartes}
         onSpendHp={soignerOuBlesser}
         onPlayCard={jouerCarte}
+        cibles={ciblesMarquables}
+        onFinMarque={finDeMarque}
+        onTransfererMarque={deplacerMarque}
         turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat
