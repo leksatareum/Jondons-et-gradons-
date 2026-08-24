@@ -56,7 +56,7 @@ export const SUBCLASS_ALWAYS_SPELLS: Record<string, AlwaysPreparedTier[]> = {
     [9, ['restauration-superieure', 'mur-force']],
   ],
   "Sorcellerie draconique": [
-    [3, ['alteration-soi', 'orbe-chromatique', 'injonction', 'souffle-dragon']],
+    [3, ['metamorphose-mineure', 'orbe-chromatique', 'injonction', 'souffle-dragon']],
     [5, ['peur', 'vol']],
     [7, ['oeil-arcanique', 'charme-monstre']],
     [9, ['connaissance-legendes', 'invocation-dragon']],

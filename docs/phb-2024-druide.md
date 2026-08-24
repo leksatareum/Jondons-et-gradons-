@@ -118,3 +118,27 @@ Les tables de `domain/wild-shape.ts` (formes connues, FP, vol, PV temporaires,
 CA du Cercle de la Lune, incantation en forme), les sorts toujours préparés des
 quatre cercles et des quatre terrains, la table de progression du Druide, et
 les blocs de créatures de `content/creatures.ts` correspondent au livre.
+
+---
+
+## Liste de sorts du Druide (p. 82-84)
+
+Décomptée rang par rang contre les tables du livre. Deux erreurs trouvées, et
+deux doublons du catalogue.
+
+| Rang | Livre | Application, avant | Après |
+|---|---|---|---|
+| 0 | 13 | 13 | 13 |
+| 1 | 18 | **17** — Charme-personne manquait | 18 |
+| 2 | 23 | 23 | 23 |
+| 3 | 17 | 17 | 17 |
+| 4 | 21 | 21 | 21 |
+| 5 | 15 | **16** — Rappel à la vie en trop | 15 |
+| 6 | 10 | 10 | 10 |
+| 7 | 6 | 6 | 6 |
+| 8 | 8 | 8 | 8 |
+| 9 | 4 | 4 | 4 |
+
+Les listes du **Rôdeur** (p. 120-122 : 14, 18, 16, 7, 6) et de l'**Occultiste**
+(p. 156-158 : 12, 15, 12, 14, 6, 9) correspondaient déjà au livre, une fois les
+deux doublons retirés.
