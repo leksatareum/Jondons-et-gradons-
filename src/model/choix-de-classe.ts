@@ -1,6 +1,7 @@
 import { choiceList, choicesFor, levelInClass, subclassOf, type CharacterSheet } from './character';
 import { ELEMENTAL_FURY, PRIMAL_ORDER, type ChoiceOption } from '../content/class-choices';
 import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
+import { DAMAGE_TYPES } from '../content/reference-lists';
 import { DRUID_TERRAINS } from '../content/always-prepared-spells';
 
 /**
@@ -121,6 +122,24 @@ export function decisionsDeClasse(sheet: CharacterSheet): DecisionDeClasse[] {
       help: 'Rechoisissable à la fin de chaque repos, court ou long.',
       options: HUNTER_DEFENSE.map(enOption),
       choisi: choisiPour(sheet, 'rodeur', 'hunterDefense'),
+      rechoisissable: 'repos',
+    });
+  }
+
+  // ── Occultiste ────────────────────────────────────────────────────
+  // Résilience fiélonne (niveau 10) : un type de dégâts choisi à la fin de
+  // chaque repos, autre que la force. Le choix tient jusqu'au suivant.
+  if (levelInClass(sheet, 'occultiste') >= 10 && /patron fiélon|patron fielon/i.test(subclassOf(sheet, 'occultiste') ?? '')) {
+    decisions.push({
+      classId: 'occultiste', key: 'fiendishResilience',
+      label: 'Résilience fiélonne',
+      help: 'Un type de dégâts, autre que la force. Rechoisissable à la fin de chaque repos.',
+      options: DAMAGE_TYPES.filter((type) => type !== 'force').map((type) => ({
+        id: type,
+        name: type.charAt(0).toLocaleUpperCase('fr') + type.slice(1),
+        desc: `Résistance aux dégâts ${type}.`,
+      })),
+      choisi: choisiPour(sheet, 'occultiste', 'fiendishResilience'),
       rechoisissable: 'repos',
     });
   }

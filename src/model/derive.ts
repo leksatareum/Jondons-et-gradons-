@@ -223,12 +223,28 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
     );
   }
 
+  // Contact du patron (niveau 9) : le sort est toujours préparé, et son
+  // lancement gratuit — une fois par repos long — n'était compté nulle part.
+  if (occultiste >= 9) push('occultiste:contact-patron', 'Contact du patron', 1, 'long', 'occultiste');
+
   const patron = subclassOf(sheet, 'occultiste');
   const cha = abilityModifier(abilities.cha);
   if (patron === 'Patron Céleste') push('occultiste:lumiere-guerisseuse', 'Lumière guérisseuse (dés)', celestialHealingLightDice(occultiste), 'long', 'occultiste');
   if (patron === 'Patron Fiélon') push('occultiste:chance-tenebreux', 'Chance du Ténébreux', fiendDarkOnesLuckUses(occultiste, cha), 'long', 'occultiste');
   if (patron === 'Patron Grand Ancien') push('occultiste:combattant-clairvoyant', 'Combattant clairvoyant', greatOldOneClairvoyantCombatantUses(occultiste), 'court', 'occultiste');
   if (patron === 'Patron Archifée') push('occultiste:pas-des-fees', 'Pas des fées', archfeyFeyStepUses(occultiste, cha), 'long', 'occultiste');
+
+  // Trois réactions ou frappes limitées à une fois par repos long, dont deux
+  // se rachètent avec un emplacement de pacte. Aucune n'était déclarée.
+  if (patron === 'Patron Archifée' && occultiste >= 10) {
+    push('occultiste:defenses-enjoleuses', 'Défenses enjôleuses', 1, 'long', 'occultiste');
+  }
+  if (patron === 'Patron Céleste' && occultiste >= 14) {
+    push('occultiste:vengeance-brulante', 'Vengeance brûlante', 1, 'long', 'occultiste');
+  }
+  if (patron === 'Patron Fiélon' && occultiste >= 14) {
+    push('occultiste:precipiter-enfers', 'Précipiter dans les Enfers', 1, 'long', 'occultiste');
+  }
 
   // Les dons du MJ apportent leurs propres lancements. Ils viennent après les
   // ressources de classe et d'espèce parce qu'ils s'y ajoutent : un don ne

@@ -36,6 +36,7 @@ import { eligibleForms, wildShapeAccess } from './wild-shape';
 import { INFATIGABLE_KEY, infatigablePvTemporaires, utiliserInfatigable } from './rodeur';
 import { linkedCreatureOptionsFor } from '../domain/linked-creatures';
 import { effectiveAbilities } from './character';
+import { ELDRITCH_INVOCATIONS } from '../content/eldritch-invocations';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -1282,5 +1283,158 @@ describe('p. 122-123 — Compagnon primordial : les trois blocs suivent le nivea
     const marine = bete(5, 'sea');
     expect(marine.hp).toBe(30);
     expect(marine.damageFormula).toBe('1d6+5');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// OCCULTISTE — CHAPITRE COMPLET (PHB 2024, p. 152 à 163)
+// ═══════════════════════════════════════════════════════════════════════
+
+const occPatron = (level: number, patron: 'archifee' | 'celeste' | 'fielon' | 'grand-ancien'): CharacterSheet => {
+  const nom = {
+    archifee: 'Patron Archifée', celeste: 'Patron Céleste',
+    fielon: 'Patron Fiélon', 'grand-ancien': 'Patron Grand Ancien',
+  }[patron];
+  return {
+    ...occ(level),
+    classLevels: [{ classId: 'occultiste', level, subclass: nom, subclassId: patron }],
+  };
+};
+
+describe('p. 154 — table de l’Occultiste', () => {
+  it.each([[1, 1], [2, 3], [5, 5], [7, 6], [9, 7], [12, 8], [15, 9], [18, 10], [20, 10]])(
+    'Occultiste %i → %i invocations', (niveau, attendues) => {
+      expect(invocationsDues(occ(niveau))).toBe(attendues);
+    },
+  );
+
+  it.each([[1, 1], [2, 2], [10, 2], [11, 3], [16, 3], [17, 4], [20, 4]])(
+    'Occultiste %i → %i emplacements de pacte', (niveau, attendus) => {
+      expect(pacteMax(occ(niveau))).toBe(attendus);
+    },
+  );
+
+  it.each([[1, 1], [3, 2], [5, 3], [7, 4], [9, 5], [20, 5]])(
+    'Occultiste %i → emplacements de rang %i', (niveau, rang) => {
+      expect(deriveCharacter(occ(niveau)).spellcasting.slots.find((s) => s.pact)?.level).toBe(rang);
+    },
+  );
+
+  it.each([[1, 2], [2, 3], [9, 10], [10, 10], [11, 11], [19, 15], [20, 15]])(
+    'Occultiste %i → %i sorts préparés', (niveau, attendus) => {
+      expect(deriveCharacter(occ(niveau)).spellcasting.preparedMax.occultiste).toBe(attendus);
+    },
+  );
+});
+
+describe('p. 155 — Contact du patron : le lancement gratuit se compte', () => {
+  it('le sort est toujours préparé au niveau 9, avec un lancement par repos long', () => {
+    expect(deriveCharacter(occ(8)).resources.some((r) => r.key === 'occultiste:contact-patron')).toBe(false);
+    const neuf = deriveCharacter(occ(9));
+    expect(neuf.spellcasting.alwaysPrepared).toContain('contact-autre-plan');
+    expect(neuf.resources.find((r) => r.key === 'occultiste:contact-patron'))
+      .toMatchObject({ max: 1, recharge: 'long' });
+  });
+});
+
+describe('p. 155-157 — les 28 invocations et leurs prérequis', () => {
+  it('le catalogue en compte exactement 28', () => {
+    expect(ELDRITCH_INVOCATIONS).toHaveLength(28);
+  });
+
+  it.each([
+    ['agonizing-blast', 2], ['armor-of-shadows', 1], ['ascendant-step', 5], ['devils-sight', 2],
+    ['devouring-blade', 12], ['eldritch-mind', 1], ['eldritch-smite', 5], ['eldritch-spear', 2],
+    ['fiendish-vigor', 2], ['gaze-of-two-minds', 5], ['gift-of-the-depths', 5],
+    ['gift-of-the-protectors', 9], ['investment-chain-master', 5], ['lessons-first-ones', 2],
+    ['lifedrinker', 9], ['mask-many-faces', 2], ['master-myriad-forms', 5], ['misty-visions', 2],
+    ['one-with-shadows', 5], ['otherworldly-leap', 2], ['pact-blade', 1], ['pact-chain', 1],
+    ['pact-tome', 1], ['repelling-blast', 2], ['thirsting-blade', 5], ['visions-distant-realms', 9],
+    ['whispers-grave', 7], ['witch-sight', 15],
+  ])('%s exige le niveau %i', (id, niveau) => {
+    expect(ELDRITCH_INVOCATIONS.find((i) => i.id === id)?.minLevel).toBe(niveau);
+  });
+
+  it.each([
+    ['devouring-blade', 'thirsting-blade'], ['eldritch-smite', 'pact-blade'],
+    ['gift-of-the-protectors', 'pact-tome'], ['investment-chain-master', 'pact-chain'],
+    ['lifedrinker', 'pact-blade'], ['thirsting-blade', 'pact-blade'],
+  ])('%s exige %s', (id, prerequis) => {
+    expect(ELDRITCH_INVOCATIONS.find((i) => i.id === id)?.requires).toBe(prerequis);
+  });
+
+  it('les autres n’ont aucun prérequis d’invocation', () => {
+    const avecPrerequis = ELDRITCH_INVOCATIONS.filter((i) => i.requires).map((i) => i.id);
+    expect(avecPrerequis).toEqual([
+      'devouring-blade', 'eldritch-smite', 'gift-of-the-protectors',
+      'investment-chain-master', 'lifedrinker', 'thirsting-blade',
+    ]);
+  });
+});
+
+describe('p. 159-163 — sorts de patron et réserves', () => {
+  it.each([
+    ['archifee', 3, ['apaisement', 'lueurs-feeriques', 'pas-brumeux', 'force-fantasmagorique', 'sommeil']],
+    ['celeste', 3, ['aide', 'soins', 'trait-lumiere', 'restauration-partielle', 'lumiere', 'flamme-sacree']],
+    ['fielon', 3, ['mains-brulantes', 'injonction', 'rayon-ardent', 'suggestion']],
+    ['grand-ancien', 3, ['detection-pensees', 'murmures-dissonants', 'force-fantasmagorique', 'rire-hideux']],
+  ] as const)('%s au niveau %i a ses sorts de patron préparés', (patron, niveau, attendus) => {
+    const accordes = deriveCharacter(occPatron(niveau, patron)).spellcasting.alwaysPrepared;
+    for (const id of attendus) expect(accordes).toContain(id);
+  });
+
+  it('Maléfice est toujours préparé pour le Grand Ancien au niveau 10', () => {
+    expect(deriveCharacter(occPatron(9, 'grand-ancien')).spellcasting.alwaysPrepared).not.toContain('malefice');
+    expect(deriveCharacter(occPatron(10, 'grand-ancien')).spellcasting.alwaysPrepared).toContain('malefice');
+  });
+
+  it('Défenses enjôleuses : Archifée 10, une fois par repos long', () => {
+    expect(deriveCharacter(occPatron(9, 'archifee')).resources.some((r) => r.key === 'occultiste:defenses-enjoleuses')).toBe(false);
+    expect(deriveCharacter(occPatron(10, 'archifee')).resources.find((r) => r.key === 'occultiste:defenses-enjoleuses'))
+      .toMatchObject({ max: 1, recharge: 'long' });
+  });
+
+  it('Vengeance brûlante : Céleste 14 ; Précipiter dans les Enfers : Fiélon 14', () => {
+    expect(deriveCharacter(occPatron(14, 'celeste')).resources.find((r) => r.key === 'occultiste:vengeance-brulante'))
+      .toMatchObject({ max: 1, recharge: 'long' });
+    expect(deriveCharacter(occPatron(14, 'fielon')).resources.find((r) => r.key === 'occultiste:precipiter-enfers'))
+      .toMatchObject({ max: 1, recharge: 'long' });
+    expect(deriveCharacter(occPatron(13, 'fielon')).resources.some((r) => r.key === 'occultiste:precipiter-enfers')).toBe(false);
+  });
+
+  it('Combattant clairvoyant revient au repos COURT, contrairement aux autres', () => {
+    expect(deriveCharacter(occPatron(6, 'grand-ancien')).resources.find((r) => r.key === 'occultiste:combattant-clairvoyant'))
+      .toMatchObject({ recharge: 'court' });
+  });
+
+  it('Chance du Ténébreux : Fiélon 6, Charisme fois, repos long', () => {
+    // La fiche `occ` a 18 en Charisme, soit +4.
+    expect(deriveCharacter(occPatron(6, 'fielon')).resources.find((r) => r.key === 'occultiste:chance-tenebreux'))
+      .toMatchObject({ max: 4, recharge: 'long' });
+  });
+
+  it('Pas des fées : Archifée 3, Charisme fois, repos long', () => {
+    expect(deriveCharacter(occPatron(3, 'archifee')).resources.find((r) => r.key === 'occultiste:pas-des-fees'))
+      .toMatchObject({ max: 4, recharge: 'long' });
+  });
+});
+
+describe('p. 161 — Résilience fiélonne : un type de dégâts rechoisi à chaque repos', () => {
+  it('la décision apparaît au niveau 10 du Fiélon seulement', () => {
+    expect(decisionsDeClasse(occPatron(9, 'fielon')).some((d) => d.key === 'fiendishResilience')).toBe(false);
+    expect(decisionsDeClasse(occPatron(10, 'celeste')).some((d) => d.key === 'fiendishResilience')).toBe(false);
+    const decision = decisionsDeClasse(occPatron(10, 'fielon')).find((d) => d.key === 'fiendishResilience');
+    expect(decision?.rechoisissable).toBe('repos');
+  });
+
+  it('la force n’est pas proposée', () => {
+    const decision = decisionsDeClasse(occPatron(10, 'fielon')).find((d) => d.key === 'fiendishResilience')!;
+    expect(decision.options).toHaveLength(12);
+    expect(decision.options.map((o) => o.id)).not.toContain('force');
+  });
+
+  it('le choix s’enregistre', () => {
+    const apres = choisirDeClasse(occPatron(10, 'fielon'), 'occultiste', 'fiendishResilience', 'feu');
+    expect(decisionsDeClasse(apres).find((d) => d.key === 'fiendishResilience')?.choisi).toBe('feu');
   });
 });
