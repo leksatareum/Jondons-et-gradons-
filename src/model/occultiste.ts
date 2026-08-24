@@ -12,9 +12,30 @@ const niveauOccultiste = (sheet: CharacterSheet): number => levelInClass(sheet, 
 const modCharisme = (sheet: CharacterSheet): number =>
   abilityModifier(effectiveAbilities(sheet).cha);
 
-/** Le patron se lit sur la sous-classe déclarée du niveau d'Occultiste. */
-export const patronDe = (sheet: CharacterSheet): string | null =>
-  sheet.classLevels.find((entry) => entry.classId === 'occultiste')?.subclassId ?? null;
+/**
+ * Le patron, quelle que soit la façon dont la fiche le porte.
+ *
+ * Une fiche créée dans l'application stocke l'identifiant (`celeste`) ; une
+ * fiche importée de l'ancienne application ne porte que le nom affiché
+ * (« Patron Céleste »). Ne lire que l'identifiant privait les personnages
+ * importés de toutes leurs capacités de patron — silencieusement.
+ */
+const PATRON_PAR_NOM: Record<string, string> = {
+  'patron celeste': 'celeste',
+  'patron fielon': 'fielon',
+  'patron archifee': 'archifee',
+  'patron grand ancien': 'grand-ancien',
+};
+
+const sansAccent = (valeur: string): string =>
+  valeur.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('fr');
+
+export const patronDe = (sheet: CharacterSheet): string | null => {
+  const entree = sheet.classLevels.find((entry) => entry.classId === 'occultiste');
+  if (!entree) return null;
+  if (entree.subclassId) return entree.subclassId;
+  return entree.subclass ? PATRON_PAR_NOM[sansAccent(entree.subclass)] ?? null : null;
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // §16 / §17 — RUSE MAGIQUE (2) et MAÎTRE OCCULTE (20)

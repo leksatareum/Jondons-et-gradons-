@@ -3,6 +3,10 @@ import { classFeaturesAt } from '../content/class-features';
 import { subclassByName, subclassGroupFor, type SubclassFeature, type SubclassOption } from '../content/subclasses';
 import { refreshCompanions } from './companions';
 import { abilityModifier, effectiveAbilities, totalLevel, type AbilityScores, type CharacterSheet } from './character';
+import {
+  ajouterArcanum, ajouterInvocation, arcanumChoisis, invocationsAChoisir, invocationsChoisies,
+  invocationsDisponibles, rangsArcanumAChoisir, remplacerArcanum, remplacerInvocation,
+} from './invocations';
 
 /**
  * Monter d'un niveau.
@@ -45,6 +49,34 @@ export interface LevelUpPlan {
    * quoi les points de vie d'un personnage joué changeraient sous ses yeux.
    */
   usesOverride: boolean;
+  /**
+   * Occultiste : invocations à choisir en plus, remplacement offert, rangs
+   * d'Arcanum à choisir.
+   *
+   * Le formulaire ne demandait que trois choses — jet de dé, sous-classe,
+   * augmentation — comme si les autres classes n'avaient rien à décider. Un
+   * Occultiste qui passe au niveau 5 gagne deux invocations et le droit d'en
+   * échanger une ; celui qui passe au niveau 11 choisit un sort de rang 6.
+   * Rien de tout cela ne se dérive : ce sont des décisions.
+   */
+  warlock: {
+    /** Invocations supplémentaires dues par la table après la montée. */
+    invocationsToChoose: number;
+    /** Vrai à CHAQUE niveau d'Occultiste : on peut échanger une invocation. */
+    mayReplaceInvocation: boolean;
+    /**
+     * Les invocations proposables, calculées au niveau D'APRÈS la montée.
+     *
+     * Les calculer au niveau actuel privait le joueur de tout ce que le
+     * nouveau niveau vient précisément d'ouvrir : un Occultiste qui passe
+     * au niveau 5 ne se serait pas vu proposer Lame assoiffée.
+     */
+    invocationOptions: { id: string; name: string; desc: string }[];
+    /** Rangs d'Arcanum que ce niveau ouvre (11 → 6, 13 → 7, 15 → 8, 17 → 9). */
+    arcanumRanks: number[];
+    /** Vrai dès qu'un Arcanum existe : il peut être échangé, à rang égal. */
+    mayReplaceArcanum: boolean;
+  } | null;
 }
 
 /** Ce qu'une sous-classe apporte exactement à ce niveau, pas avant, pas après. */
@@ -75,6 +107,30 @@ export function levelUpPlan(sheet: CharacterSheet, classId: string): LevelUpPlan
     features: classFeaturesAt(classId, to),
     subclassFeatures: entree.subclass ? subclassFeaturesAtLevel(entree.subclass, to) : [],
     usesOverride: typeof sheet.maxHpOverride === 'number',
+    warlock: classId === 'occultiste' ? warlockDecisions(sheet, to) : null,
+  };
+}
+
+/**
+ * Ce que la montée d'un niveau d'Occultiste réclame, calculé sur la fiche
+ * APRÈS la montée : c'est le nouveau niveau qui dit combien d'invocations
+ * sont dues et quel rang d'Arcanum s'ouvre.
+ */
+function warlockDecisions(sheet: CharacterSheet, to: number) {
+  const apres: CharacterSheet = {
+    ...sheet,
+    classLevels: sheet.classLevels.map((niveau) => (
+      niveau.classId === 'occultiste' ? { ...niveau, level: to } : niveau
+    )),
+  };
+  return {
+    invocationsToChoose: invocationsAChoisir(apres),
+    invocationOptions: invocationsDisponibles(apres),
+    // « À chaque fois que le personnage gagne un niveau d'Occultiste » : le
+    // remplacement ne dépend pas d'un palier, seulement d'en avoir une.
+    mayReplaceInvocation: invocationsChoisies(sheet).length > 0,
+    arcanumRanks: rangsArcanumAChoisir(apres),
+    mayReplaceArcanum: arcanumChoisis(sheet).length > 0,
   };
 }
 
@@ -88,6 +144,14 @@ export interface LevelUpChoice {
   improvement?: Partial<AbilityScores>;
   /** Don choisi à la place de l'augmentation. */
   featId?: string;
+  /** Occultiste : les invocations nouvellement choisies. */
+  invocations?: string[];
+  /** Occultiste : l'échange offert à chaque niveau, s'il est utilisé. */
+  invocationSwap?: { out: string; in: string } | null;
+  /** Occultiste : les Arcanum choisis, un par rang ouvert. */
+  arcanum?: { rank: number; spellId: string }[];
+  /** Occultiste : l'échange d'un Arcanum contre un sort du MÊME rang. */
+  arcanumSwap?: { out: string; in: string } | null;
 }
 
 /** Ce qui empêche d'appliquer la montée, en clair. Vide : tout est prêt. */
@@ -105,6 +169,18 @@ export function levelUpBlockers(plan: LevelUpPlan, choice: LevelUpChoice): strin
   if (choice.improvement) {
     const total = Object.values(choice.improvement).reduce((somme, n) => somme + (n ?? 0), 0);
     if (total !== 2) blocages.push('Une augmentation vaut +2 en tout : +2 sur une, ou +1 sur deux.');
+  }
+  if (plan.warlock) {
+    const prises = choice.invocations?.length ?? 0;
+    if (prises < plan.warlock.invocationsToChoose) {
+      const reste = plan.warlock.invocationsToChoose - prises;
+      blocages.push(`Il reste ${reste} invocation(s) occulte(s) à choisir.`);
+    }
+    const arcanes = choice.arcanum?.length ?? 0;
+    if (arcanes < plan.warlock.arcanumRanks.length) {
+      const rangs = plan.warlock.arcanumRanks.join(', ');
+      blocages.push(`Arcanum mystique : il faut choisir un sort de rang ${rangs}.`);
+    }
   }
   return blocages;
 }
@@ -164,7 +240,22 @@ export function applyLevelUp(
       }
     : { ...suivante, hitPointRolls: [...(sheet.hitPointRolls ?? []), choice.hitPointRoll] };
 
+  // Les choix d'Occultiste s'appliquent APRÈS la montée : le remplacement
+  // vérifie ses prérequis sur la fiche telle qu'elle sera, et un Arcanum de
+  // rang 6 ne s'écrit qu'une fois le niveau 11 acquis.
+  let avecOccultiste = avecJet;
+  const echange = choice.invocationSwap;
+  if (echange) avecOccultiste = remplacerInvocation(avecOccultiste, echange.out, echange.in);
+  for (const invocation of choice.invocations ?? []) {
+    avecOccultiste = ajouterInvocation(avecOccultiste, invocation);
+  }
+  const echangeArcanum = choice.arcanumSwap;
+  if (echangeArcanum) avecOccultiste = remplacerArcanum(avecOccultiste, echangeArcanum.out, echangeArcanum.in);
+  for (const arcanum of choice.arcanum ?? []) {
+    avecOccultiste = ajouterArcanum(avecOccultiste, arcanum.rank, arcanum.spellId);
+  }
+
   // Un compagnon primordial grandit avec son Rôdeur : sans ce rafraîchissement,
   // « Niveau + » monterait le personnage sans jamais monter la bête à ses côtés.
-  return avecJet.companions?.length ? refreshCompanions(avecJet) : avecJet;
+  return avecOccultiste.companions?.length ? refreshCompanions(avecOccultiste) : avecOccultiste;
 }

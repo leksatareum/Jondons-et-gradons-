@@ -5,6 +5,7 @@ import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PayableResource, PlayableCard } from './combat-layout';
 import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
+import { arcanumChoisis, arcanumResourceKey } from '../model/invocations';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -143,6 +144,31 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       detail: detailOf(spell),
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(paiements.length ? { resources: paiements } : {}),
+    });
+  }
+
+  // Arcanum mystique : un sort de rang 6 à 9 qu'aucun emplacement d'Occultiste
+  // ne pourrait payer — la Magie de pacte plafonne au rang 5. Il se lance une
+  // fois sur sa propre réserve, rendue au repos long.
+  for (const arcanum of arcanumChoisis(sheet)) {
+    const spell = spellById(arcanum.spellId);
+    if (!spell) continue;
+    const ressource = derived.resources.find((entry) => entry.key === arcanumResourceKey(arcanum.rank));
+    cartes.push({
+      id: `arcanum-${arcanum.rank}`,
+      name: spell.name,
+      economy: economyOf(spell),
+      detail: detailOf(spell),
+      granted: true,
+      grantedBy: `ton Arcanum de rang ${arcanum.rank}`,
+      ...(ressource ? {
+        resources: [{
+          key: ressource.key,
+          remaining: ressource.remaining,
+          max: ressource.max,
+          label: `Arcanum de rang ${arcanum.rank} · repos long`,
+        }],
+      } : {}),
     });
   }
 

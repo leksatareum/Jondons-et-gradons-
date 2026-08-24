@@ -4,6 +4,11 @@ import { eligibleFeats } from '../content/feats';
 import { ABILITY_IDS, type AbilityId } from '../content/feats';
 import { deriveCharacter } from '../model/derive';
 import type { CharacterSheet } from '../model/character';
+import {
+  arcanumChoisis, invocationsChoisies, peutRetirerInvocation, sortsArcanumPossibles,
+} from '../model/invocations';
+import { invocationByOptionId } from '../content/eldritch-invocations';
+import { spellById } from '../content/spell-catalogue';
 
 /**
  * Monter d'un niveau.
@@ -13,6 +18,14 @@ import type { CharacterSheet } from '../model/character';
  * préparables et capacités se dérivent du niveau, et les afficher avant/après
  * évite d'avoir à croire sur parole que la montée a fait quelque chose.
  */
+
+/** Le nom lisible d'une invocation, y compris quand elle vise un sort mineur. */
+const nomInvocation = (optionId: string): string => {
+  const base = invocationByOptionId(optionId);
+  const [, cible] = optionId.split('@');
+  const sort = cible ? spellById(cible)?.name : null;
+  return [base?.name ?? optionId, sort].filter(Boolean).join(' · ');
+};
 
 const NOM_CARAC: Record<AbilityId, string> = {
   str: 'Force', dex: 'Dextérité', con: 'Constitution',
@@ -29,6 +42,12 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
   const [sousClasse, setSousClasse] = useState<string | null>(null);
   const [amelioration, setAmelioration] = useState<Partial<Record<AbilityId, number>>>({});
   const [don, setDon] = useState<string | null>(null);
+  // Occultiste : les invocations prises à ce niveau, l'échange éventuel, et
+  // les Arcanum. Rien de tout cela ne se dérive — ce sont des décisions.
+  const [invocations, setInvocations] = useState<string[]>([]);
+  const [echange, setEchange] = useState<{ out: string; in: string } | null>(null);
+  const [arcanum, setArcanum] = useState<{ rank: number; spellId: string }[]>([]);
+  const [echangeArcanum, setEchangeArcanum] = useState<{ out: string; in: string } | null>(null);
 
   const plan = useMemo(() => levelUpPlan(sheet, classId), [sheet, classId]);
   const derivee = useMemo(() => deriveCharacter(sheet), [sheet]);
@@ -38,13 +57,17 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
     hitPointRoll: jet ?? 0,
     ...(sousClasse ? { subclass: sousClasse } : {}),
     ...(don ? { featId: don } : Object.keys(amelioration).length ? { improvement: amelioration } : {}),
+    ...(invocations.length ? { invocations } : {}),
+    ...(echange ? { invocationSwap: echange } : {}),
+    ...(arcanum.length ? { arcanum } : {}),
+    ...(echangeArcanum?.in ? { arcanumSwap: echangeArcanum } : {}),
   };
 
   const blocages = plan ? levelUpBlockers(plan, choix) : ['Cette classe ne peut pas monter.'];
   const apres = useMemo(
     () => (plan && blocages.length === 0 ? deriveCharacter(applyLevelUp(sheet, plan, choix)) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sheet, plan, jet, sousClasse, amelioration, don],
+    [sheet, plan, jet, sousClasse, amelioration, don, invocations, echange, arcanum, echangeArcanum],
   );
 
   const dons = useMemo(() => {
@@ -261,6 +284,169 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                       ))}
                     </div>
                   </>
+                )}
+              </>
+            )}
+
+            {/* ─── Occultiste : invocations et Arcanum ─── */}
+            {plan.warlock && (plan.warlock.invocationsToChoose > 0 || plan.warlock.mayReplaceInvocation) && (
+              <>
+                <div className="lbl" style={{ marginTop: 18 }}>
+                  {plan.warlock.invocationsToChoose > 0
+                    ? `Invocations occultes — ${invocations.length}/${plan.warlock.invocationsToChoose}`
+                    : 'Invocations occultes'}
+                </div>
+                {plan.warlock.mayReplaceInvocation && (
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 3, color: 'var(--muted)' }}>
+                    Chaque niveau d’Occultiste permet aussi d’en échanger une.
+                    {echange ? ` En cours : ${nomInvocation(echange.out)} → ${nomInvocation(echange.in)}.` : ''}
+                  </div>
+                )}
+
+                {/* L'échange : d'abord celle qui part, ensuite celle qui vient. */}
+                {plan.warlock.mayReplaceInvocation && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {invocationsChoisies(sheet).map((id) => {
+                      const retirable = peutRetirerInvocation(sheet, id);
+                      const choisie = echange?.out === id;
+                      return (
+                        <button
+                          key={id}
+                          disabled={!retirable}
+                          onClick={() => setEchange(choisie ? null : { out: id, in: '' })}
+                          className="lbl"
+                          style={{
+                            minHeight: 40, padding: '0 12px', borderRadius: 999,
+                            border: `1px solid ${choisie ? 'var(--accent)' : 'var(--line)'}`,
+                            color: !retirable ? 'var(--muted)' : choisie ? 'var(--accent)' : 'var(--ink)',
+                            opacity: retirable ? 1 : 0.45,
+                            textTransform: 'none',
+                          }}
+                        >
+                          {choisie ? '↩ ' : ''}{nomInvocation(id)}
+                          {!retirable ? ' · socle' : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 8 }}>
+                  {plan.warlock.invocationOptions.map((option) => {
+                    const prise = invocations.includes(option.id);
+                    const entrante = echange?.in === option.id;
+                    const enAttenteDEchange = echange != null && echange.in === '';
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          if (enAttenteDEchange) { setEchange({ out: echange.out, in: option.id }); return; }
+                          if (entrante) { setEchange({ out: echange!.out, in: '' }); return; }
+                          setInvocations((courantes) => (
+                            prise
+                              ? courantes.filter((id) => id !== option.id)
+                              : courantes.length >= (plan.warlock?.invocationsToChoose ?? 0)
+                                ? courantes
+                                : [...courantes, option.id]
+                          ));
+                        }}
+                        className="card"
+                        style={{
+                          textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
+                          border: `1px solid ${prise || entrante ? 'var(--accent)' : 'var(--line)'}`,
+                          background: prise || entrante ? 'var(--accent-wash)' : 'var(--surface)',
+                        }}
+                      >
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>
+                          {option.name}{entrante ? ' · en échange' : ''}
+                        </div>
+                        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--muted)', marginTop: 2 }}>
+                          {option.desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {plan.warlock && plan.warlock.arcanumRanks.map((rang) => (
+              <div key={rang}>
+                <div className="lbl" style={{ marginTop: 18 }}>Arcanum mystique — un sort de rang {rang}</div>
+                <div className="lbl" style={{ textTransform: 'none', marginTop: 3, color: 'var(--muted)' }}>
+                  Lançable une fois sans emplacement, rendu au repos long.
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  {sortsArcanumPossibles(sheet, rang).map((spell) => {
+                    const choisi = arcanum.some((entree) => entree.spellId === spell.id);
+                    return (
+                      <button
+                        key={spell.id}
+                        onClick={() => setArcanum((courants) => (
+                          choisi
+                            ? courants.filter((entree) => entree.spellId !== spell.id)
+                            : [...courants.filter((entree) => entree.rank !== rang), { rank: rang, spellId: spell.id }]
+                        ))}
+                        className="lbl"
+                        style={{
+                          minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
+                          border: `1px solid ${choisi ? 'var(--accent)' : 'var(--line)'}`,
+                          color: choisi ? 'var(--accent)' : 'var(--ink)',
+                        }}
+                      >
+                        {spell.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {plan.warlock?.mayReplaceArcanum && (
+              <>
+                <div className="lbl" style={{ marginTop: 18 }}>Échanger un Arcanum</div>
+                <div className="lbl" style={{ textTransform: 'none', marginTop: 3, color: 'var(--muted)' }}>
+                  Contre un autre sort d’Occultiste du MÊME rang.
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  {arcanumChoisis(sheet).map((entree) => {
+                    const vise = echangeArcanum?.out === entree.spellId;
+                    return (
+                      <button
+                        key={entree.spellId}
+                        onClick={() => setEchangeArcanum(vise ? null : { out: entree.spellId, in: '' })}
+                        className="lbl"
+                        style={{
+                          minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
+                          border: `1px solid ${vise ? 'var(--accent)' : 'var(--line)'}`,
+                          color: vise ? 'var(--accent)' : 'var(--ink)',
+                        }}
+                      >
+                        rang {entree.rank} · {spellById(entree.spellId)?.name ?? entree.spellId}
+                      </button>
+                    );
+                  })}
+                </div>
+                {echangeArcanum && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {sortsArcanumPossibles(
+                      sheet,
+                      arcanumChoisis(sheet).find((e) => e.spellId === echangeArcanum.out)?.rank ?? 0,
+                    ).map((spell) => (
+                      <button
+                        key={spell.id}
+                        onClick={() => setEchangeArcanum({ out: echangeArcanum.out, in: spell.id })}
+                        className="lbl"
+                        style={{
+                          minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
+                          border: `1px solid ${echangeArcanum.in === spell.id ? 'var(--accent)' : 'var(--line)'}`,
+                          color: echangeArcanum.in === spell.id ? 'var(--accent)' : 'var(--ink)',
+                        }}
+                      >
+                        {spell.name}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </>
             )}

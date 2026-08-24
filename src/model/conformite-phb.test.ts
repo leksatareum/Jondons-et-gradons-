@@ -22,6 +22,11 @@ import {
 import { spendResource } from './cast';
 import { hunterMarkFreeCastUses } from '../domain/ranger-resources';
 import { cardsFromCharacter, paiementsPourRang } from '../ui/spell-cards';
+import {
+  arcanumChoisis, arcanumResourceKey, invocationsChoisies, invocationsDisponibles,
+  invocationsDues, peutRetirerInvocation, remplacerArcanum, sortsArcanumPossibles,
+} from './invocations';
+import { applyLevelUp, levelUpBlockers, levelUpPlan, type LevelUpChoice } from './level-up';
 import { EMPTY_LIVE_STATE, type CharacterSheet, type ClassLevel } from './character';
 
 /**
@@ -707,5 +712,173 @@ describe('§15 — Magie de pacte et Incantation se paient l’une l’autre', (
     const apres = spendResource(druideOccultiste, 'pacte');
     expect(apres.live.pactSlotsSpent).toBe(1);
     expect(apres.live.spellSlotsSpent).toEqual({});
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// MONTÉE DE NIVEAU DE L'OCCULTISTE — §21 et §22
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Une fiche d'Occultiste qui porte déjà ses choix de classe. Le patron est
+ * nommé ET identifié : la montée de niveau lit le nom, le reste lit l'id.
+ */
+const occAvec = (level: number, invocations: string[] = [], arcanum: string[] = []): CharacterSheet => ({
+  ...occ(level, 'fielon'),
+  classLevels: [{ classId: 'occultiste', level, subclass: 'Patron Fiélon', subclassId: 'fielon' }],
+  classChoices: { occultiste: { invocations, arcanum } },
+});
+
+/** Les Arcanum qu'un Occultiste de ce niveau devrait déjà avoir choisis. */
+const arcanumDeja = (niveau: number): string[] => {
+  const vierge = occAvec(20);
+  const pris: string[] = [];
+  for (const [palier, rang] of [[11, 6], [13, 7], [15, 8], [17, 9]] as const) {
+    if (niveau >= palier) pris.push(`${rang}:${sortsArcanumPossibles(vierge, rang)[0].id}`);
+  }
+  return pris;
+};
+
+const monter = (sheet: CharacterSheet, choix: Partial<LevelUpChoice> = {}) => {
+  const plan = levelUpPlan(sheet, 'occultiste')!;
+  return { plan, appliquer: (c: Partial<LevelUpChoice> = choix) =>
+    applyLevelUp(sheet, plan, { classId: 'occultiste', hitPointRoll: 5, ...c }) };
+};
+
+describe('§21 — Invocations occultes : la table, le complément et l’échange', () => {
+  it.each([
+    [1, 1], [2, 3], [4, 3], [5, 5], [6, 5], [7, 6], [9, 7], [11, 7], [12, 8], [15, 9], [17, 9], [18, 10], [20, 10],
+  ])('Occultiste %i → %i invocations', (niveau, attendues) => {
+    expect(invocationsDues(occ(niveau))).toBe(attendues);
+  });
+
+  it('passer au niveau 5 réclame deux invocations de plus', () => {
+    const avant = occAvec(4, ['armor-of-shadows', 'devils-sight', 'mask-many-faces']);
+    const { plan } = monter(avant);
+    expect(plan.warlock?.invocationsToChoose).toBe(2);
+  });
+
+  it('tant qu’elles ne sont pas choisies, la montée est bloquée', () => {
+    const avant = occAvec(4, ['armor-of-shadows', 'devils-sight', 'mask-many-faces']);
+    const { plan } = monter(avant);
+    const blocages = levelUpBlockers(plan, { classId: 'occultiste', hitPointRoll: 5 });
+    expect(blocages.some((texte) => /invocation/i.test(texte))).toBe(true);
+    expect(levelUpBlockers(plan, {
+      classId: 'occultiste', hitPointRoll: 5,
+      invocations: ['eldritch-mind', 'ascendant-step'],
+    })).toEqual([]);
+  });
+
+  it('un niveau qui n’augmente pas le total n’en réclame aucune', () => {
+    const avant = occAvec(2, ['armor-of-shadows', 'devils-sight', 'mask-many-faces']);
+    expect(monter(avant).plan.warlock?.invocationsToChoose).toBe(0);
+  });
+
+  it('l’échange est offert à CHAQUE niveau, même sans nouvelle invocation', () => {
+    const avant = occAvec(3, ['armor-of-shadows', 'devils-sight', 'mask-many-faces']);
+    const { plan, appliquer } = monter(avant);
+    expect(plan.warlock?.mayReplaceInvocation).toBe(true);
+    const apres = appliquer({ invocationSwap: { out: 'devils-sight', in: 'eldritch-mind' } });
+    expect(invocationsChoisies(apres)).toEqual(['armor-of-shadows', 'eldritch-mind', 'mask-many-faces']);
+  });
+
+  it('on ne retire pas une invocation qui sert de prérequis à une autre', () => {
+    const avant = occAvec(5, ['pact-blade', 'thirsting-blade', 'armor-of-shadows', 'devils-sight', 'eldritch-mind']);
+    expect(peutRetirerInvocation(avant, 'pact-blade')).toBe(false);
+    expect(peutRetirerInvocation(avant, 'thirsting-blade')).toBe(true);
+    // …et la tentative ne passe pas non plus par la montée de niveau.
+    const { appliquer } = monter(avant);
+    const apres = appliquer({ invocationSwap: { out: 'pact-blade', in: 'eldritch-spear' } });
+    expect(invocationsChoisies(apres)).toContain('pact-blade');
+  });
+
+  it('une invocation dont le prérequis manque n’est pas proposée', () => {
+    const sans = occAvec(5, ['armor-of-shadows']);
+    const ids = invocationsDisponibles(sans).map((option) => option.id);
+    expect(ids).not.toContain('thirsting-blade');
+    const avec = occAvec(5, ['pact-blade']);
+    expect(invocationsDisponibles(avec).map((o) => o.id)).toContain('thirsting-blade');
+  });
+
+  it('une invocation trop haut niveau n’est pas proposée', () => {
+    expect(invocationsDisponibles(occAvec(2)).map((o) => o.id)).not.toContain('visions-distant-realms');
+    expect(invocationsDisponibles(occAvec(9)).map((o) => o.id)).toContain('visions-distant-realms');
+  });
+});
+
+describe('§22 — Arcanum mystique : 11/13/15/17, et l’échange à rang égal', () => {
+  it.each([[11, 6], [13, 7], [15, 8], [17, 9]])(
+    'le niveau %i ouvre un sort de rang %i', (niveau, rang) => {
+      const avant = occAvec(niveau - 1, ['armor-of-shadows'], arcanumDeja(niveau - 1));
+      const { plan } = monter(avant);
+      expect(plan.warlock?.arcanumRanks).toEqual([rang]);
+    },
+  );
+
+  it('un niveau sans palier n’en ouvre aucun', () => {
+    expect(monter(occAvec(11, ['armor-of-shadows'], arcanumDeja(11))).plan.warlock?.arcanumRanks).toEqual([]);
+  });
+
+  it('la montée est bloquée tant que l’Arcanum n’est pas choisi', () => {
+    const avant = occAvec(10, ['armor-of-shadows']);
+    const { plan } = monter(avant);
+    expect(levelUpBlockers(plan, { classId: 'occultiste', hitPointRoll: 5 })
+      .some((texte) => /Arcanum/i.test(texte))).toBe(true);
+  });
+
+  it('le sort choisi devient une carte payée par sa propre réserve', () => {
+    const avant = occAvec(10, ['armor-of-shadows']);
+    const sixieme = sortsArcanumPossibles(avant, 6)[0];
+    const { appliquer } = monter(avant);
+    const apres = appliquer({ arcanum: [{ rank: 6, spellId: sixieme.id }] });
+    expect(arcanumChoisis(apres)).toEqual([{ rank: 6, spellId: sixieme.id }]);
+
+    const derivee = deriveCharacter(apres);
+    const reserve = derivee.resources.find((r) => r.key === arcanumResourceKey(6));
+    expect(reserve).toMatchObject({ max: 1, remaining: 1, recharge: 'long' });
+
+    const carte = cardsFromCharacter(apres, derivee).find((c) => c.id === 'arcanum-6');
+    expect(carte?.name).toBe(sixieme.name);
+    expect(carte?.resources?.[0]?.key).toBe(arcanumResourceKey(6));
+  });
+
+  it('la réserve revient au repos long', () => {
+    const avant = occAvec(11, ['armor-of-shadows'], arcanumDeja(11));
+    const depense = { ...avant, live: { ...avant.live, resourcesSpent: { [arcanumResourceKey(6)]: 1 } } };
+    const { sheet } = longRest(depense, deriveCharacter(depense));
+    expect(sheet.live.resourcesSpent[arcanumResourceKey(6)]).toBeUndefined();
+  });
+
+  it('un Arcanum ne se remplace que par un sort du MÊME rang', () => {
+    const rang6 = sortsArcanumPossibles(occAvec(11), 6);
+    const rang7 = sortsArcanumPossibles(occAvec(13), 7);
+    const avant = occAvec(11, ['armor-of-shadows'], [`6:${rang6[0].id}`]);
+
+    const memeRang = remplacerArcanum(avant, rang6[0].id, rang6[1].id);
+    expect(arcanumChoisis(memeRang)).toEqual([{ rank: 6, spellId: rang6[1].id }]);
+
+    const autreRang = remplacerArcanum(avant, rang6[0].id, rang7[0].id);
+    expect(arcanumChoisis(autreRang)).toEqual([{ rank: 6, spellId: rang6[0].id }]);
+  });
+
+  it('l’échange est proposé dès qu’un Arcanum existe', () => {
+    const avant = occAvec(11, ['armor-of-shadows'], arcanumDeja(11));
+    expect(monter(avant).plan.warlock?.mayReplaceArcanum).toBe(true);
+    expect(monter(occAvec(10, ['armor-of-shadows'])).plan.warlock?.mayReplaceArcanum).toBe(false);
+  });
+
+  it('les autres classes n’ont aucune de ces décisions', () => {
+    expect(levelUpPlan(fiche(druide(4)), 'druide')?.warlock).toBeNull();
+  });
+});
+
+describe('§21 — les invocations proposées sont celles du niveau ATTEINT', () => {
+  it('Occultiste 4 → 5 avec le Pacte de la Lame se voit proposer Lame assoiffée', () => {
+    const avant = occAvec(4, ['pact-blade', 'armor-of-shadows', 'devils-sight']);
+    const plan = levelUpPlan(avant, 'occultiste')!;
+    const ids = plan.warlock!.invocationOptions.map((option) => option.id);
+    expect(ids).toContain('thirsting-blade');
+    // …alors qu'elle n'est pas encore prenable au niveau où il se trouve.
+    expect(invocationsDisponibles(avant).map((o) => o.id)).not.toContain('thirsting-blade');
   });
 });

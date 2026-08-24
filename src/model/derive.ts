@@ -15,6 +15,7 @@ import { classById } from '../content/classes';
 import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } from '../domain/spellcasting';
 import { spellById } from '../content/spell-catalogue';
 import { grantResourceKey } from './spell-grants';
+import { arcanumChoisis, arcanumResourceKey } from './invocations';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
 import { armorById, SHIELD } from '../content/armor';
@@ -174,6 +175,18 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
 
   const occultiste = levelInClass(sheet, 'occultiste');
   if (occultiste >= 2) push('occultiste:ruse-magique', 'Ruse magique', 1, 'long', 'occultiste');
+
+  // Arcanum mystique : chaque sort choisi se lance une fois sans emplacement,
+  // et l'utilisation revient au repos long. Une réserve par rang, sans quoi
+  // dépenser le rang 6 consommerait aussi le rang 7.
+  for (const arcanum of arcanumChoisis(sheet)) {
+    const sort = spellById(arcanum.spellId);
+    push(
+      arcanumResourceKey(arcanum.rank),
+      `Arcanum de rang ${arcanum.rank}${sort ? ` — ${sort.name}` : ''}`,
+      1, 'long', 'occultiste',
+    );
+  }
 
   const patron = subclassOf(sheet, 'occultiste');
   const cha = abilityModifier(abilities.cha);
