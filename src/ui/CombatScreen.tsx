@@ -4,6 +4,7 @@ import { deriveCharacter, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import { layoutCombatCards, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
+import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
@@ -21,6 +22,28 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  */
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
+
+/**
+ * Ce que les états actifs imposent, en une phrase.
+ *
+ * Seuls les effets inconditionnels : ceux d'Effrayé et d'Agrippé dépendent de
+ * la situation et se lisent dans le détail de l'état, pas dans un résumé qui
+ * les affirmerait toujours vrais.
+ */
+function resumeLisibleDesEtats(etats: string[]): string {
+  const resume = resumeDesEtats(etats);
+  const dits: string[] = [];
+  if (resume.incapable) dits.push('ni action, ni action bonus, ni réaction');
+  if (resume.vitesseNulle) dits.push('vitesse 0');
+  if (resume.attaquesDesavantagees) dits.push('désavantage à tes attaques');
+  if (resume.testsDesavantages) dits.push('désavantage à tes tests');
+  if (resume.attaquesSubiesAvantagees) dits.push('avantage aux attaques contre toi');
+  if (resume.sauvegardesRatees) dits.push('sauvegardes de FOR et DEX ratées d’office');
+  if (resume.resistanceTotale) dits.push('résistance à tous les dégâts');
+  return dits.length > 0
+    ? `${dits.join(' · ')}.`
+    : 'Effet conditionnel : voir le détail de l’état.';
+}
 
 const ECONOMY_LABEL: Record<Economy, string> = {
   action: 'Action', bonus: 'Bonus', reaction: 'Réaction', libre: 'Libre',
@@ -362,7 +385,8 @@ function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
 }
 
 export function CombatScreen({
-  sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], onFinMarque, onTransfererMarque,
+  sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], etats = [],
+  onFinMarque, onTransfererMarque,
 }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
@@ -383,6 +407,12 @@ export function CombatScreen({
    * hors combat : on ne marque pas une cible qui n'existe pas.
    */
   cibles?: CibleMarquee[];
+  /**
+   * Les états posés par le MJ sur ce combattant. Ils vivent sur la rencontre,
+   * pas sur la fiche : c'est le MJ qui les attribue, et la rencontre se
+   * synchronise déjà en temps réel.
+   */
+  etats?: string[];
   /** La marque tombe : sort dissipé, cible morte, concentration perdue. */
   onFinMarque?: () => void;
   /** La cible marquée est tombée à 0 PV : une action bonus déplace la marque. */
@@ -489,6 +519,36 @@ export function CombatScreen({
             malusD20={derived.exhaustion.d20Penalty}
           />
         </div>
+
+        {/* ───── États ─────
+            Posés par le MJ, lus ici. Ce qu'ils imposent est rappelé sous
+            eux : un joueur ne doit pas avoir à se souvenir qu'« Entravé »
+            veut dire désavantage aux attaques ET avantage à celles qu'il
+            subit. */}
+        {etatsActifs(etats).length > 0 && (
+          <div style={{
+            marginBottom: 10, border: '1px solid var(--accent)',
+            borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+          }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {etatsActifs(etats).map((etat) => (
+                <span
+                  key={etat.id}
+                  className="lbl"
+                  style={{
+                    textTransform: 'none', color: 'var(--accent)', fontWeight: 700,
+                    border: '1px solid var(--accent)', borderRadius: 999, padding: '2px 8px',
+                  }}
+                >
+                  {etat.name}
+                </span>
+              ))}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 6, lineHeight: 1.45 }}>
+              {resumeLisibleDesEtats(etats)}
+            </div>
+          </div>
+        )}
 
         {/*
           L'Épuisement pénalise CHAQUE test d20. Il doit donc se lire au

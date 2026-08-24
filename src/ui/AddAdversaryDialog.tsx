@@ -274,9 +274,16 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
         <div className="lbl" style={{ textTransform: 'none', marginTop: 3, color: 'var(--muted)' }}>
           Pour lire un test ou une DD sans ressortir le bestiaire.
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+        {/* Une grille de six colonnes égales, pas six boîtes flexibles qui
+            passent à la ligne : à 390 px, six bases de 60 px et cinq espaces
+            font 390 px pour 358 px disponibles — le Charisme tombait seul sur
+            la ligne suivante. `minmax(0, 1fr)` laisse les colonnes rétrécir. */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+          gap: 6, marginTop: 8,
+        }}>
           {ABILITY_ORDER.map((ability) => (
-            <div key={ability} style={{ flex: '1 1 60px' }}>
+            <div key={ability}>
               <label className="lbl" htmlFor={`carac-${ability}`}>{ABILITY_ABBREVIATIONS[ability]}</label>
               <input
                 id={`carac-${ability}`} type="number" inputMode="numeric"

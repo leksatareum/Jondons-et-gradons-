@@ -364,6 +364,10 @@ export function SheetView({
 
     const enCombat = rencontre != null && rencontre.turnIndex >= 0;
     const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
+    // Le combattant de CE personnage, pour lire les états que le MJ y a
+    // posés. Même clé que `isYourTurn` : le nom, seul lien commun tant qu'un
+    // combattant n'est pas rattaché à une fiche côté base.
+    const monCombattant = rencontre?.combatants.find((c) => c.name === fiche.data.name);
     return (
       <CombatScreen
         sheet={fiche.data}
@@ -371,6 +375,7 @@ export function SheetView({
         onSpendHp={soignerOuBlesser}
         onPlayCard={jouerCarte}
         cibles={ciblesMarquables}
+        etats={monCombattant?.conditions ?? []}
         onFinMarque={finDeMarque}
         onTransfererMarque={deplacerMarque}
         turnId={turnIdentity(encounterId, rencontre)}

@@ -4,6 +4,8 @@ import {
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
+import { basculerEtat, etatsActifs, etatsDe } from '../model/etats';
+import { InitiativeDialog } from './InitiativeDialog';
 import { AddAdversaryDialog } from './AddAdversaryDialog';
 import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basics';
 
@@ -100,9 +102,11 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
             </div>
             {isPlayer && <div className="lbl" style={{ fontSize: 9 }}>joueur</div>}
           </div>
-          {combatant.conditions.length > 0 && (
+          {/* Les noms du livre, pas les identifiants de stockage : « À terre »
+              se lit d'un coup d'œil, « a-terre » se déchiffre. */}
+          {etatsActifs(combatant.conditions).length > 0 && (
             <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--accent)' }}>
-              {combatant.conditions.join(' · ')}
+              {etatsActifs(combatant.conditions).map((etat) => etat.name).join(' · ')}
             </div>
           )}
         </div>
@@ -208,9 +212,11 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
   );
 }
 
-function DamagePad({ target, onApply, onClose }: {
+function DamagePad({ target, onApply, onBasculerEtat, onClose }: {
   target: Combatant;
   onApply: (amount: number, mode: 'degats' | 'soins') => void;
+  /** Pose ou retire un état, sans confirmation : c'est un aller-retour. */
+  onBasculerEtat: (id: string) => void;
   onClose: () => void;
 }) {
   const [entry, setEntry] = useState('');
@@ -250,6 +256,32 @@ function DamagePad({ target, onApply, onClose }: {
           color: entry ? 'var(--ink)' : 'var(--muted)',
         }} className="num">
           {entry || '0'}
+        </div>
+
+        {/* ───── États ─────
+            Au-dessus du pavé : un état se pose d'un appui, sans nombre à
+            taper. Les poser sur le COMBATTANT plutôt que sur la fiche du
+            joueur, c'est passer par la rencontre — déjà synchronisée en temps
+            réel vers tous les écrans. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+          {etatsDe(target.conditions).map((etat) => (
+            <button
+              key={etat.id}
+              onClick={() => onBasculerEtat(etat.id)}
+              title={etat.effet.note}
+              aria-pressed={etat.actif}
+              className="lbl"
+              style={{
+                minHeight: 32, padding: '0 10px', borderRadius: 999, textTransform: 'none',
+                border: `1px solid ${etat.actif ? 'var(--accent)' : 'var(--line)'}`,
+                background: etat.actif ? 'var(--accent-wash)' : 'transparent',
+                color: etat.actif ? 'var(--accent)' : 'var(--muted)',
+                fontWeight: etat.actif ? 700 : 600,
+              }}
+            >
+              {etat.name}
+            </button>
+          ))}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
@@ -309,6 +341,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
+  const [initiativesEnCours, setInitiativesEnCours] = useState(false);
   const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
     onChange(typeof suivant === 'function' ? suivant(state) : suivant);
 
@@ -324,6 +357,32 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
   const running = isRunning(state);
   const active = activeCombatant(state);
   const target = ordered.find((combatant) => combatant.id === targetId) ?? null;
+
+  /**
+   * Un état se pose et se retire d'un appui, sans confirmation : c'est un
+   * aller-retour, et se tromper d'état coûte le même geste que le corriger.
+   */
+  const basculerEtatDeLaCible = (id: string) => {
+    if (!target) return;
+    setState((current) => replaceCombatant(current, {
+      ...target, conditions: basculerEtat(target.conditions, id),
+    }));
+  };
+
+  /**
+   * Les initiatives saisies partent avec le lancement : une seule écriture,
+   * donc un seul aller-retour de synchronisation vers les joueurs.
+   */
+  const lancerAvecInitiatives = (initiatives: Record<string, number>) => {
+    setState((current) => beginEncounter({
+      ...current,
+      combatants: current.combatants.map((combatant) => ({
+        ...combatant,
+        initiative: initiatives[combatant.id] ?? combatant.initiative,
+      })),
+    }));
+    setInitiativesEnCours(false);
+  };
 
   const apply = (amount: number, mode: 'degats' | 'soins') => {
     if (!target) return;
@@ -384,9 +443,12 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
             +
           </button>
 
-          {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour. */}
+          {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour.
+              Lancer passe d'abord par la saisie des initiatives : sans elle,
+              le premier round partait sur l'ordre d'ajout, joueurs à zéro. */}
           <button
-            onClick={() => setState(running ? endEncounter : beginEncounter)}
+            onClick={() => (running ? setState(endEncounter) : setInitiativesEnCours(true))}
+            disabled={!running && state.combatants.length === 0}
             style={{
               minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
               background: running ? 'transparent' : 'var(--accent)',
@@ -423,10 +485,22 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
       </main>
 
       {target && (
-        <DamagePad target={target} onApply={apply} onClose={() => setTargetId(null)} />
+        <DamagePad
+          target={target}
+          onApply={apply}
+          onBasculerEtat={basculerEtatDeLaCible}
+          onClose={() => setTargetId(null)}
+        />
       )}
       {ajoutEnCours && (
         <AddAdversaryDialog onAjouter={ajouterAdversaire} onFermer={() => setAjoutEnCours(false)} />
+      )}
+      {initiativesEnCours && (
+        <InitiativeDialog
+          state={state}
+          onLancer={lancerAvecInitiatives}
+          onFermer={() => setInitiativesEnCours(false)}
+        />
       )}
     </div>
   );
