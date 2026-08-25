@@ -59,10 +59,12 @@ function HpBar({ combatant }: { combatant: Combatant }) {
 /** Bonus signé, à la française : « +5 », « −2 », jamais un nu « 0 » ambigu. */
 const avecSigne = (bonus: number): string => (bonus >= 0 ? `+${bonus}` : `−${Math.abs(bonus)}`);
 
-function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet, concentration }: {
+function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenSheet, concentration }: {
   combatant: Combatant;
   /** Vrai seulement quand le combat tourne ET que c'est son tour. */
   active: boolean;
+  /** Le tour par tour est lancé — sans quoi l'initiative n'a rien à ordonner. */
+  running: boolean;
   onTarget: (combatant: Combatant) => void;
   onNext: () => void;
   /** Absent pour une créature : elle n'a pas de fiche à ouvrir. */
@@ -88,12 +90,18 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet, concen
         onClick={() => onTarget(combatant)}
         style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', minHeight: 44 }}
       >
-        <div className="num" style={{
-          width: 30, textAlign: 'center', fontSize: 15, fontWeight: 700,
-          color: active ? 'var(--accent)' : 'var(--muted)',
-        }}>
-          {combatant.initiative}
-        </div>
+        {/* L'initiative n'ordonne rien tant que le tour par tour n'est pas
+            lancé — l'afficher hors combat (ou une fois « Terminer » pressé)
+            montrerait un chiffre qui n'a plus aucun rôle, restant de la
+            dernière bagarre ou de la saisie à l'ajout de l'adversaire. */}
+        {running && (
+          <div className="num" style={{
+            width: 30, textAlign: 'center', fontSize: 15, fontWeight: 700,
+            color: active ? 'var(--accent)' : 'var(--muted)',
+          }}>
+            {combatant.initiative}
+          </div>
+        )}
 
         <div style={{ flexGrow: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
@@ -684,6 +692,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
             key={combatant.id}
             combatant={combatant}
             active={active?.id === combatant.id}
+            running={running}
             onTarget={(picked) => setTargetId(picked.id)}
             onNext={() => setState(nextTurn)}
             onOpenSheet={onOpenSheet && combatant.side === 'joueur'
