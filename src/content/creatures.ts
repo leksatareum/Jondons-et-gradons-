@@ -5,7 +5,7 @@ export type CreatureTemplate = {
   hp: number;
   speed: string;
   cr: string;
-  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration';
+  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration' | 'humanoïde' | 'géant';
   actions?: CreatureAction[];
   traits?: string[];
   senses?: string;
@@ -85,6 +85,22 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   beast('weasel', 'Belette', 13, 1, '9 m · escalade 9 m', '0'),
   beast('wolf', 'Loup', 12, 11, '12 m', '1/4'),
   { id: 'zombie', name: 'Zombie', ac: 8, hp: 15, speed: '6 m', cr: '1/4', kind: 'mort-vivant' },
+
+  // Manuel des monstres 2024 — bestiaire d'aventure courant, apporté par la
+  // table. Même principe que ci-dessus : un index mécanique compact, pas les
+  // textes narratifs du livre.
+  { id: 'gobelin-larbin', name: 'Gobelin larbin', ac: 12, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
+  { id: 'gobelin-guerrier', name: 'Gobelin guerrier', ac: 15, hp: 10, speed: '9 m', cr: '1/4', kind: 'humanoïde' },
+  { id: 'gobelin-chef', name: 'Gobelin chef', ac: 17, hp: 21, speed: '9 m', cr: '1', kind: 'humanoïde' },
+  { id: 'gobelin-envouteur', name: 'Gobelin envoûteur', ac: 13, hp: 45, speed: '9 m', cr: '3', kind: 'humanoïde' },
+  { id: 'bandit', name: 'Bandit', ac: 12, hp: 11, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
+  { id: 'bandit-capitaine', name: 'Capitaine bandit', ac: 15, hp: 52, speed: '9 m', cr: '2', kind: 'humanoïde' },
+  { id: 'kobold-guerrier', name: 'Kobold guerrier', ac: 14, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
+  { id: 'kobold-aile', name: 'Kobold ailé', ac: 15, hp: 10, speed: '9 m · vol 9 m', cr: '1/4', kind: 'humanoïde' },
+  { id: 'ogre', name: 'Ogre', ac: 11, hp: 68, speed: '12 m', cr: '2', kind: 'géant' },
+  { id: 'ogrillon', name: 'Ogrillon', ac: 12, hp: 52, speed: '9 m', cr: '1', kind: 'géant' },
+  { id: 'ogre-zombie', name: 'Ogre zombie', ac: 8, hp: 85, speed: '9 m', cr: '2', kind: 'mort-vivant' },
+  { id: 'worg', name: 'Worg', ac: 13, hp: 26, speed: '12 m', cr: '1/2', kind: 'bête' },
 ];
 
 // Caractéristiques utiles à Forme sauvage. Les scores mentaux restent ceux du
@@ -295,6 +311,71 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
   ] },
   wolf: { senses: 'Vision dans le noir 18 m · perception passive 15', traits: ['Tactique de meute'], actions: [
     { name: 'Morsure', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'perforants', detail: 'La cible M ou moins est À terre.' },
+  ] },
+
+  // La Robustesse des morts-vivants (Undead Fortitude) revient sur tous les
+  // morts-vivants sans magie de lanceur — dont le squelette et le zombie déjà
+  // présents dans l'index d'origine, jamais complétés jusqu'ici.
+  zombie: { senses: 'Vision dans le noir 18 m · perception passive 8', traits: ['Immunité au poison, à Empoisonné et à l’Épuisement', 'Robustesse des morts-vivants : à 0 PV, sauvegarde de Constitution DD 5 + dégâts subis (sauf dégâts radiants ou critique) — succès : tombe à 1 PV au lieu de 0.'], actions: [
+    { name: 'Gifle', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d8+1', damageType: 'contondants' },
+  ] },
+
+  'gobelin-larbin': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +6.'], actions: [
+    { name: 'Dague', kind: 'attack', toHit: 4, reach: '1,50 m ou 6/18 m', damage: '1d4+2', damageType: 'perforants' },
+    { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
+  ] },
+  'gobelin-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +6.'], actions: [
+    { name: 'Cimeterre', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'tranchants', detail: '+1d4 tranchants supplémentaires si le jet d’attaque avait l’avantage.' },
+    { name: 'Arc court', kind: 'attack', toHit: 4, reach: '24/96 m', damage: '1d6+2', damageType: 'perforants', detail: '+1d4 perforants supplémentaires si le jet d’attaque avait l’avantage.' },
+    { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
+  ] },
+  'gobelin-chef': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +5.'], actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques, Cimeterre ou Arc court en combinaison libre.' },
+    { name: 'Cimeterre', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'tranchants', detail: '+1d4 tranchants supplémentaires si le jet d’attaque avait l’avantage.' },
+    { name: 'Arc court', kind: 'attack', toHit: 4, reach: '24/96 m', damage: '1d6+2', damageType: 'perforants', detail: '+1d4 perforants supplémentaires si le jet d’attaque avait l’avantage.' },
+    { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
+    { name: 'Attaque déviée', kind: 'utility', detail: 'Réaction, quand une créature visible fait un jet d’attaque contre le gobelin : il choisit un allié P ou M à 1,50 m, ils échangent leur place et l’allié devient la cible.' },
+  ] },
+  'gobelin-envouteur': { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Escamotage +5, Discrétion +7.'], actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques de Bâton maléfique ; l’une peut être remplacée par Incantation.' },
+    { name: 'Bâton maléfique', kind: 'attack', toHit: 5, reach: '1,50 m ou 18 m', damage: '2d8+3', damageType: 'psychiques' },
+    { name: 'Incantation', kind: 'utility', detail: 'DD 13, Intelligence. À volonté : Illusion mineure. 1/jour chacun : Cécité/Surdité, Feu de fée, Graisse.' },
+    { name: 'Malédiction', kind: 'utility', detail: 'Réaction, quand une créature visible touche le gobelin par une attaque : sauvegarde de Sagesse DD 13 pour cette créature — échec : l’attaque rate au lieu de toucher.' },
+  ] },
+
+  bandit: { senses: 'Perception passive 10', actions: [
+    { name: 'Cimeterre', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d6+1', damageType: 'tranchants' },
+    { name: 'Arbalète légère', kind: 'attack', toHit: 3, reach: '24/96 m', damage: '1d8+1', damageType: 'perforants' },
+  ] },
+  'bandit-capitaine': { senses: 'Perception passive 10', traits: ['Athlétisme +4, Tromperie +4.'], actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques, Cimeterre ou Pistolet en combinaison libre.' },
+    { name: 'Cimeterre', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d6+3', damageType: 'tranchants' },
+    { name: 'Pistolet', kind: 'attack', toHit: 5, reach: '9/27 m', damage: '1d10+3', damageType: 'perforants' },
+    { name: 'Parade', kind: 'utility', detail: 'Réaction, quand touché par une attaque de mêlée en tenant une arme : +2 à la CA contre cette attaque.' },
+  ] },
+
+  'kobold-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 8', traits: ['Tactique de meute : avantage aux attaques si un allié non Incapable d’agir est à 1,50 m de la cible.', 'Sensibilité à la lumière du soleil : désavantage aux tests et jets d’attaque en plein soleil.'], actions: [
+    { name: 'Dague', kind: 'attack', toHit: 4, reach: '1,50 m ou 6/18 m', damage: '1d4+2', damageType: 'perforants' },
+  ] },
+  'kobold-aile': { senses: 'Vision dans le noir 18 m · perception passive 8', traits: ['Tactique de meute : avantage aux attaques si un allié non Incapable d’agir est à 1,50 m de la cible.', 'Sensibilité à la lumière du soleil : désavantage aux tests et jets d’attaque en plein soleil.'], actions: [
+    { name: 'Lame dents-de-dragon', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d6+3', damageType: 'perforants' },
+    { name: 'Crachat chromatique', kind: 'attack', toHit: 5, reach: '9 m', damage: '1d6+3', damageType: 'au choix : acide, froid, feu, foudre ou poison' },
+  ] },
+
+  ogre: { senses: 'Vision dans le noir 18 m · perception passive 8', actions: [
+    { name: 'Massue', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '2d8+4', damageType: 'contondants' },
+    { name: 'Javeline', kind: 'attack', toHit: 6, reach: '1,50 m ou 9/36 m', damage: '2d6+4', damageType: 'perforants' },
+  ] },
+  ogrillon: { senses: 'Vision dans le noir 18 m · perception passive 9', actions: [
+    { name: 'Hache d’armes', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'tranchants' },
+    { name: 'Javeline', kind: 'attack', toHit: 5, reach: '1,50 m ou 9/36 m', damage: '1d6+3', damageType: 'perforants' },
+  ] },
+  'ogre-zombie': { senses: 'Vision dans le noir 18 m · perception passive 8', traits: ['Immunité au poison, à Empoisonné et à l’Épuisement', 'Robustesse des morts-vivants : à 0 PV, sauvegarde de Constitution DD 5 + dégâts subis (sauf dégâts radiants ou critique) — succès : tombe à 1 PV au lieu de 0.'], actions: [
+    { name: 'Gifle', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '2d8+4', damageType: 'contondants' },
+  ] },
+
+  worg: { senses: 'Vision dans le noir 18 m · perception passive 14', traits: ['Perception +4.'], actions: [
+    { name: 'Morsure', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'perforants', detail: 'La prochaine attaque contre la cible avant le début du prochain tour du worg a l’avantage.' },
   ] },
 };
 
