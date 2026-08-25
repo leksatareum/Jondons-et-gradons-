@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spendResource } from './cast';
+import { restoreResource, spendResource } from './cast';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -47,5 +47,34 @@ describe('dépenser la ressource d’une carte jouée', () => {
     expect(suivante.live.temporaryHp).toBe(2);
     expect(suivante.name).toBe(depart.name);
     expect(suivante.classLevels).toBe(depart.classLevels);
+  });
+});
+
+describe('rendre une utilisation, sans attendre le repos', () => {
+  it('un emplacement rendu redescend le compteur de son rang', () => {
+    const depensee = spendResource(spendResource(fiche(), 'emplacement-2'), 'emplacement-2');
+    const rendue = restoreResource(depensee, 'emplacement-2');
+    expect(rendue.live.spellSlotsSpent).toEqual({ 2: 1 });
+  });
+
+  it('ne descend jamais sous zéro — un appui « restaurer » de trop reste sans effet', () => {
+    const rendue = restoreResource(fiche(), 'emplacement-1');
+    expect(rendue.live.spellSlotsSpent[1] ?? 0).toBe(0);
+    const pacteRendu = restoreResource(fiche(), 'pacte');
+    expect(pacteRendu.live.pactSlotsSpent ?? 0).toBe(0);
+    const nommeeRendue = restoreResource(fiche(), 'genie-du-desert');
+    expect(nommeeRendue.live.resourcesSpent['genie-du-desert'] ?? 0).toBe(0);
+  });
+
+  it('la réserve de pacte se rend à part, jamais confondue avec les emplacements', () => {
+    const depensee = spendResource(fiche(), 'pacte');
+    const rendue = restoreResource(depensee, 'pacte');
+    expect(rendue.live.pactSlotsSpent).toBe(0);
+  });
+
+  it('une ressource nommée rendue redescend sous sa propre clé', () => {
+    const depensee = spendResource(spendResource(fiche(), 'genie-du-desert'), 'genie-du-desert');
+    const rendue = restoreResource(depensee, 'genie-du-desert');
+    expect(rendue.live.resourcesSpent).toEqual({ 'genie-du-desert': 1 });
   });
 });

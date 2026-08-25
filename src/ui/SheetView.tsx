@@ -11,7 +11,7 @@ import { TabBar, type MainTab } from './TabBar';
 import { cardsFromCharacter } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
-import { spendResource } from '../model/cast';
+import { restoreResource, spendResource } from '../model/cast';
 import { choisirDeClasse } from '../model/choix-de-classe';
 import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
@@ -172,6 +172,18 @@ export function SheetView({
       return derivee.spellcasting.slots.find((slot) => slot.pact)?.level ?? 1;
     }
     return null;
+  };
+
+  /**
+   * Le pisteur de ressources de l'écran de combat : une réserve entamée hors
+   * du fil d'une carte jouable (Connaissance de la pierre, Contact du
+   * patron…) ou une correction manuelle d'un appui de trop.
+   */
+  const depenserRessource = (resourceKey: string) => {
+    void saveSheet(client, sync, fiche.id, spendResource(fiche.data, resourceKey));
+  };
+  const restaurerRessource = (resourceKey: string) => {
+    void saveSheet(client, sync, fiche.id, restoreResource(fiche.data, resourceKey));
   };
 
   const finDeMarque = () => {
@@ -378,6 +390,8 @@ export function SheetView({
         etats={monCombattant?.conditions ?? []}
         onFinMarque={finDeMarque}
         onTransfererMarque={deplacerMarque}
+        onDepenserRessource={depenserRessource}
+        onRestaurerRessource={restaurerRessource}
         turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat

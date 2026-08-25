@@ -47,3 +47,25 @@ export function spendResource(sheet: CharacterSheet, resourceKey: string): Chara
     },
   };
 }
+
+/**
+ * L'inverse de `spendResource` : rendre une utilisation, sans attendre le
+ * repos qui les rend toutes. Sert au correctif manuel (« je me suis trompé
+ * en tapant ») depuis le pisteur de ressources de l'écran de combat — jamais
+ * en dessous de zéro.
+ */
+export function restoreResource(sheet: CharacterSheet, resourceKey: string): CharacterSheet {
+  const rangEmplacement = /^emplacement-(\d+)$/.exec(resourceKey);
+  if (rangEmplacement) {
+    const rang = Number(rangEmplacement[1]);
+    const restant = Math.max(0, (sheet.live.spellSlotsSpent[rang] ?? 0) - 1);
+    return { ...sheet, live: { ...sheet.live, spellSlotsSpent: { ...sheet.live.spellSlotsSpent, [rang]: restant } } };
+  }
+
+  if (resourceKey === 'pacte') {
+    return { ...sheet, live: { ...sheet.live, pactSlotsSpent: Math.max(0, (sheet.live.pactSlotsSpent ?? 0) - 1) } };
+  }
+
+  const restant = Math.max(0, (sheet.live.resourcesSpent[resourceKey] ?? 0) - 1);
+  return { ...sheet, live: { ...sheet.live, resourcesSpent: { ...sheet.live.resourcesSpent, [resourceKey]: restant } } };
+}

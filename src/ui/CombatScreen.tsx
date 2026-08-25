@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AbilityScores, CharacterSheet } from '../model/character';
-import { deriveCharacter, type DerivedSkill } from '../model/derive';
+import { deriveCharacter, type DerivedResource, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import { layoutCombatCards, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
@@ -60,6 +60,68 @@ function Pip({ filled }: { filled: boolean }) {
         display: 'inline-block',
       }}
     />
+  );
+}
+
+/**
+ * Les réserves de classe et d'espèce (Forme sauvage, Ruse magique, Arcanum,
+ * Connaissance de la pierre…) : `deriveCharacter` les calcule déjà toutes
+ * pour la fiche, mais rien ne les affichait nulle part — un joueur devait se
+ * souvenir lui-même de son compte de Forme sauvage. Une ligne par ressource,
+ * des pastilles pour le compte restant, et un bouton pour corriger un
+ * appui de trop sans attendre le prochain repos.
+ */
+function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
+  resources: DerivedResource[];
+  onDepenser?: (key: string) => void;
+  onRestaurer?: (key: string) => void;
+}) {
+  if (resources.length === 0) return null;
+  return (
+    <div style={{
+      marginBottom: 10, border: '1px solid var(--line)',
+      borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+    }}>
+      <div className="lbl" style={{ marginBottom: 6 }}>Ressources</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {resources.map((res) => (
+          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {res.name}
+              </div>
+              <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>
+                {Array.from({ length: res.max }, (_, i) => <Pip key={i} filled={i < res.remaining} />)}
+              </div>
+            </div>
+            <div className="num" style={{ fontSize: 12.5, color: 'var(--muted)' }}>{res.remaining}/{res.max}</div>
+            <button
+              onClick={() => onDepenser?.(res.key)}
+              disabled={res.remaining <= 0}
+              aria-label={`Utiliser ${res.name}`}
+              style={{
+                minHeight: 30, minWidth: 30, borderRadius: 8, border: '1px solid var(--line)',
+                fontSize: 15, fontWeight: 700, opacity: res.remaining <= 0 ? 0.35 : 1,
+              }}
+            >
+              −
+            </button>
+            {res.spent > 0 && (
+              <button
+                onClick={() => onRestaurer?.(res.key)}
+                aria-label={`Rendre une utilisation de ${res.name}`}
+                style={{ minHeight: 30, minWidth: 30, borderRadius: 8, color: 'var(--muted)', fontSize: 12, fontWeight: 700 }}
+              >
+                ↺
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -386,7 +448,7 @@ function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
 
 export function CombatScreen({
   sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], etats = [],
-  onFinMarque, onTransfererMarque,
+  onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource,
 }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
@@ -417,6 +479,10 @@ export function CombatScreen({
   onFinMarque?: () => void;
   /** La cible marquée est tombée à 0 PV : une action bonus déplace la marque. */
   onTransfererMarque?: (cible: CibleMarquee) => void;
+  /** Une réserve de classe ou d'espèce vient d'être entamée (Forme sauvage, Ruse magique…). */
+  onDepenserRessource?: (key: string) => void;
+  /** Correction manuelle : rendre une utilisation sans attendre le repos. */
+  onRestaurerRessource?: (key: string) => void;
   /**
    * Identité du tour en cours (`turnIdentity`). Les économies d'action
    * appartiennent au tour où elles ont été dépensées : quand cette valeur
@@ -549,6 +615,12 @@ export function CombatScreen({
             </div>
           </div>
         )}
+
+        <RessourcesTracker
+          resources={derived.resources}
+          onDepenser={onDepenserRessource}
+          onRestaurer={onRestaurerRessource}
+        />
 
         {/*
           L'Épuisement pénalise CHAQUE test d20. Il doit donc se lire au
