@@ -84,6 +84,8 @@ export function SheetView({
   correspondants: Correspondant[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
+  /** Un jet de sauvegarde de concentration à faire à la table, DD déjà calculé. */
+  const [jetConcentration, setJetConcentration] = useState<{ dd: number } | null>(null);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
@@ -145,7 +147,26 @@ export function SheetView({
     if (suivante === fiche.data) return;
     if (suivante.live.damageTaken === fiche.data.live.damageTaken
       && suivante.live.temporaryHp === fiche.data.live.temporaryHp) return;
+    // Encaisser des dégâts en étant concentré appelle une sauvegarde — le jet
+    // se fait à la table comme toujours, mais rien ne rappelait jusqu'ici
+    // qu'il fallait le faire, ni son DD. `delta` est ce qui vient d'être tapé
+    // (avant absorption par les PV temporaires) : c'est ce montant-là, pas ce
+    // qui a atteint les PV, que la règle prend en compte.
+    if (delta < 0 && fiche.data.live.concentration) {
+      const degats = Math.max(0, Math.floor(-delta));
+      setJetConcentration({ dd: Math.min(30, Math.max(10, Math.floor(degats / 2))) });
+    }
     void saveSheet(client, sync, fiche.id, suivante);
+  };
+
+  /**
+   * La table répond au jet de sauvegarde qu'on vient de lui rappeler : un
+   * échec rompt la concentration ici même, sans repasser par le bouton
+   * « Rompre » du bandeau.
+   */
+  const repondreJetConcentration = (reussi: boolean) => {
+    setJetConcentration(null);
+    if (!reussi) rompreConcentration();
   };
 
   /**
@@ -318,6 +339,40 @@ export function SheetView({
           onMonter={monterDeNiveau}
           onFermer={() => setNiveauEnCours(false)}
         />
+      )}
+      {jetConcentration && (
+        <div style={{
+          position: 'fixed', left: 12, right: 12, bottom: 'calc(12px + env(safe-area-inset-bottom))',
+          zIndex: 40, background: 'var(--surface-raised)', border: '1px solid var(--accent)',
+          borderRadius: 'var(--radius)', boxShadow: 'var(--raise)', padding: '13px 14px',
+        }}>
+          <div className="lbl" style={{ color: 'var(--accent)' }}>Sauvegarde de concentration</div>
+          <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.45 }}>
+            Dégâts reçus{spellById(fiche.data.live.concentration?.spellId ?? '')?.name
+              ? ` en te concentrant sur ${spellById(fiche.data.live.concentration?.spellId ?? '')?.name}` : ''}
+            {' '}— sauvegarde de Constitution <strong className="num">DD {jetConcentration.dd}</strong> à la table.
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              onClick={() => repondreJetConcentration(true)}
+              style={{
+                flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
+              }}
+            >
+              Réussie
+            </button>
+            <button
+              onClick={() => repondreJetConcentration(false)}
+              style={{
+                flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
+                background: 'var(--vital)', color: 'var(--accent-ink)', fontSize: 14, fontWeight: 700,
+              }}
+            >
+              Ratée
+            </button>
+          </div>
+        </div>
       )}
     </>
   );

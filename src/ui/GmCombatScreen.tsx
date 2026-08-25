@@ -297,6 +297,14 @@ function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
     onClose();
   };
 
+  // Un joueur porte SES points de vie sur sa fiche (`live.damageTaken`), pas
+  // sur ce combattant : `apply()` n'écrirait que sur la copie de la
+  // rencontre, sans jamais toucher ce que sa propre fiche affiche — un pavé
+  // silencieusement inopérant. « Fiche → » ouvre la fiche, où le MJ a « les
+  // mêmes pouvoirs que le joueur » (voir le commentaire d'`onOpenSheet`) :
+  // c'est le seul chemin qui écrit au bon endroit.
+  const estUnJoueur = target.side === 'joueur';
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 10, background: 'rgb(0 0 0 / 0.55)',
@@ -319,13 +327,15 @@ function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
 
         {onSupprimer && <SupprimerCombattant nom={target.name} onConfirmer={onSupprimer} />}
 
-        <div style={{
-          textAlign: 'center', padding: '9px 0 13px',
-          fontSize: 34, fontWeight: 700, lineHeight: 1,
-          color: entry ? 'var(--ink)' : 'var(--muted)',
-        }} className="num">
-          {entry || '0'}
-        </div>
+        {!estUnJoueur && (
+          <div style={{
+            textAlign: 'center', padding: '9px 0 13px',
+            fontSize: 34, fontWeight: 700, lineHeight: 1,
+            color: entry ? 'var(--ink)' : 'var(--muted)',
+          }} className="num">
+            {entry || '0'}
+          </div>
+        )}
 
         {/* ───── États ─────
             Au-dessus du pavé : un état se pose d'un appui, sans nombre à
@@ -353,41 +363,52 @@ function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00', '←'].map((key) => (
-            <button
-              key={key}
-              onClick={() => press(key)}
-              style={{
-                minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
-                border: '1px solid var(--line)', fontSize: 18, fontWeight: 600,
-              }}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
+        {estUnJoueur ? (
+          <div className="lbl" style={{
+            textTransform: 'none', textAlign: 'center', color: 'var(--muted)',
+            padding: '10px 0 16px', fontSize: 13, lineHeight: 1.5,
+          }}>
+            Ses points de vie se gèrent depuis sa fiche (« Fiche → » sur sa carte) : lui seul écrit sa propre feuille, le MJ y a les mêmes pouvoirs que lui.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00', '←'].map((key) => (
+                <button
+                  key={key}
+                  onClick={() => press(key)}
+                  style={{
+                    minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
+                    border: '1px solid var(--line)', fontSize: 18, fontWeight: 600,
+                  }}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
 
-        <div style={{ display: 'flex', gap: 8, margin: '11px 0 14px' }}>
-          <button
-            onClick={() => send('degats')}
-            style={{
-              flexGrow: 1, minHeight: 52, borderRadius: 11,
-              background: 'var(--vital)', color: 'var(--bg)', fontSize: 14, fontWeight: 700,
-            }}
-          >
-            Dégâts
-          </button>
-          <button
-            onClick={() => send('soins')}
-            style={{
-              flexGrow: 1, minHeight: 52, borderRadius: 11,
-              border: '1.5px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
-            }}
-          >
-            Soins
-          </button>
-        </div>
+            <div style={{ display: 'flex', gap: 8, margin: '11px 0 14px' }}>
+              <button
+                onClick={() => send('degats')}
+                style={{
+                  flexGrow: 1, minHeight: 52, borderRadius: 11,
+                  background: 'var(--vital)', color: 'var(--bg)', fontSize: 14, fontWeight: 700,
+                }}
+              >
+                Dégâts
+              </button>
+              <button
+                onClick={() => send('soins')}
+                style={{
+                  flexGrow: 1, minHeight: 52, borderRadius: 11,
+                  border: '1.5px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
+                }}
+              >
+                Soins
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
