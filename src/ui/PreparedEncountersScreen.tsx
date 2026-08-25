@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AddAdversaryDialog, attaquesDuTemplate, caracteristiquesDuTemplate, competencesDuTemplate, dexModOf, maitriseDuTemplate, sauvegardesDuTemplate } from './AddAdversaryDialog';
 import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
-import { budgetDeRencontre, suggererComposition, type Difficulte } from '../domain/encounter-generator';
+import { budgetDeRencontre, suggererComposition, THEMES_RENCONTRE, type Difficulte } from '../domain/encounter-generator';
 import type { StoredEncounterTemplate } from '../sync/campaign-sync';
 import { withDistinctNames, type Combatant } from '../domain/encounter';
 import { TAB_BAR_CLEARANCE } from './TabBar';
@@ -68,12 +68,14 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
   const [niveau, setNiveau] = useState('2');
   const [taille, setTaille] = useState('4');
   const [difficulte, setDifficulte] = useState<Difficulte>('moderee');
+  const [theme, setTheme] = useState<string | null>(null);
 
   const budget = budgetDeRencontre(Number(niveau), Number(taille), difficulte);
+  const themeIntrouvable = theme !== null && !PHB_CREATURES.some((creature) => creature.theme?.includes(theme));
 
   const generer = () => {
     if (!budget) return;
-    const composition = suggererComposition(budget, PHB_CREATURES);
+    const composition = suggererComposition(budget, PHB_CREATURES, Math.random, theme);
     if (composition.length === 0) return;
     onGenerer(withDistinctNames(composition.map(combattantDepuisTemplate)));
   };
@@ -93,7 +95,9 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
             style={{
               width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
               borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
-              background: 'var(--surface)', color: 'var(--ink)', fontSize: 15,
+              // 16px ou plus : en dessous, iOS zoome sur le champ à la mise
+              // au point, et l'écran reste zoomé après.
+              background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
             }}
           />
         </div>
@@ -105,7 +109,9 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
             style={{
               width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
               borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
-              background: 'var(--surface)', color: 'var(--ink)', fontSize: 15,
+              // 16px ou plus : en dessous, iOS zoome sur le champ à la mise
+              // au point, et l'écran reste zoomé après.
+              background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
             }}
           />
         </div>
@@ -127,9 +133,33 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
           </button>
         ))}
       </div>
+
+      <label className="lbl" style={{ display: 'block', marginTop: 10 }}>Genre de rencontre</label>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+        {[[null, 'Aléatoire'] as [null, string], ...THEMES_RENCONTRE].map(([clef, libelle]) => (
+          <button
+            key={clef ?? 'aleatoire'}
+            onClick={() => setTheme(clef)}
+            className="lbl"
+            style={{
+              minHeight: 30, padding: '0 10px', borderRadius: 999,
+              background: theme === clef ? 'var(--accent)' : 'transparent',
+              color: theme === clef ? 'var(--accent-ink)' : 'var(--muted)',
+              border: theme === clef ? 'none' : '1px solid var(--line)', fontWeight: 700,
+            }}
+          >
+            {libelle}
+          </button>
+        ))}
+      </div>
+
       {budget === null ? (
         <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
           Vérifié seulement du niveau 1 à 5.
+        </div>
+      ) : themeIntrouvable ? (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
+          Aucune créature de ce genre dans le bestiaire.
         </div>
       ) : (
         <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
@@ -138,11 +168,11 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
       )}
       <button
         onClick={generer}
-        disabled={budget === null}
+        disabled={budget === null || themeIntrouvable}
         style={{
           width: '100%', minHeight: 'var(--tap)', marginTop: 10, borderRadius: 'var(--radius-sm)',
           border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 13, fontWeight: 700,
-          opacity: budget === null ? 0.4 : 1,
+          opacity: budget === null || themeIntrouvable ? 0.4 : 1,
         }}
       >
         Générer

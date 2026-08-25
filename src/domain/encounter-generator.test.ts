@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { budgetDeRencontre, suggererComposition, xpDuFP } from './encounter-generator';
 import type { CreatureTemplate } from '../content/creatures';
 
-const creature = (id: string, cr: string): CreatureTemplate =>
-  ({ id, name: id, ac: 10, hp: 10, speed: '9 m', cr, kind: 'humanoïde' });
+const creature = (id: string, cr: string, theme?: string[]): CreatureTemplate =>
+  ({ id, name: id, ac: 10, hp: 10, speed: '9 m', cr, kind: 'humanoïde', ...(theme ? { theme } : {}) });
 
 describe('budget de rencontre (DMG 2024, niveaux 1 à 5)', () => {
   it('multiplie le budget par personnage par la taille du groupe', () => {
@@ -74,5 +74,33 @@ describe('suggérer une composition homogène', () => {
     const bestiaire = [creature('faucon', '0')];
     const composition = suggererComposition(50, bestiaire, () => 0);
     expect(composition[0]?.id).toBe('faucon');
+  });
+});
+
+describe('diriger la composition par thème', () => {
+  it('ne tire que parmi les créatures portant le thème demandé', () => {
+    const bestiaire = [
+      creature('gobelin', '1/4', ['gobelin']),
+      creature('bandit', '1/8', ['bandit']),
+    ];
+    const composition = suggererComposition(200, bestiaire, () => 0, 'bandit');
+    expect(composition.every((c) => c.id === 'bandit')).toBe(true);
+  });
+
+  it('sans thème fourni, tire dans tout le bestiaire comme avant', () => {
+    const bestiaire = [creature('gobelin', '1/4', ['gobelin']), creature('sans-theme', '1/4')];
+    const composition = suggererComposition(50, bestiaire, () => 0);
+    expect(composition.length).toBeGreaterThan(0);
+  });
+
+  it('un thème sans aucune créature correspondante ne renvoie rien, plutôt que de retomber sur le hasard', () => {
+    const bestiaire = [creature('gobelin', '1/4', ['gobelin'])];
+    expect(suggererComposition(200, bestiaire, () => 0, 'spectre')).toEqual([]);
+  });
+
+  it('une créature à thèmes multiples reste tirable sous chacun de ses thèmes', () => {
+    const bestiaire = [creature('ogre-zombie', '2', ['ogre', 'mort-vivant'])];
+    expect(suggererComposition(450, bestiaire, () => 0, 'ogre')[0]?.id).toBe('ogre-zombie');
+    expect(suggererComposition(450, bestiaire, () => 0, 'mort-vivant')[0]?.id).toBe('ogre-zombie');
   });
 });

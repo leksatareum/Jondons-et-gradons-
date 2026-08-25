@@ -13,6 +13,8 @@ export type CreatureTemplate = {
   abilities?: { str: number; dex: number; con: number };
   saveBonuses?: Partial<Record<'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha', number>>;
   skillBonuses?: Record<string, number>;
+  /** Étiquette(s) de thème pour la suggestion automatique de rencontre (« gobelin », « loup »…). Facultatif : sans thème, la créature n'apparaît que dans une suggestion « aléatoire ». */
+  theme?: string[];
 };
 
 export type CreatureAction = {
@@ -45,7 +47,7 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   beast('constrictor-snake', 'Serpent constricteur', 13, 13, '9 m · nage 9 m', '1/4'),
   beast('crab', 'Crabe', 11, 3, '6 m · nage 6 m', '0'),
   beast('crocodile', 'Crocodile', 12, 13, '6 m · nage 9 m', '1/2'),
-  beast('dire-wolf', 'Loup sanguinaire', 14, 22, '15 m', '1'),
+  { ...beast('dire-wolf', 'Loup sanguinaire', 14, 22, '15 m', '1'), theme: ['loup'] },
   beast('draft-horse', 'Cheval de trait', 10, 15, '12 m', '1/4'),
   beast('elephant', 'Éléphant', 12, 76, '12 m', '4'),
   beast('elk', 'Élan', 10, 11, '15 m', '1/4'),
@@ -74,7 +76,7 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   beast('reef-shark', 'Requin de récif', 12, 22, '1,50 m · nage 9 m', '1/2'),
   beast('riding-horse', 'Cheval de selle', 11, 13, '18 m', '1/4'),
   beast('scorpion', 'Scorpion', 11, 1, '3 m', '0'),
-  { id: 'skeleton', name: 'Squelette', ac: 13, hp: 13, speed: '9 m', cr: '1/4', kind: 'mort-vivant' },
+  { id: 'skeleton', name: 'Squelette', ac: 13, hp: 13, speed: '9 m', cr: '1/4', kind: 'mort-vivant', theme: ['mort-vivant'] },
   { id: 'slaad-tadpole', name: 'Têtard de slaad', ac: 12, hp: 7, speed: '9 m · fouissement 3 m', cr: '1/8', kind: 'aberration' },
   { id: 'sphinx-of-wonder', name: 'Sphinx merveilleux', ac: 13, hp: 24, speed: '6 m · vol 12 m', cr: '1', kind: 'familier spécial' },
   beast('spider', 'Araignée', 12, 1, '6 m · escalade 6 m', '0'),
@@ -83,24 +85,24 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   beast('venomous-snake', 'Serpent venimeux', 12, 5, '9 m · nage 9 m', '1/8'),
   beast('warhorse', 'Cheval de guerre', 11, 19, '18 m', '1/2'),
   beast('weasel', 'Belette', 13, 1, '9 m · escalade 9 m', '0'),
-  beast('wolf', 'Loup', 12, 11, '12 m', '1/4'),
-  { id: 'zombie', name: 'Zombie', ac: 8, hp: 15, speed: '6 m', cr: '1/4', kind: 'mort-vivant' },
+  { ...beast('wolf', 'Loup', 12, 11, '12 m', '1/4'), theme: ['loup'] },
+  { id: 'zombie', name: 'Zombie', ac: 8, hp: 15, speed: '6 m', cr: '1/4', kind: 'mort-vivant', theme: ['mort-vivant'] },
 
   // Manuel des monstres 2024 — bestiaire d'aventure courant, apporté par la
   // table. Même principe que ci-dessus : un index mécanique compact, pas les
   // textes narratifs du livre.
-  { id: 'gobelin-larbin', name: 'Gobelin larbin', ac: 12, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
-  { id: 'gobelin-guerrier', name: 'Gobelin guerrier', ac: 15, hp: 10, speed: '9 m', cr: '1/4', kind: 'humanoïde' },
-  { id: 'gobelin-chef', name: 'Gobelin chef', ac: 17, hp: 21, speed: '9 m', cr: '1', kind: 'humanoïde' },
-  { id: 'gobelin-envouteur', name: 'Gobelin envoûteur', ac: 13, hp: 45, speed: '9 m', cr: '3', kind: 'humanoïde' },
-  { id: 'bandit', name: 'Bandit', ac: 12, hp: 11, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
-  { id: 'bandit-capitaine', name: 'Capitaine bandit', ac: 15, hp: 52, speed: '9 m', cr: '2', kind: 'humanoïde' },
-  { id: 'kobold-guerrier', name: 'Kobold guerrier', ac: 14, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde' },
-  { id: 'kobold-aile', name: 'Kobold ailé', ac: 15, hp: 10, speed: '9 m · vol 9 m', cr: '1/4', kind: 'humanoïde' },
-  { id: 'ogre', name: 'Ogre', ac: 11, hp: 68, speed: '12 m', cr: '2', kind: 'géant' },
-  { id: 'ogrillon', name: 'Ogrillon', ac: 12, hp: 52, speed: '9 m', cr: '1', kind: 'géant' },
-  { id: 'ogre-zombie', name: 'Ogre zombie', ac: 8, hp: 85, speed: '9 m', cr: '2', kind: 'mort-vivant' },
-  { id: 'worg', name: 'Worg', ac: 13, hp: 26, speed: '12 m', cr: '1/2', kind: 'bête' },
+  { id: 'gobelin-larbin', name: 'Gobelin larbin', ac: 12, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'gobelin-guerrier', name: 'Gobelin guerrier', ac: 15, hp: 10, speed: '9 m', cr: '1/4', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'gobelin-chef', name: 'Gobelin chef', ac: 17, hp: 21, speed: '9 m', cr: '1', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'gobelin-envouteur', name: 'Gobelin envoûteur', ac: 13, hp: 45, speed: '9 m', cr: '3', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'bandit', name: 'Bandit', ac: 12, hp: 11, speed: '9 m', cr: '1/8', kind: 'humanoïde', theme: ['bandit'] },
+  { id: 'bandit-capitaine', name: 'Capitaine bandit', ac: 15, hp: 52, speed: '9 m', cr: '2', kind: 'humanoïde', theme: ['bandit'] },
+  { id: 'kobold-guerrier', name: 'Kobold guerrier', ac: 14, hp: 7, speed: '9 m', cr: '1/8', kind: 'humanoïde', theme: ['kobold'] },
+  { id: 'kobold-aile', name: 'Kobold ailé', ac: 15, hp: 10, speed: '9 m · vol 9 m', cr: '1/4', kind: 'humanoïde', theme: ['kobold'] },
+  { id: 'ogre', name: 'Ogre', ac: 11, hp: 68, speed: '12 m', cr: '2', kind: 'géant', theme: ['ogre'] },
+  { id: 'ogrillon', name: 'Ogrillon', ac: 12, hp: 52, speed: '9 m', cr: '1', kind: 'géant', theme: ['ogre'] },
+  { id: 'ogre-zombie', name: 'Ogre zombie', ac: 8, hp: 85, speed: '9 m', cr: '2', kind: 'mort-vivant', theme: ['ogre', 'mort-vivant'] },
+  { id: 'worg', name: 'Worg', ac: 13, hp: 26, speed: '12 m', cr: '1/2', kind: 'bête', theme: ['loup'] },
   { id: 'harpie', name: 'Harpie', ac: 11, hp: 38, speed: '6 m · vol 12 m', cr: '1', kind: 'monstruosité' },
 ];
 

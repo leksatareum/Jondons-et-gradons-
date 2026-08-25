@@ -37,19 +37,36 @@ const XP_PAR_FP: Record<string, number> = {
 /** `0` pour un FP hors table (au-delà de 5, ou mal formé) : exclu du budget plutôt qu'estimé. */
 export const xpDuFP = (cr: string): number => XP_PAR_FP[cr] ?? 0;
 
+/** Thèmes de rencontre reconnus par le bestiaire fourni, du plus courant au moins courant. */
+export const THEMES_RENCONTRE: [string, string][] = [
+  ['bandit', 'Bandits'],
+  ['gobelin', 'Gobelins'],
+  ['loup', 'Loups'],
+  ['mort-vivant', 'Morts-vivants'],
+  ['kobold', 'Kobolds'],
+  ['ogre', 'Ogres'],
+];
+
 /**
  * Une composition homogène : une créature choisie au hasard dans les
  * profils qui tiennent dans le budget, répétée jusqu'à environ 85 % du
  * budget — ou jusqu'à 12 exemplaires, pour rester jouable à la table. La
  * seule règle assurée est le budget ; la répartition (chef + sbires,
  * embuscade…) reste au MJ, qui connaît sa scène mieux qu'un algorithme.
+ *
+ * `theme`, s'il est fourni, restreint le tirage aux créatures qui portent
+ * cette étiquette (voir `CreatureTemplate.theme`) — pour diriger le genre
+ * de rencontre (bandits, gobelins, loups…) plutôt que de laisser le hasard
+ * choisir parmi tout le bestiaire.
  */
 export function suggererComposition(
   budget: number,
   bestiaire: readonly CreatureTemplate[],
   random: () => number = Math.random,
+  theme?: string | null,
 ): CreatureTemplate[] {
-  const utilisables = bestiaire.filter((creature) => {
+  const bassin = theme ? bestiaire.filter((creature) => creature.theme?.includes(theme)) : bestiaire;
+  const utilisables = bassin.filter((creature) => {
     const cout = xpDuFP(creature.cr);
     return cout > 0 && cout <= budget;
   });
