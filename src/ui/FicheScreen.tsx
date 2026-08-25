@@ -24,7 +24,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
-  onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
+  onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
   onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse,
 }: {
   sheet: CharacterSheet;
@@ -35,9 +35,10 @@ export function FicheScreen({
   onRevenir: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
-  onLier: (optionId: string) => void;
+  onLier: (optionId: string, nom?: string) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
+  onRamenerCompagnon: (companionId: string, rang: number) => void;
   /**
    * Côté MJ : bascule la montée de niveau proposée (dé)/verrouillée.
    * Côté joueur : ouvre la fenêtre de choix, présente seulement quand le MJ
@@ -269,6 +270,7 @@ export function FicheScreen({
             onLier={onLier}
             onDegatsCompagnon={onDegatsCompagnon}
             onDetacherCompagnon={onDetacherCompagnon}
+            onRamenerCompagnon={onRamenerCompagnon}
           />
         </section>
       )}

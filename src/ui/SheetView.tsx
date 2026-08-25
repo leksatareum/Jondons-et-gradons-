@@ -29,7 +29,7 @@ import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
-import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
+import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import { activeCombatant, type EncounterState } from '../domain/encounter';
@@ -311,12 +311,14 @@ export function SheetView({
     void saveSheet(client, sync, fiche.id, learnForm(fiche.data, derivee, formId));
   const echangerForme = (fromId: string, toId: string) =>
     void saveSheet(client, sync, fiche.id, swapForm(fiche.data, derivee, fromId, toId));
-  const lierCompagnon = (optionId: string) =>
-    void saveSheet(client, sync, fiche.id, bondCompanion(fiche.data, optionId));
+  const lierCompagnon = (optionId: string, nom?: string) =>
+    void saveSheet(client, sync, fiche.id, bondCompanion(fiche.data, optionId, nom));
   const degatsCompagnon = (companionId: string, delta: number) =>
     void saveSheet(client, sync, fiche.id, applyCompanionDamage(fiche.data, companionId, delta));
   const detacherCompagnon = (companionId: string) =>
     void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
+  const ramenerCompagnonLie = (companionId: string, rang: number) =>
+    void saveSheet(client, sync, fiche.id, ramenerCompagnon(fiche.data, companionId, rang));
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
@@ -410,6 +412,7 @@ export function SheetView({
           onLier={lierCompagnon}
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
+          onRamenerCompagnon={ramenerCompagnonLie}
           niveauDisponible={niveauDisponible}
           onNiveauSuperieur={estMj
             ? basculerNiveauDisponible

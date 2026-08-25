@@ -4,7 +4,7 @@ import {
 } from '../model/wild-shape';
 import { availableCompanions } from '../model/companions';
 import type { LinkedCreature, CharacterSheet } from '../model/character';
-import type { DerivedCharacter } from '../model/derive';
+import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { WildShapeProfile } from '../domain/wild-shape';
 import type { LinkedCreatureOption } from '../domain/linked-creatures';
 
@@ -198,10 +198,57 @@ function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onAppre
   );
 }
 
-function CarteCompagnon({ companion, onDegats, onDetacher }: {
+/**
+ * Ramener à la vie : ne propose que les rangs d'emplacement encore
+ * disponibles — jamais un rang déjà épuisé, jamais la réserve de pacte
+ * (hors du champ de la règle du compagnon primordial).
+ */
+function RamenerALaVie({ nom, slots, onRamener }: {
+  nom: string;
+  slots: DerivedSlot[];
+  onRamener: (rang: number) => void;
+}) {
+  const disponibles = slots.filter((slot) => !slot.pact && slot.remaining > 0);
+  return (
+    <div style={{
+      marginTop: 8, padding: '9px 10px', borderRadius: 'var(--radius-sm)',
+      border: '1px solid var(--vital)',
+    }}>
+      <div className="lbl" style={{ textTransform: 'none', color: 'var(--vital)' }}>
+        {nom} est morte — si c'est depuis moins d'une heure, un emplacement de sort la ramène à pleins PV.
+      </div>
+      {disponibles.length === 0 ? (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 6 }}>
+          Aucun emplacement disponible.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
+          {disponibles.map((slot) => (
+            <button
+              key={slot.level}
+              onClick={() => onRamener(slot.level)}
+              className="lbl"
+              style={{
+                minHeight: 32, padding: '0 10px', borderRadius: 999,
+                border: '1px solid var(--vital)', color: 'var(--vital)', fontWeight: 700,
+              }}
+            >
+              Rang {slot.level} ({slot.remaining})
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CarteCompagnon({ companion, slots, onDegats, onDetacher, onRamener }: {
   companion: LinkedCreature;
+  slots: DerivedSlot[];
   onDegats: (delta: number) => void;
   onDetacher: () => void;
+  /** Absent pour un familier : ramener à la vie via un emplacement de sort est propre au compagnon primordial. */
+  onRamener?: (rang: number) => void;
 }) {
   return (
     <div className="card" style={{
@@ -231,6 +278,10 @@ function CarteCompagnon({ companion, onDegats, onDetacher }: {
         <BoutonAction label="Détacher" onClick={onDetacher} />
       </div>
 
+      {companion.hp === 0 && companion.family === 'primal-companion' && onRamener && (
+        <RamenerALaVie nom={companion.name} slots={slots} onRamener={onRamener} />
+      )}
+
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
         {companion.rules.map((regle) => (
           <div key={regle} style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{regle}</div>
@@ -240,12 +291,15 @@ function CarteCompagnon({ companion, onDegats, onDetacher }: {
   );
 }
 
-function SectionCompagnon({ sheet, onLier, onDegats, onDetacher }: {
+function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRamener }: {
   sheet: CharacterSheet;
-  onLier: (optionId: string) => void;
+  derived: DerivedCharacter;
+  onLier: (optionId: string, nom?: string) => void;
   onDegats: (companionId: string, delta: number) => void;
   onDetacher: (companionId: string) => void;
+  onRamener: (companionId: string, rang: number) => void;
 }) {
+  const [nom, setNom] = useState('');
   const options = availableCompanions(sheet);
   const lies = sheet.companions ?? [];
   if (options.length === 0 && lies.length === 0) return null;
@@ -257,8 +311,10 @@ function SectionCompagnon({ sheet, onLier, onDegats, onDetacher }: {
         <CarteCompagnon
           key={companion.id}
           companion={companion}
+          slots={derived.spellcasting.slots}
           onDegats={(delta) => onDegats(companion.id, delta)}
           onDetacher={() => onDetacher(companion.id)}
+          onRamener={(rang) => onRamener(companion.id, rang)}
         />
       ))}
       {lies.length === 0 && options.length > 0 && (
@@ -268,6 +324,16 @@ function SectionCompagnon({ sheet, onLier, onDegats, onDetacher }: {
       )}
       {options.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            type="text"
+            value={nom}
+            onChange={(e) => setNom(e.target.value)}
+            placeholder="Un nom pour le RP — Loup, Fenrir…"
+            style={{
+              minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 10,
+              border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 14,
+            }}
+          />
           {options.map((option: LinkedCreatureOption) => (
             <div key={option.id} className="card" style={{
               padding: '10px 12px', borderRadius: 'var(--radius)',
@@ -280,7 +346,10 @@ function SectionCompagnon({ sheet, onLier, onDegats, onDetacher }: {
                   {option.sourceLabel} · CA {option.ac} · {option.hp} PV
                 </div>
               </div>
-              <BoutonAction label="Lier" accent onClick={() => onLier(option.id)} />
+              <BoutonAction
+                label="Lier" accent
+                onClick={() => { onLier(option.id, nom.trim() || undefined); setNom(''); }}
+              />
             </div>
           ))}
         </div>
@@ -289,16 +358,17 @@ function SectionCompagnon({ sheet, onLier, onDegats, onDetacher }: {
   );
 }
 
-export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon }: {
+export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   onTransformer: (formId: string) => void;
   onRevenir: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
-  onLier: (optionId: string) => void;
+  onLier: (optionId: string, nom?: string) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
+  onRamenerCompagnon: (companionId: string, rang: number) => void;
 }) {
   // Ni `<main>` ni défilement propre : ce bloc est destiné à être empilé dans
   // le rouleau unique de `FicheScreen`, qui possède seul la zone de scroll.
@@ -311,9 +381,11 @@ export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onAppre
       />
       <SectionCompagnon
         sheet={sheet}
+        derived={derived}
         onLier={onLier}
         onDegats={onDegatsCompagnon}
         onDetacher={onDetacherCompagnon}
+        onRamener={onRamenerCompagnon}
       />
     </div>
   );

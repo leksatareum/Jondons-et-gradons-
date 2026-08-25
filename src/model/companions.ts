@@ -2,6 +2,7 @@ import {
   addLinkedCreature, linkedCreatureOptionFor, linkedCreatureOptionsFor,
   linkedCreaturesAfterLongRest, refreshLinkedCreatures, type LinkedCreatureOption,
 } from '../domain/linked-creatures';
+import { spendResource } from './cast';
 import type { CharacterSheet, LinkedCreature } from './character';
 
 /**
@@ -66,6 +67,29 @@ export function applyCompanionDamage(sheet: CharacterSheet, companionId: string,
       : companion
   ));
   return { ...sheet, companions };
+}
+
+/**
+ * Ramène un compagnon primordial mort à la vie, en dépensant réellement
+ * l'emplacement de sort que la règle demande — pas un simple retour à
+ * pleins PV. PHB 2024 : « une action Magie, un contact et un emplacement de
+ * sort la ramènent après 1 minute avec tous ses PV », tant qu'elle est
+ * morte depuis moins d'une heure. Cette dernière condition se compte en
+ * temps réel, pas en tours ni en repos : c'est au joueur de savoir si la
+ * fenêtre est encore ouverte, comme pour tout ce que l'appli ne chronomètre
+ * pas elle-même.
+ *
+ * Ignore silencieusement si la cible n'existe pas ou n'est pas morte — pas
+ * de raison de dépenser un emplacement pour rien.
+ */
+export function ramenerCompagnon(sheet: CharacterSheet, companionId: string, rang: number): CharacterSheet {
+  const cible = (sheet.companions ?? []).find((companion) => companion.id === companionId);
+  if (!cible || cible.hp > 0) return sheet;
+  const apresDepense = spendResource(sheet, `emplacement-${rang}`);
+  const companions = (apresDepense.companions ?? []).map((companion) => (
+    companion.id === companionId ? { ...companion, hp: companion.hpMax } : companion
+  ));
+  return { ...apresDepense, companions };
 }
 
 /**

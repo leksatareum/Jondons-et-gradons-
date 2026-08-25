@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { applyCompanionDamage, availableCompanions, bondCompanion, companionsAfterLongRest, dismissCompanion } from './companions';
+import {
+  applyCompanionDamage, availableCompanions, bondCompanion, companionsAfterLongRest, dismissCompanion,
+  ramenerCompagnon,
+} from './companions';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -92,6 +95,38 @@ describe('dégâts et soins — plafonnés entre 0 et le maximum', () => {
     const id = lie.companions![0].id;
     const soigne = applyCompanionDamage(lie, id, -999);
     expect(soigne.companions?.[0].hp).toBe(soigne.companions?.[0].hpMax);
+  });
+});
+
+describe('ramener un compagnon primordial mort — dépense un vrai emplacement', () => {
+  const maitreDesBetes = fiche({
+    classLevels: [
+      { classId: 'rodeur', level: 3, subclass: 'Maître des bêtes', subclassId: null },
+    ],
+    live: { ...EMPTY_LIVE_STATE, hitDiceSpent: {}, spellSlotsSpent: {}, resourcesSpent: {}, conditions: [] },
+  });
+
+  it('rend tous ses PV et dépense l’emplacement du rang choisi', () => {
+    const lie = bondCompanion(maitreDesBetes, availableCompanions(maitreDesBetes)[0].id);
+    const id = lie.companions![0].id;
+    const morte = applyCompanionDamage(lie, id, 999);
+    expect(morte.companions?.[0].hp).toBe(0);
+
+    const ramenee = ramenerCompagnon(morte, id, 1);
+    expect(ramenee.companions?.[0].hp).toBe(ramenee.companions?.[0].hpMax);
+    expect(ramenee.live.spellSlotsSpent[1]).toBe(1);
+  });
+
+  it('ne fait rien — et ne dépense rien — si le compagnon n’est pas mort', () => {
+    const lie = bondCompanion(maitreDesBetes, availableCompanions(maitreDesBetes)[0].id);
+    const id = lie.companions![0].id;
+    const resultat = ramenerCompagnon(lie, id, 1);
+    expect(resultat).toBe(lie);
+    expect(resultat.live.spellSlotsSpent[1] ?? 0).toBe(0);
+  });
+
+  it('un identifiant inconnu ne change rien', () => {
+    expect(ramenerCompagnon(maitreDesBetes, 'rien-du-tout', 1)).toBe(maitreDesBetes);
   });
 });
 
