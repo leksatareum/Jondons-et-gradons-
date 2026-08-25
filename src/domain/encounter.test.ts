@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
-  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
   withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
 
@@ -195,5 +195,64 @@ describe('ajouter un combattant', () => {
     const apres = addCombatant(etat, base({ id: 'b', name: 'Loup', initiative: 20 }));
     expect(orderedCombatants(apres)[0].name).toBe('Loup');
     expect(apres.turnIndex).toBe(0); // le tour en cours n'est pas perturbé
+  });
+});
+
+describe('retirer un combattant', () => {
+  // Ordre d'initiative : c (20), b (15), a (10).
+  const trio = (): EncounterState => ({
+    combatants: [
+      combattant('a', 10), combattant('b', 15), combattant('c', 20),
+    ],
+    turnIndex: -1,
+    round: 0,
+  });
+
+  it('hors combat, retire simplement — rien d’autre à ajuster', () => {
+    const apres = removeCombatant(trio(), 'b');
+    expect(apres.combatants.map((c) => c.id)).toEqual(['a', 'c']);
+    expect(apres.turnIndex).toBe(-1);
+  });
+
+  it('retirer quelqu’un AVANT le combattant actif décale l’index pour que le même reste actif', () => {
+    // b (index 1) est actif ; on retire c (index 0 dans l'ordre trié, avant b).
+    const etat: EncounterState = { ...trio(), turnIndex: 1, round: 1 };
+    const apres = removeCombatant(etat, 'c');
+    expect(activeCombatant(apres)?.id).toBe('b');
+  });
+
+  it('retirer quelqu’un APRÈS le combattant actif ne perturbe rien', () => {
+    // c (index 0) est actif ; on retire a (dernier de l'ordre, après c).
+    const etat: EncounterState = { ...trio(), turnIndex: 0, round: 1 };
+    const apres = removeCombatant(etat, 'a');
+    expect(activeCombatant(apres)?.id).toBe('c');
+    expect(apres.turnIndex).toBe(0);
+  });
+
+  it('retirer le combattant actif passe la main au suivant dans l’ordre', () => {
+    // b (index 1) est actif ; on le retire lui-même.
+    const etat: EncounterState = { ...trio(), turnIndex: 1, round: 1 };
+    const apres = removeCombatant(etat, 'b');
+    expect(activeCombatant(apres)?.id).toBe('a'); // suivant dans l'ordre c, b, a
+  });
+
+  it('retirer le dernier de l’ordre alors qu’il est actif boucle comme un tour normal', () => {
+    // a (index 2, dernier) est actif ; on le retire lui-même.
+    const etat: EncounterState = { ...trio(), turnIndex: 2, round: 1 };
+    const apres = removeCombatant(etat, 'a');
+    expect(activeCombatant(apres)?.id).toBe('c'); // reboucle en tête
+    expect(apres.round).toBe(2);
+  });
+
+  it('retirer le dernier combattant restant met fin au tour par tour', () => {
+    const etat: EncounterState = { combatants: [combattant('a', 10)], turnIndex: 0, round: 3 };
+    const apres = removeCombatant(etat, 'a');
+    expect(apres.combatants).toEqual([]);
+    expect(isRunning(apres)).toBe(false);
+  });
+
+  it('un identifiant inconnu ne change rien', () => {
+    const etat = trio();
+    expect(removeCombatant(etat, 'fantome')).toEqual(etat);
   });
 });

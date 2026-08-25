@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
-  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, replaceCombatant,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
 import { basculerEtat, etatsActifs, etatsDe } from '../model/etats';
@@ -212,11 +212,53 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
   );
 }
 
-function DamagePad({ target, onApply, onBasculerEtat, onClose }: {
+/**
+ * Retirer un adversaire, en deux temps : un premier appui l'annonce, un
+ * second dans les deux secondes le confirme. Contrairement aux autres
+ * suppressions de l'app (un message, une note), celle-ci se passe en pleine
+ * bagarre — un appui perdu dans la précipitation ne doit pas faire
+ * disparaître le bon adversaire.
+ */
+function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: () => void }) {
+  const [arme, setArme] = useState(false);
+
+  if (!arme) {
+    return (
+      <button
+        onClick={() => setArme(true)}
+        className="lbl"
+        style={{ color: 'var(--muted)', marginBottom: 12, textTransform: 'none' }}
+      >
+        Retirer {nom} de la rencontre
+      </button>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <button
+        onClick={onConfirmer}
+        className="lbl"
+        style={{
+          color: 'var(--vital)', fontWeight: 700, textTransform: 'none',
+          border: '1px solid var(--vital)', borderRadius: 999, padding: '4px 10px',
+        }}
+      >
+        Confirmer le retrait
+      </button>
+      <button onClick={() => setArme(false)} className="lbl" style={{ color: 'var(--muted)', textTransform: 'none' }}>
+        Annuler
+      </button>
+    </div>
+  );
+}
+
+function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
   target: Combatant;
   onApply: (amount: number, mode: 'degats' | 'soins') => void;
   /** Pose ou retire un état, sans confirmation : c'est un aller-retour. */
   onBasculerEtat: (id: string) => void;
+  /** Absent pour un joueur : on ne retire jamais un joueur du combat. */
+  onSupprimer?: () => void;
   onClose: () => void;
 }) {
   const [entry, setEntry] = useState('');
@@ -249,6 +291,8 @@ function DamagePad({ target, onApply, onBasculerEtat, onClose }: {
             {remainingHp(target)}/{target.maxHp}
           </div>
         </div>
+
+        {onSupprimer && <SupprimerCombattant nom={target.name} onConfirmer={onSupprimer} />}
 
         <div style={{
           textAlign: 'center', padding: '9px 0 13px',
@@ -392,6 +436,13 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
     setState((current) => replaceCombatant(current, updated));
   };
 
+  /** Jamais pour un joueur : on ne retire pas un joueur du combat, seulement un adversaire. */
+  const retirer = () => {
+    if (!target || target.side !== 'creature') return;
+    setState((current) => removeCombatant(current, target.id));
+    setTargetId(null);
+  };
+
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <header style={{
@@ -489,6 +540,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
           target={target}
           onApply={apply}
           onBasculerEtat={basculerEtatDeLaCible}
+          onSupprimer={target.side === 'creature' ? retirer : undefined}
           onClose={() => setTargetId(null)}
         />
       )}

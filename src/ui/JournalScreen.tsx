@@ -56,6 +56,26 @@ export function secretsRecus(messages: Message[], moi: string): Message[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/**
+ * Les secrets que j'ai envoyés, filtrés par `correspondants` — comme
+ * `conversationsAvec`. Sur la fiche d'un personnage précis, `correspondants`
+ * ne contient que lui : sans ce filtre, ouvrir la fiche de Dauby montrait
+ * aussi les secrets confiés à Veya, parce que « j'en suis l'auteur » ne
+ * dépend jamais de la fiche ouverte.
+ */
+export function secretsEnvoyesA(
+  messages: Message[],
+  moi: string,
+  correspondants: Correspondant[],
+): Message[] {
+  const destinatairesConnus = new Set(correspondants.map((correspondant) => correspondant.id));
+  return messages
+    .filter((message) => (
+      message.kind === 'secret' && message.authorId === moi && destinatairesConnus.has(message.recipientId)
+    ))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 8,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
@@ -216,9 +236,7 @@ export function JournalScreen({
 
   const conversations = conversationsAvec(messages, moi, correspondants);
   const secrets = secretsRecus(messages, moi);
-  const secretsEnvoyes = parDateDecroissante(
-    messages.filter((message) => message.kind === 'secret' && message.authorId === moi),
-  );
+  const secretsEnvoyes = secretsEnvoyesA(messages, moi, correspondants);
 
   const choixDestinataire = correspondants.length > 1 && (
     <select

@@ -220,3 +220,31 @@ export const replaceCombatant = (state: EncounterState, combatant: Combatant): E
  */
 export const addCombatant = (state: EncounterState, combatant: Combatant): EncounterState =>
   ({ ...state, combatants: withDistinctNames([...state.combatants, combatant]) });
+
+/**
+ * Retire un combattant — adversaire ajouté par erreur, ou qu'on ne veut
+ * simplement plus voir à la table.
+ *
+ * `turnIndex` pointe dans la liste TRIÉE (`orderedCombatants`), pas dans
+ * `state.combatants` : le retirer déplace donc les positions qui le
+ * suivaient d'un cran. On ajuste l'index pour que le MÊME combattant reste
+ * actif — sauf si c'est justement lui qu'on retire, auquel cas c'est celui
+ * qui prend sa place qui devient actif, exactement comme un tour normal.
+ * Le retirer alors qu'il était le dernier de l'ordre boucle comme `nextTurn`
+ * : premier de la liste, round suivant.
+ */
+export function removeCombatant(state: EncounterState, combatantId: string): EncounterState {
+  const combatants = state.combatants.filter((combatant) => combatant.id !== combatantId);
+  if (combatants.length === state.combatants.length) return state;
+  if (state.turnIndex < 0) return { ...state, combatants };
+  if (combatants.length === 0) return { ...state, combatants, turnIndex: -1, round: 0 };
+
+  const positionRetiree = orderedCombatants(state).findIndex((combatant) => combatant.id === combatantId);
+  const turnIndex = positionRetiree >= 0 && positionRetiree < state.turnIndex
+    ? state.turnIndex - 1
+    : state.turnIndex;
+
+  return turnIndex >= combatants.length
+    ? { ...state, combatants, turnIndex: 0, round: state.round + 1 }
+    : { ...state, combatants, turnIndex };
+}

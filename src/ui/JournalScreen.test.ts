@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conversationsAvec, secretsRecus } from './JournalScreen';
+import { conversationsAvec, secretsEnvoyesA, secretsRecus } from './JournalScreen';
 import type { Message } from '../sync/campaign-sync';
 
 const message = (over: Partial<Message> & { id: string }): Message => ({
@@ -80,5 +80,35 @@ describe('secrets reçus', () => {
       message({ id: 'neuf', kind: 'secret', recipientId: 'moi', createdAt: '2026-08-20T10:00:00Z' }),
     ];
     expect(secretsRecus(messages, 'moi').map((m) => m.id)).toEqual(['neuf', 'vieux']);
+  });
+});
+
+describe('secrets envoyés, sur la fiche d’un personnage précis', () => {
+  it('n’affiche que les secrets confiés à ce personnage — pas ceux confiés à un autre', () => {
+    // Le MJ ouvre la fiche de Dauby (correspondants = [dauby]) : le secret
+    // confié à Veya n'a rien à faire dans cette liste, même si le MJ en est
+    // bien l'auteur.
+    const dauby = { id: 'dauby', nom: 'Dauby' };
+    const messages = [
+      message({ id: 'pour-dauby', kind: 'secret', authorId: 'mj', recipientId: 'dauby' }),
+      message({ id: 'pour-veya', kind: 'secret', authorId: 'mj', recipientId: 'veya' }),
+    ];
+    expect(secretsEnvoyesA(messages, 'mj', [dauby]).map((m) => m.id)).toEqual(['pour-dauby']);
+  });
+
+  it('sur l’onglet Journal (tous les correspondants), rien n’est filtré', () => {
+    const dauby = { id: 'dauby', nom: 'Dauby' };
+    const messages = [
+      message({ id: 'pour-dauby', kind: 'secret', authorId: 'mj', recipientId: 'dauby' }),
+      message({ id: 'pour-veya', kind: 'secret', authorId: 'mj', recipientId: 'veya' }),
+    ];
+    const ids = secretsEnvoyesA(messages, 'mj', [dauby, veya]).map((m) => m.id);
+    expect(ids.sort()).toEqual(['pour-dauby', 'pour-veya']);
+  });
+
+  it('ignore un secret dont je ne suis pas l’auteur', () => {
+    const dauby = { id: 'dauby', nom: 'Dauby' };
+    const messages = [message({ id: 'x', kind: 'secret', authorId: 'dauby', recipientId: 'dauby' })];
+    expect(secretsEnvoyesA(messages, 'mj', [dauby])).toEqual([]);
   });
 });
