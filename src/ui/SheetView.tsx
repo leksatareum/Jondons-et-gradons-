@@ -8,7 +8,7 @@ import { InventoryScreen } from './InventoryScreen';
 import { RestScreen } from './RestScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { TabBar, type MainTab } from './TabBar';
-import { cardsFromCharacter } from './spell-cards';
+import { cardsFromCharacter, concentre } from './spell-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { restoreResource, spendResource } from '../model/cast';
@@ -155,13 +155,37 @@ export function SheetView({
    */
   const jouerCarte = (card: PlayableCard, resourceKey: string, cible?: CibleMarquee) => {
     let suivante = spendResource(fiche.data, resourceKey);
+    const sort = spellById(card.id);
     // Marque du chasseur ne se contente pas de coûter : elle pose un état —
     // cible, concentration, provenance, durée — dont dépendent trois
     // capacités du Rôdeur. Le rang payé décide de la durée.
     if (card.id === MARQUE_CHASSEUR_SPELL_ID && cible) {
       suivante = marquer(suivante, cible, { key: resourceKey, slotLevel: rangPaye(resourceKey) });
+    } else if (sort && concentre(sort)) {
+      // N'importe quel autre sort de concentration : lancer un nouveau
+      // remplace l'ancien (une seule concentration à la fois, comme la
+      // règle), et l'écran de combat peut désormais l'afficher et la rompre.
+      //
+      // Ça ne pose PAS l'état correspondant (Invisible…) sur le combattant de
+      // la rencontre : cette écriture-là appartient au MJ (RLS
+      // `jg_encounters_write`), jamais au joueur qui lance son propre sort —
+      // un premier essai qui écrivait directement échouait en silence. La
+      // concentration reste donc visible ici, sur la fiche, et le MJ la voit
+      // sans rien écrire : la liste d'initiative lit `sheet.live.concentration`
+      // de chaque joueur (voir `GmCombatScreen`).
+      suivante = { ...suivante, live: { ...suivante.live, concentration: { spellId: sort.id } } };
     }
     void saveSheet(client, sync, fiche.id, suivante);
+  };
+
+  /**
+   * Rompt la concentration en cours, hors Marque du chasseur — qui a déjà son
+   * propre bouton « Fin » dans son bloc dédié. Ne retire pas l'état auto-posé
+   * (Invisible…) : sa fin dépend de la situation à la table, c'est au MJ de
+   * la trancher via la liste d'états, déjà fonctionnelle pour ça.
+   */
+  const rompreConcentration = () => {
+    void saveSheet(client, sync, fiche.id, { ...fiche.data, live: { ...fiche.data.live, concentration: null } });
   };
 
   /** Rang de l'emplacement dépensé, `null` pour un lancement gratuit. */
@@ -392,6 +416,7 @@ export function SheetView({
         onTransfererMarque={deplacerMarque}
         onDepenserRessource={depenserRessource}
         onRestaurerRessource={restaurerRessource}
+        onRompreConcentration={rompreConcentration}
         turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat

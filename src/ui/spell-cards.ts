@@ -47,7 +47,11 @@ export function economyOf(spell: Spell): Economy {
   return 'libre';
 }
 
-const concentre = (spell: Spell): boolean =>
+/**
+ * Exporté pour l'écran de combat : savoir si le sort qu'on vient de jouer
+ * demande de la concentration, pour l'afficher et permettre de la rompre.
+ */
+export const concentre = (spell: Spell): boolean =>
   spell.duration.toLocaleLowerCase('fr').startsWith('concentration');
 
 /** Ligne de détail : ce qu'on relit avant de lancer, pas la description entière. */

@@ -4,6 +4,7 @@ import { deriveCharacter, type DerivedResource, type DerivedSkill } from '../mod
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import { layoutCombatCards, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
+import { spellById } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
@@ -448,7 +449,7 @@ function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
 
 export function CombatScreen({
   sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], etats = [],
-  onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource,
+  onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource, onRompreConcentration,
 }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
@@ -483,6 +484,11 @@ export function CombatScreen({
   onDepenserRessource?: (key: string) => void;
   /** Correction manuelle : rendre une utilisation sans attendre le repos. */
   onRestaurerRessource?: (key: string) => void;
+  /**
+   * Rompt la concentration en cours — hors Marque du chasseur, qui a déjà son
+   * propre bouton « Fin » (`onFinMarque`) dans son bloc dédié.
+   */
+  onRompreConcentration?: () => void;
   /**
    * Identité du tour en cours (`turnIdentity`). Les économies d'action
    * appartiennent au tour où elles ont été dépensées : quand cette valeur
@@ -537,6 +543,12 @@ export function CombatScreen({
   };
 
   const marque = sheet.live.huntersMark ?? null;
+  // La Marque du chasseur EST une concentration, mais elle a déjà son propre
+  // bloc plus riche (cible, transfert…) juste en dessous : ne pas la montrer
+  // deux fois.
+  const concentrationAutre = sheet.live.concentration && sheet.live.concentration.spellId !== MARQUE_CHASSEUR_SPELL_ID
+    ? sheet.live.concentration
+    : null;
 
   return (
     <div style={{
@@ -681,6 +693,35 @@ export function CombatScreen({
               style={{ minHeight: 34, padding: '0 10px', borderRadius: 9, color: 'var(--muted)', fontSize: 12, fontWeight: 700 }}
             >
               Fin
+            </button>
+          </div>
+        )}
+
+        {/*
+          La concentration active : personne ne la voyait nulle part, ni le
+          joueur ni le MJ. « Rompre » ne fait que l'effacer ici — l'état
+          qu'elle soutenait éventuellement (Invisible…) reste géré par le MJ
+          via la liste d'états, qui sait déjà le poser et le retirer.
+        */}
+        {concentrationAutre && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+            border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+          }}>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div className="lbl" style={{ color: 'var(--accent)' }}>Concentration</div>
+              <div style={{
+                fontSize: 13, fontWeight: 700, marginTop: 1,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {spellById(concentrationAutre.spellId)?.name ?? concentrationAutre.spellId}
+              </div>
+            </div>
+            <button
+              onClick={() => onRompreConcentration?.()}
+              style={{ minHeight: 34, padding: '0 10px', borderRadius: 9, color: 'var(--muted)', fontSize: 12, fontWeight: 700 }}
+            >
+              Rompre
             </button>
           </div>
         )}

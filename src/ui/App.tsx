@@ -14,6 +14,7 @@ import {
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import type { EncounterState } from '../domain/encounter';
+import { spellById } from '../content/spell-catalogue';
 
 /**
  * L'enchaînement des écrans.
@@ -354,6 +355,21 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
     })();
   }, [client, sync, campaignId, stocke]);
 
+  // La concentration vit sur la fiche (`live.concentration`), pas sur le
+  // combattant : le joueur qui lance son propre sort n'a pas le droit
+  // d'écrire sur la rencontre (RLS `jg_encounters_write`, MJ seulement). La
+  // liste du MJ la lit donc directement depuis les fiches, sans rien y
+  // écrire — le nom du personnage reste le seul lien entre les deux.
+  const concentrationParNom = useMemo(() => {
+    const table: Record<string, string> = {};
+    for (const fiche of snapshot.sheets) {
+      const spellId = fiche.data.live.concentration?.spellId;
+      if (!spellId) continue;
+      table[fiche.data.name] = spellById(spellId)?.name ?? spellId;
+    }
+    return table;
+  }, [snapshot.sheets]);
+
   return (
     <>
       {erreur && (
@@ -367,6 +383,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
       <GmCombatScreen
         state={affiche}
         onChange={changer}
+        concentrationParNom={concentrationParNom}
         onOpenSheet={(combatantId) => {
           // L'identifiant du combattant issu du groupe EST celui de la fiche
           // (voir `withParty`) : une créature, elle, n'en a pas.

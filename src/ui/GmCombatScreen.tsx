@@ -57,7 +57,7 @@ function HpBar({ combatant }: { combatant: Combatant }) {
 /** Bonus signé, à la française : « +5 », « −2 », jamais un nu « 0 » ambigu. */
 const avecSigne = (bonus: number): string => (bonus >= 0 ? `+${bonus}` : `−${Math.abs(bonus)}`);
 
-function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
+function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet, concentration }: {
   combatant: Combatant;
   /** Vrai seulement quand le combat tourne ET que c'est son tour. */
   active: boolean;
@@ -65,6 +65,8 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
   onNext: () => void;
   /** Absent pour une créature : elle n'a pas de fiche à ouvrir. */
   onOpenSheet: (() => void) | null;
+  /** Le sort en cours de concentration, lu sur la fiche. Absent pour une créature. */
+  concentration?: string;
 }) {
   const down = isDown(combatant);
   const isPlayer = combatant.side === 'joueur';
@@ -107,6 +109,17 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet }: {
           {etatsActifs(combatant.conditions).length > 0 && (
             <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--accent)' }}>
               {etatsActifs(combatant.conditions).map((etat) => etat.name).join(' · ')}
+            </div>
+          )}
+          {/*
+            La concentration, lue sur la fiche : de quoi voir d'un coup d'œil
+            que Bec est concentré sur Invisibilité sans avoir à ouvrir sa
+            fiche pour le vérifier — utile dès que quelqu'un lui inflige des
+            dégâts et qu'il faut se souvenir qu'un jet est en jeu.
+          */}
+          {concentration && (
+            <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
+              Concentration : {concentration}
             </div>
           )}
         </div>
@@ -374,7 +387,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, onChange, onOpenSheet }: {
+export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParNom }: {
   state: EncounterState;
   onChange: (suivant: EncounterState) => void;
   /**
@@ -382,6 +395,13 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
    * le joueur — c'est la RLS qui l'y autorise, pas cet écran.
    */
   onOpenSheet?: (combatantId: string) => void;
+  /**
+   * Le nom du sort en cours de concentration, par nom de personnage — lu sur
+   * chaque fiche, jamais sur le combattant : `live.concentration` du joueur,
+   * pas un état de la rencontre. Absent pour une créature, qui n'a pas de
+   * fiche.
+   */
+  concentrationParNom?: Record<string, string>;
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
@@ -531,6 +551,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet }: {
             onNext={() => setState(nextTurn)}
             onOpenSheet={onOpenSheet && combatant.side === 'joueur'
               ? () => onOpenSheet(combatant.id) : null}
+            concentration={concentrationParNom?.[combatant.name]}
           />
         ))}
       </main>
