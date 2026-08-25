@@ -715,7 +715,7 @@ export function CombatScreen({
 
       {choix?.etape === 'cible' && (
         <FeuilleDeChoix
-          titre="Qui portes-tu comme marque ?"
+          titre="Qui marques-tu ?"
           sousTitre={choix.paiement?.label}
           options={cibles.map((cible) => ({ key: cible.id, label: cible.name }))}
           onChoisir={(id) => {
