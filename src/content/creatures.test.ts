@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PHB_CREATURES } from './creatures';
+import { THEMES_RENCONTRE } from '../domain/encounter-generator';
 
 describe('le bestiaire', () => {
   it('un identifiant par créature, jamais deux fois le même', () => {
@@ -27,6 +28,26 @@ describe('le bestiaire', () => {
       const creature = PHB_CREATURES.find((c) => c.id === id);
       expect(creature, id).toBeDefined();
       expect(creature!.actions?.some((action) => action.kind === 'attack'), id).toBe(true);
+    }
+  });
+
+  it('le complément du bestiaire (orcs, gobelinoïdes, gnoll, morts-vivants, monstrosités) a au moins une attaque', () => {
+    const ajoutees = [
+      'orc-guerrier', 'orc-chef-de-guerre', 'hobgobelin-guerrier', 'malandrin',
+      'gnoll-guerrier', 'ombre', 'spectre', 'goule', 'necrophage', 'ours-hibou', 'mimique',
+    ];
+    for (const id of ajoutees) {
+      const creature = PHB_CREATURES.find((c) => c.id === id);
+      expect(creature, id).toBeDefined();
+      expect(creature!.actions?.some((action) => action.kind === 'attack'), id).toBe(true);
+    }
+  });
+
+  it('chaque thème du générateur automatique a au moins une créature dans le bestiaire', () => {
+    // Un thème sans aucune créature correspondante afficherait « Aucune
+    // créature de ce genre » à chaque fois, silencieusement inutile.
+    for (const [theme, libelle] of THEMES_RENCONTRE) {
+      expect(PHB_CREATURES.some((creature) => creature.theme?.includes(theme)), libelle).toBe(true);
     }
   });
 

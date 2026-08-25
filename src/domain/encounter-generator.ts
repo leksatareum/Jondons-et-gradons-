@@ -45,6 +45,8 @@ export const THEMES_RENCONTRE: [string, string][] = [
   ['mort-vivant', 'Morts-vivants'],
   ['kobold', 'Kobolds'],
   ['ogre', 'Ogres'],
+  ['orc', 'Orcs'],
+  ['gnoll', 'Gnolls'],
 ];
 
 /**

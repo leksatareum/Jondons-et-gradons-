@@ -104,6 +104,21 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   { id: 'ogre-zombie', name: 'Ogre zombie', ac: 8, hp: 85, speed: '9 m', cr: '2', kind: 'mort-vivant', theme: ['ogre', 'mort-vivant'] },
   { id: 'worg', name: 'Worg', ac: 13, hp: 26, speed: '12 m', cr: '1/2', kind: 'bête', theme: ['loup'] },
   { id: 'harpie', name: 'Harpie', ac: 11, hp: 38, speed: '6 m · vol 12 m', cr: '1', kind: 'monstruosité' },
+
+  // Complément du bestiaire d'aventure : de quoi varier chaque thème
+  // (l'orc et le gnoll n'avaient encore aucun représentant) et combler le
+  // thème « Morts-vivants », jusqu'ici limité au squelette et au zombie.
+  { id: 'orc-guerrier', name: 'Orc guerrier', ac: 13, hp: 15, speed: '9 m', cr: '1/2', kind: 'humanoïde', theme: ['orc'] },
+  { id: 'orc-chef-de-guerre', name: 'Orc chef de guerre', ac: 16, hp: 45, speed: '9 m', cr: '2', kind: 'humanoïde', theme: ['orc'] },
+  { id: 'hobgobelin-guerrier', name: 'Hobgobelin guerrier', ac: 18, hp: 11, speed: '9 m', cr: '1/2', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'malandrin', name: 'Malandrin', ac: 16, hp: 27, speed: '9 m', cr: '1', kind: 'humanoïde', theme: ['gobelin'] },
+  { id: 'gnoll-guerrier', name: 'Gnoll guerrier', ac: 15, hp: 22, speed: '9 m', cr: '1/2', kind: 'humanoïde', theme: ['gnoll'] },
+  { id: 'ombre', name: 'Ombre', ac: 12, hp: 16, speed: '12 m', cr: '1/2', kind: 'mort-vivant', theme: ['mort-vivant'] },
+  { id: 'spectre', name: 'Spectre', ac: 12, hp: 22, speed: '0 · vol 15 m', cr: '1', kind: 'mort-vivant', theme: ['mort-vivant'] },
+  { id: 'goule', name: 'Goule', ac: 12, hp: 22, speed: '9 m', cr: '1', kind: 'mort-vivant', theme: ['mort-vivant'] },
+  { id: 'necrophage', name: 'Nécrophage', ac: 13, hp: 36, speed: '9 m', cr: '2', kind: 'mort-vivant', theme: ['mort-vivant'] },
+  { id: 'ours-hibou', name: 'Ours-hibou', ac: 13, hp: 59, speed: '12 m', cr: '3', kind: 'monstruosité' },
+  { id: 'mimique', name: 'Mimique', ac: 12, hp: 58, speed: '4,50 m', cr: '2', kind: 'monstruosité' },
 ];
 
 // Caractéristiques utiles à Forme sauvage. Les scores mentaux restent ceux du
@@ -384,6 +399,70 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
   harpie: { senses: 'Perception passive 10', actions: [
     { name: 'Griffe', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '2d4+1', damageType: 'tranchants' },
     { name: 'Chant enjôleur', kind: 'save', save: 'SAG DD 11', reach: '90 m', detail: 'Toute créature Humanoïde ou Géante entendant le chant — Charmée tant qu’il dure (nouvelle sauvegarde à la fin de chaque tour), et Incapable d’agir tant qu’elle l’est ; se rapproche de la harpie par le chemin le plus direct, sans éviter les attaques d’opportunité mais en refaisant le jet avant un terrain dangereux ou en cas de dégâts d’une autre source. Dure jusqu’à la fin de la concentration de la harpie. Succès : immunisée à ce chant pendant 24 h.' },
+  ] },
+
+  'orc-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Agressivité : action bonus pour se déplacer vers un ennemi visible.'], actions: [
+    { name: 'Hache d’armes', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d12+3', damageType: 'tranchants' },
+    { name: 'Javeline', kind: 'attack', toHit: 5, reach: '1,50 m ou 9/36 m', damage: '1d6+3', damageType: 'perforants' },
+  ] },
+  'orc-chef-de-guerre': { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Agressivité : action bonus pour se déplacer vers un ennemi visible.'], actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, sequence: ['Hache d’armes', 'Hache d’armes'], detail: 'Deux attaques de Hache d’armes.' },
+    { name: 'Hache d’armes', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '1d12+4', damageType: 'tranchants' },
+    { name: 'Cri de guerre', kind: 'utility', detail: 'Action bonus, 1/jour : chaque orc allié à 9 m qui l’entend a l’avantage à sa prochaine attaque avant le début du prochain tour du chef.' },
+  ] },
+
+  'hobgobelin-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Tactique de meute : avantage aux attaques si un allié non Incapable d’agir est à 1,50 m de la cible.'], actions: [
+    { name: 'Épée longue', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d8+1', damageType: 'tranchants', detail: 'À deux mains : 1d10+1.' },
+    { name: 'Arc long', kind: 'attack', toHit: 3, reach: '45/180 m', damage: '1d8+1', damageType: 'perforants' },
+  ] },
+  malandrin: { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Discrétion +6.'], actions: [
+    { name: 'Fléau d’armes', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '2d8+2', damageType: 'perforants', detail: 'Avec avantage (surprise) : +2d6 supplémentaires.' },
+    { name: 'Javeline', kind: 'attack', toHit: 4, reach: '1,50 m ou 9/36 m', damage: '2d6+2', damageType: 'perforants' },
+  ] },
+
+  'gnoll-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 10', actions: [
+    { name: 'Morsure', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d4+2', damageType: 'perforants' },
+    { name: 'Lance', kind: 'attack', toHit: 4, reach: '1,50 m ou 6/18 m', damage: '1d6+2', damageType: 'perforants', detail: 'À deux mains : 1d8+2.' },
+    { name: 'Arc long', kind: 'attack', toHit: 3, reach: '45/180 m', damage: '1d8+1', damageType: 'perforants' },
+  ] },
+
+  ombre: { senses: 'Vision dans le noir 12 m · perception passive 10', traits: [
+    'Amorphe : peut se faufiler dans un espace de 2,5 cm de large sans se serrer.',
+    'Résistance aux dégâts non magiques, sauf radiants ; vulnérabilité aux dégâts radiants.',
+    'Faiblesse à la lumière du soleil : désavantage aux jets d’attaque en plein soleil.',
+  ], actions: [
+    { name: 'Griffe d’ombre', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '2d6', damageType: 'nécrotiques', detail: 'La cible touchée : Force réduite de 1d4 (magique) jusqu’à un repos court ou long ; à Force 0, elle meurt et se relève en ombre.' },
+  ] },
+  spectre: { senses: 'Vision dans le noir 18 m · perception passive 10', traits: [
+    'Incorporel : peut traverser objets et créatures comme un terrain difficile ; 1d10 dégâts de force s’il termine son tour dans un objet.',
+    'Résistance aux dégâts contondants, perforants et tranchants non magiques.',
+    'Immunité au poison, à Empoisonné, à À terre, à Agrippé, à Entravé et à Paralysé.',
+  ], actions: [
+    { name: 'Vie drainante', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '3d6', damageType: 'nécrotiques', detail: 'Le maximum de PV de la cible diminue d’autant jusqu’à un repos long ; elle meurt si son maximum tombe à 0.' },
+  ] },
+  goule: { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Immunité au poison et à Empoisonné.'], actions: [
+    { name: 'Griffes', kind: 'attack', toHit: 2, reach: '1,50 m', damage: '2d4', damageType: 'tranchants' },
+    { name: 'Morsure', kind: 'attack', toHit: 2, reach: '1,50 m', damage: '2d6', damageType: 'perforants', detail: 'Cible non Élfe ni Morte-vivante : sauvegarde de Constitution DD 10, échec — Paralysée 1 minute (nouveau jet à la fin de chaque tour).' },
+  ] },
+  necrophage: { senses: 'Vision dans le noir 18 m · perception passive 10', traits: [
+    'Puanteur : toute créature non immunisée au poison qui commence son tour à 1,50 m fait une sauvegarde de Constitution DD 10, échec — Nauséeuse jusqu’au début de son prochain tour.',
+    'Immunité au poison et à Empoisonné.',
+  ], actions: [
+    { name: 'Griffes', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '2d6+2', damageType: 'tranchants', detail: 'Cible non Élfe ni Morte-vivante : sauvegarde de Constitution DD 10, échec — Paralysée 1 minute (nouveau jet à la fin de chaque tour).' },
+  ] },
+
+  'ours-hibou': { senses: 'Vision dans le noir 18 m · perception passive 13', actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, sequence: ['Bec', 'Griffes'], detail: 'Un Bec et une attaque de Griffes.' },
+    { name: 'Bec', kind: 'attack', toHit: 7, reach: '1,50 m', damage: '1d10+5', damageType: 'perforants' },
+    { name: 'Griffes', kind: 'attack', toHit: 7, reach: '1,50 m', damage: '2d8+5', damageType: 'tranchants' },
+  ] },
+  mimique: { senses: 'Vision dans le noir 18 m · perception passive 12', traits: [
+    'Adhésif : une créature touchée par Pseudopode est Agrippée (fuite DD 13) ; se libérer en infligeant 5 dégâts tranchants à la mimique la détache aussi.',
+    'Métamorphe : peut prendre l’apparence d’un objet de taille M ou moins, ou reprendre sa forme neutre ; désavantage à la Discrétion sous sa forme neutre.',
+    'Faux-semblant : avantage à l’initiative si elle n’a pas agi sous sa forme d’objet.',
+  ], actions: [
+    { name: 'Pseudopode', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'contondants' },
+    { name: 'Morsure', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3 perforants + 1d8 acides', damageType: 'perforants et acides' },
   ] },
 };
 
