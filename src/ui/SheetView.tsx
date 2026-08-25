@@ -448,7 +448,7 @@ export function SheetView({
     }
 
     if (onglet === 'repos') {
-      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} />;
+      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} estMj={estMj} />;
     }
 
     if (onglet === 'regles') {

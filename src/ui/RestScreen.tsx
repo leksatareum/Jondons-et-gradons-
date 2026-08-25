@@ -18,8 +18,14 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * revenir en arrière — et « Repos long » sur un bouton ne dit ni ce qu'on
  * récupère, ni ce qu'on perd. Les dés de vie non rendus et le cran
  * d'épuisement qui reste sont précisément ce qu'on découvre trop tard.
+ *
+ * Un repos est un geste de table, décidé par le MJ — pas un bouton qu'un
+ * joueur presse quand ça l'arrange. L'aperçu reste visible pour tout le
+ * monde (savoir ce qu'on récupérerait est utile en soi), mais seul le MJ
+ * peut effectivement le déclencher ; voir aussi `GmRestDialog`, qui couvre
+ * toute la table (ou une partie) en un geste depuis son propre écran.
  */
-export function RestScreen({ sheet, derived, onRepos, onRetour }: {
+export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   /**
@@ -29,6 +35,8 @@ export function RestScreen({ sheet, derived, onRepos, onRetour }: {
   onRepos: (kind: RestKind, recuperation?: ChoixRecuperation) => void;
   /** Cet écran s'ouvre depuis la Fiche : le chemin du retour doit se voir. */
   onRetour: () => void;
+  /** Seul le MJ peut réellement lancer le repos — absent ou faux pour un joueur sur sa propre fiche. */
+  estMj?: boolean;
 }) {
   const [kind, setKind] = useState<RestKind>('long');
   const [recuperation, setRecuperation] = useState<ChoixRecuperation>({});
@@ -207,16 +215,24 @@ export function RestScreen({ sheet, derived, onRepos, onRetour }: {
       )}
 
       <button
-        onClick={() => onRepos(kind, kind === 'court' && totalChoisi > 0 && blocages.length === 0
+        onClick={() => estMj && onRepos(kind, kind === 'court' && totalChoisi > 0 && blocages.length === 0
           ? recuperation : undefined)}
+        disabled={!estMj}
         style={{
           width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
-          background: 'var(--accent)', color: 'var(--accent-ink)',
-          fontSize: 15, fontWeight: 700,
+          background: estMj ? 'var(--accent)' : 'var(--surface)',
+          color: estMj ? 'var(--accent-ink)' : 'var(--muted)',
+          border: estMj ? 'none' : '1px solid var(--line)',
+          fontSize: 15, fontWeight: 700, cursor: estMj ? 'pointer' : 'not-allowed',
         }}
       >
         {kind === 'long' ? 'Prendre un repos long' : 'Prendre un repos court'}
       </button>
+      {!estMj && (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
+          Seul le MJ peut lancer un repos — demande-lui.
+        </div>
+      )}
     </main>
   );
 }

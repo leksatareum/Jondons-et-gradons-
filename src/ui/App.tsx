@@ -12,13 +12,14 @@ import { chargerAppartenances, choisirCampagne, type Appartenance } from '../syn
 import { withParty } from './roster';
 import {
   createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
-  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate,
+  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveSheet,
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
 import { poserEtat } from '../model/etats';
 import { ETAT_AUTO_AU_LANCER } from '../model/spell-self-etat';
+import { GmRestDialog, reposDeGroupe } from './GmRestDialog';
 
 /**
  * L'enchaînement des écrans.
@@ -99,6 +100,8 @@ function Table({ client, compte, campagne }: {
   const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
   /** Écran principal du MJ, hors fiche ouverte : son combat, ou le journal. */
   const [ecranMj, setEcranMj] = useState<'combat' | 'rencontres' | 'journal'>('combat');
+  /** Le dialogue de repos du MJ — couvre toute la table ou une partie, en un geste. */
+  const [reposEnCours, setReposEnCours] = useState(false);
 
   // La fiche du joueur, c'est la sienne — la propriété vient de la base, pas
   // d'un choix d'écran.
@@ -162,7 +165,34 @@ function Table({ client, compte, campagne }: {
     return (
       <>
         {bandeau}
-        <MjOnglets valeur={ecranMj} onChanger={setEcranMj} />
+        <MjOnglets
+          valeur={ecranMj}
+          onChanger={setEcranMj}
+          droite={
+            <button
+              onClick={() => setReposEnCours(true)}
+              className="lbl"
+              style={{
+                minHeight: 32, padding: '0 14px', borderRadius: 999,
+                border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+              }}
+            >
+              Repos
+            </button>
+          }
+        />
+        {reposEnCours && (
+          <GmRestDialog
+            sheets={snapshot.sheets}
+            onAppliquer={(kind, sheetIds) => {
+              for (const { id, suivante } of reposDeGroupe(snapshot.sheets, kind, sheetIds)) {
+                void saveSheet(client, sync, id, suivante);
+              }
+              setReposEnCours(false);
+            }}
+            onFermer={() => setReposEnCours(false)}
+          />
+        )}
         {ecranMj === 'combat' || ecranMj === 'rencontres' ? (
           <EcranMj
             client={client}
@@ -267,16 +297,18 @@ function BandeauMj({ nom, onRetour }: { nom: string; onRetour: () => void }) {
  * posé par-dessus a déjà causé un recouvrement une fois (voir le correctif du
  * pied de page de combat) — inutile de reproduire le même piège ici.
  */
-function MjOnglets({ valeur, onChanger }: {
+function MjOnglets({ valeur, onChanger, droite }: {
   valeur: 'combat' | 'rencontres' | 'journal';
   onChanger: (valeur: 'combat' | 'rencontres' | 'journal') => void;
+  /** Action indépendante des onglets (ex. Repos) — rendue à part, poussée à droite. */
+  droite?: React.ReactNode;
 }) {
   const items: ['combat' | 'rencontres' | 'journal', string][] = [
     ['combat', 'Combat'], ['rencontres', 'Rencontres'], ['journal', 'Journal'],
   ];
   return (
     <nav style={{
-      display: 'flex', gap: 4, padding: '8px 14px',
+      display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px',
       borderBottom: '1px solid var(--line)', background: 'var(--surface)',
     }}>
       {items.map(([clef, libelle]) => (
@@ -294,6 +326,7 @@ function MjOnglets({ valeur, onChanger }: {
           {libelle}
         </button>
       ))}
+      {droite && <div style={{ marginLeft: 'auto' }}>{droite}</div>}
     </nav>
   );
 }
