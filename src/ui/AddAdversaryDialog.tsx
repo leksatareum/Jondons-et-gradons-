@@ -21,7 +21,7 @@ import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basic
  * jetée à la table. L'app ne lance pas de dés à la place de qui que ce soit.
  */
 
-const dexModOf = (template: CreatureTemplate): number | null => {
+export const dexModOf = (template: CreatureTemplate): number | null => {
   if (template.abilities) return abilityModifier(template.abilities.dex);
   const profil = WILD_SHAPE_PROFILES.find((entry) => entry.id === template.id);
   return profil ? abilityModifier(profil.abilities.dex) : null;

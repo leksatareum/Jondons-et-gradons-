@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { AddAdversaryDialog } from './AddAdversaryDialog';
+import { AddAdversaryDialog, attaquesDuTemplate, caracteristiquesDuTemplate, competencesDuTemplate, dexModOf, maitriseDuTemplate, sauvegardesDuTemplate } from './AddAdversaryDialog';
+import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
+import { budgetDeRencontre, suggererComposition, type Difficulte } from '../domain/encounter-generator';
 import type { StoredEncounterTemplate } from '../sync/campaign-sync';
-import type { Combatant } from '../domain/encounter';
+import { withDistinctNames, type Combatant } from '../domain/encounter';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
@@ -31,6 +33,120 @@ function ResumeCombattants({ combatants }: { combatants: Combatant[] }) {
   return (
     <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 3 }}>
       {resume || 'Aucune créature'}
+    </div>
+  );
+}
+
+/** Même conversion modèle → combattant que « Ajouter un adversaire », pour un lot généré d'un coup. */
+const combattantDepuisTemplate = (template: CreatureTemplate): Combatant => ({
+  id: nouvelId(),
+  name: template.name,
+  side: 'creature',
+  initiative: 0,
+  dexterity: dexModOf(template) ?? 0,
+  maxHp: template.hp,
+  damageTaken: 0,
+  temporaryHp: 0,
+  armorClass: template.ac,
+  conditions: [],
+  ...(attaquesDuTemplate(template).length > 0 ? { attacks: attaquesDuTemplate(template) } : {}),
+  ...(Object.keys(caracteristiquesDuTemplate(template)).length > 0 ? { abilities: caracteristiquesDuTemplate(template) } : {}),
+  proficiencyBonus: maitriseDuTemplate(template),
+  ...(Object.keys(sauvegardesDuTemplate(template)).length > 0 ? { savingThrows: sauvegardesDuTemplate(template) } : {}),
+  ...(Object.keys(competencesDuTemplate(template)).length > 0 ? { skills: competencesDuTemplate(template) } : {}),
+});
+
+const DIFFICULTES: [Difficulte, string][] = [['faible', 'Faible'], ['moderee', 'Modérée'], ['elevee', 'Élevée']];
+
+/**
+ * Suggère une composition homogène dans le budget du DMG 2024 (niveaux 1 à
+ * 5, seule plage vérifiée). Ajoute au lot en cours — n'y touche jamais tant
+ * que le MJ n'a pas cliqué : la répartition fine (chef + sbires, embuscade…)
+ * reste à lui, une case à cocher ne sait pas lire une scène.
+ */
+function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatant[]) => void }) {
+  const [niveau, setNiveau] = useState('2');
+  const [taille, setTaille] = useState('4');
+  const [difficulte, setDifficulte] = useState<Difficulte>('moderee');
+
+  const budget = budgetDeRencontre(Number(niveau), Number(taille), difficulte);
+
+  const generer = () => {
+    if (!budget) return;
+    const composition = suggererComposition(budget, PHB_CREATURES);
+    if (composition.length === 0) return;
+    onGenerer(withDistinctNames(composition.map(combattantDepuisTemplate)));
+  };
+
+  return (
+    <div style={{
+      marginTop: 14, padding: '11px 12px', borderRadius: 'var(--radius)',
+      border: '1px dashed var(--line)',
+    }}>
+      <div className="lbl" style={{ marginBottom: 8 }}>Suggestion automatique (facultatif)</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <label className="lbl" htmlFor="niveau-groupe">Niveau du groupe</label>
+          <input
+            id="niveau-groupe" type="number" inputMode="numeric" min={1} max={5}
+            value={niveau} onChange={(event) => setNiveau(event.target.value)}
+            style={{
+              width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+              background: 'var(--surface)', color: 'var(--ink)', fontSize: 15,
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="lbl" htmlFor="taille-groupe">Taille du groupe</label>
+          <input
+            id="taille-groupe" type="number" inputMode="numeric" min={1} max={8}
+            value={taille} onChange={(event) => setTaille(event.target.value)}
+            style={{
+              width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+              background: 'var(--surface)', color: 'var(--ink)', fontSize: 15,
+            }}
+          />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        {DIFFICULTES.map(([clef, libelle]) => (
+          <button
+            key={clef}
+            onClick={() => setDifficulte(clef)}
+            className="lbl"
+            style={{
+              flex: 1, minHeight: 32, borderRadius: 999,
+              background: difficulte === clef ? 'var(--accent)' : 'transparent',
+              color: difficulte === clef ? 'var(--accent-ink)' : 'var(--muted)',
+              border: difficulte === clef ? 'none' : '1px solid var(--line)', fontWeight: 700,
+            }}
+          >
+            {libelle}
+          </button>
+        ))}
+      </div>
+      {budget === null ? (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
+          Vérifié seulement du niveau 1 à 5.
+        </div>
+      ) : (
+        <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
+          Budget : {budget} PX
+        </div>
+      )}
+      <button
+        onClick={generer}
+        disabled={budget === null}
+        style={{
+          width: '100%', minHeight: 'var(--tap)', marginTop: 10, borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 13, fontWeight: 700,
+          opacity: budget === null ? 0.4 : 1,
+        }}
+      >
+        Générer
+      </button>
     </div>
   );
 }
@@ -105,6 +221,8 @@ function NouvelleRencontre({ onEnregistrer, onFermer }: {
             + Ajouter
           </button>
         </div>
+
+        <SuggestionAutomatique onGenerer={(suggestion) => setCombatants((liste) => withDistinctNames([...liste, ...suggestion]))} />
 
         {combatants.length === 0 ? (
           <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
