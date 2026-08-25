@@ -12,7 +12,9 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
 
 const champ: React.CSSProperties = {
   minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 15,
+  // 16px ou plus : en dessous, iOS zoome sur le champ à la mise au point,
+  // et l'écran reste zoomé après — il faut alors pincer pour dézoomer.
+  border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
 };
 
 const carte: React.CSSProperties = {
