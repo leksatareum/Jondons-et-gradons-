@@ -32,7 +32,7 @@ import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAcce
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion } from '../model/companions';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
-import type { EncounterState } from '../domain/encounter';
+import { activeCombatant, type EncounterState } from '../domain/encounter';
 import { turnIdentity } from '../domain/turn-identity';
 
 /**
@@ -460,7 +460,13 @@ export function SheetView({
     }
 
     const enCombat = rencontre != null && rencontre.turnIndex >= 0;
-    const actif = enCombat ? rencontre.combatants[rencontre.turnIndex] : undefined;
+    // `turnIndex` pointe dans la liste TRIÉE par initiative (`orderedCombatants`,
+    // voir `activeCombatant`), pas dans `rencontre.combatants` tel qu'il est
+    // stocké (ordre d'ajout). L'indexer directement désignait le mauvais
+    // combattant dès que l'ordre d'ajout différait de l'ordre d'initiative —
+    // la fiche affichait alors « Tour de » quelqu'un d'autre que le combattant
+    // réellement actif côté MJ.
+    const actif = enCombat ? activeCombatant(rencontre) : undefined;
     // Le combattant de CE personnage, pour lire les états que le MJ y a
     // posés. Même clé que `isYourTurn` : le nom, seul lien commun tant qu'un
     // combattant n'est pas rattaché à une fiche côté base.
