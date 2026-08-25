@@ -25,7 +25,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
-  onNiveauSuperieur, onRepos, onReglages, onChoixDeClasse,
+  onNiveauSuperieur, onRepos, onReglages, onRegles, onChoixDeClasse,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -43,6 +43,7 @@ export function FicheScreen({
   /** Ouvrent les écrans fils : la barre d'onglets, elle, ne les liste plus. */
   onRepos: () => void;
   onReglages: () => void;
+  onRegles: () => void;
   /** Enregistre une décision de classe (Ordre primordial, terrain du cercle…). */
   onChoixDeClasse: (classId: string, key: string, optionId: string) => void;
 }) {
@@ -69,6 +70,20 @@ export function FicheScreen({
               {[espece, classes].filter(Boolean).join(' · ')}
             </div>
           </div>
+          <button
+            onClick={onRegles}
+            aria-label="Règles"
+            style={{
+              flexShrink: 0, width: 40, height: 40, borderRadius: 10,
+              border: '1px solid var(--line)', color: 'var(--muted)',
+              display: 'grid', placeItems: 'center',
+            }}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 6.4 C10 4.8 7 4.5 4.5 5.3 V17.8 C7 17 10 17.3 12 18.8 C14 17.3 17 17 19.5 17.8 V5.3 C17 4.5 14 4.8 12 6.4 Z M12 6.4 V18.8" />
+            </svg>
+          </button>
           <button
             onClick={onReglages}
             aria-label="Réglages"

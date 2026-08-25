@@ -6,6 +6,7 @@ import { FicheScreen } from './FicheScreen';
 import { JournalScreen, type Correspondant } from './JournalScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { RestScreen } from './RestScreen';
+import { RulesScreen } from './RulesScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { TabBar, type MainTab } from './TabBar';
 import { cardsFromCharacter, concentre } from './spell-cards';
@@ -339,6 +340,7 @@ export function SheetView({
           onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
           onRepos={() => onOnglet('repos')}
           onReglages={() => onOnglet('parametres')}
+          onRegles={() => onOnglet('regles')}
           onChoixDeClasse={enregistrerChoixDeClasse}
         />
       );
@@ -392,6 +394,10 @@ export function SheetView({
 
     if (onglet === 'repos') {
       return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} />;
+    }
+
+    if (onglet === 'regles') {
+      return <RulesScreen onRetour={() => onOnglet('fiche')} />;
     }
 
     if (onglet === 'parametres') {

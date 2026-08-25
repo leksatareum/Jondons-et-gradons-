@@ -14,7 +14,7 @@
  */
 
 export type MainTab =
-  | 'combat' | 'fiche' | 'grimoire' | 'inventaire' | 'journal' | 'repos' | 'parametres';
+  | 'combat' | 'fiche' | 'grimoire' | 'inventaire' | 'journal' | 'repos' | 'parametres' | 'regles';
 
 /** Trait continu, hérite de la couleur du texte : actif = accent, sinon éteint. */
 const icone = (d: string, extra?: React.ReactNode) => (
