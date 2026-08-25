@@ -5,7 +5,7 @@ export type CreatureTemplate = {
   hp: number;
   speed: string;
   cr: string;
-  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration' | 'humanoïde' | 'géant';
+  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration' | 'humanoïde' | 'géant' | 'monstruosité';
   actions?: CreatureAction[];
   traits?: string[];
   senses?: string;
@@ -101,6 +101,7 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   { id: 'ogrillon', name: 'Ogrillon', ac: 12, hp: 52, speed: '9 m', cr: '1', kind: 'géant' },
   { id: 'ogre-zombie', name: 'Ogre zombie', ac: 8, hp: 85, speed: '9 m', cr: '2', kind: 'mort-vivant' },
   { id: 'worg', name: 'Worg', ac: 13, hp: 26, speed: '12 m', cr: '1/2', kind: 'bête' },
+  { id: 'harpie', name: 'Harpie', ac: 11, hp: 38, speed: '6 m · vol 12 m', cr: '1', kind: 'monstruosité' },
 ];
 
 // Caractéristiques utiles à Forme sauvage. Les scores mentaux restent ceux du
@@ -376,6 +377,11 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
 
   worg: { senses: 'Vision dans le noir 18 m · perception passive 14', traits: ['Perception +4.'], actions: [
     { name: 'Morsure', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'perforants', detail: 'La prochaine attaque contre la cible avant le début du prochain tour du worg a l’avantage.' },
+  ] },
+
+  harpie: { senses: 'Perception passive 10', actions: [
+    { name: 'Griffe', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '2d4+1', damageType: 'tranchants' },
+    { name: 'Chant enjôleur', kind: 'save', save: 'SAG DD 11', reach: '90 m', detail: 'Toute créature Humanoïde ou Géante entendant le chant — Charmée tant qu’il dure (nouvelle sauvegarde à la fin de chaque tour), et Incapable d’agir tant qu’elle l’est ; se rapproche de la harpie par le chemin le plus direct, sans éviter les attaques d’opportunité mais en refaisant le jet avant un terrain dangereux ou en cas de dégâts d’une autre source. Dure jusqu’à la fin de la concentration de la harpie. Succès : immunisée à ce chant pendant 24 h.' },
   ] },
 };
 

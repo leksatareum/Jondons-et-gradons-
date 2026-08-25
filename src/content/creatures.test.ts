@@ -21,7 +21,7 @@ describe('le bestiaire', () => {
     const ajoutees = [
       'gobelin-larbin', 'gobelin-guerrier', 'gobelin-chef', 'gobelin-envouteur',
       'bandit', 'bandit-capitaine', 'kobold-guerrier', 'kobold-aile',
-      'ogre', 'ogrillon', 'ogre-zombie', 'worg',
+      'ogre', 'ogrillon', 'ogre-zombie', 'worg', 'harpie',
     ];
     for (const id of ajoutees) {
       const creature = PHB_CREATURES.find((c) => c.id === id);
