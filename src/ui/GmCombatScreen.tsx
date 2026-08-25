@@ -235,12 +235,18 @@ function CombatantRow({ combatant, active, onTarget, onNext, onOpenSheet, concen
 function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: () => void }) {
   const [arme, setArme] = useState(false);
 
+  // Un texte gris discret se perdait dans le pavé — repéré par personne. Un
+  // vrai bouton, bordé et coloré comme les autres actions destructrices de
+  // l'appli, avec la même hauteur de tap que le reste.
   if (!arme) {
     return (
       <button
         onClick={() => setArme(true)}
-        className="lbl"
-        style={{ color: 'var(--muted)', marginBottom: 12, textTransform: 'none' }}
+        style={{
+          width: '100%', minHeight: 'var(--tap)', marginBottom: 12,
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--vital)',
+          color: 'var(--vital)', fontSize: 14, fontWeight: 700,
+        }}
       >
         Retirer {nom} de la rencontre
       </button>
@@ -250,15 +256,21 @@ function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
       <button
         onClick={onConfirmer}
-        className="lbl"
         style={{
-          color: 'var(--vital)', fontWeight: 700, textTransform: 'none',
-          border: '1px solid var(--vital)', borderRadius: 999, padding: '4px 10px',
+          flexGrow: 1, minHeight: 'var(--tap)', fontWeight: 700, fontSize: 14,
+          borderRadius: 'var(--radius-sm)', border: 'none',
+          background: 'var(--vital)', color: 'var(--accent-ink)',
         }}
       >
         Confirmer le retrait
       </button>
-      <button onClick={() => setArme(false)} className="lbl" style={{ color: 'var(--muted)', textTransform: 'none' }}>
+      <button
+        onClick={() => setArme(false)}
+        style={{
+          minHeight: 'var(--tap)', padding: '0 14px',
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 14,
+        }}
+      >
         Annuler
       </button>
     </div>

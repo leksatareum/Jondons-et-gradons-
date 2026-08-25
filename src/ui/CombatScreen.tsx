@@ -68,9 +68,10 @@ function Pip({ filled }: { filled: boolean }) {
  * Les réserves de classe et d'espèce (Forme sauvage, Ruse magique, Arcanum,
  * Connaissance de la pierre…) : `deriveCharacter` les calcule déjà toutes
  * pour la fiche, mais rien ne les affichait nulle part — un joueur devait se
- * souvenir lui-même de son compte de Forme sauvage. Une ligne par ressource,
- * des pastilles pour le compte restant, et un bouton pour corriger un
- * appui de trop sans attendre le prochain repos.
+ * souvenir lui-même de son compte de Forme sauvage. Un bouton de la taille
+ * d'un vrai bouton (le tap cible standard de l'appli), le compteur juste en
+ * face pour le lire d'un coup d'œil — les pastilles n'ajoutaient rien à ça et
+ * rendaient le bouton lui-même trop petit pour le pouce.
  */
 function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
   resources: DerivedResource[];
@@ -84,37 +85,37 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
       borderRadius: 'var(--radius-sm)', padding: '7px 10px',
     }}>
       <div className="lbl" style={{ marginBottom: 6 }}>Ressources</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {resources.map((res) => (
-          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <div style={{ flexGrow: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: 13, fontWeight: 700,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {res.name}
-              </div>
-              <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>
-                {Array.from({ length: res.max }, (_, i) => <Pip key={i} filled={i < res.remaining} />)}
-              </div>
-            </div>
-            <div className="num" style={{ fontSize: 12.5, color: 'var(--muted)' }}>{res.remaining}/{res.max}</div>
+          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button
               onClick={() => onDepenser?.(res.key)}
               disabled={res.remaining <= 0}
-              aria-label={`Utiliser ${res.name}`}
               style={{
-                minHeight: 30, minWidth: 30, borderRadius: 8, border: '1px solid var(--line)',
-                fontSize: 15, fontWeight: 700, opacity: res.remaining <= 0 ? 0.35 : 1,
+                flexGrow: 1, minWidth: 0, minHeight: 'var(--tap)', padding: '0 12px',
+                borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+                textAlign: 'left', fontSize: 14, fontWeight: 700,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                opacity: res.remaining <= 0 ? 0.4 : 1,
               }}
             >
-              −
+              {res.name}
             </button>
+            {/* Le compteur, juste en face du bouton : ce qu'il reste, sans avoir à compter des pastilles. */}
+            <div className="num" style={{
+              minWidth: 44, textAlign: 'center', fontSize: 17, fontWeight: 700,
+              color: res.remaining > 0 ? 'var(--ink)' : 'var(--muted)',
+            }}>
+              {res.remaining}/{res.max}
+            </div>
             {res.spent > 0 && (
               <button
                 onClick={() => onRestaurer?.(res.key)}
                 aria-label={`Rendre une utilisation de ${res.name}`}
-                style={{ minHeight: 30, minWidth: 30, borderRadius: 8, color: 'var(--muted)', fontSize: 12, fontWeight: 700 }}
+                style={{
+                  flexShrink: 0, minHeight: 'var(--tap)', minWidth: 36,
+                  borderRadius: 'var(--radius-sm)', color: 'var(--muted)', fontSize: 15, fontWeight: 700,
+                }}
               >
                 ↺
               </button>
