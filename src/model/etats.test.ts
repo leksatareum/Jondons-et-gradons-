@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { basculerEtat, etatsActifs, etatsDe, ETATS_ORDONNES, resumeDesEtats } from './etats';
+import { basculerEtat, etatsActifs, etatsDe, ETATS_ORDONNES, poserEtat, resumeDesEtats } from './etats';
 import { CONDITIONS } from '../domain/conditions';
 
 /**
@@ -54,6 +54,27 @@ describe('poser et retirer un état', () => {
   it('l’ordre d’affichage ne dépend pas de l’ordre où on les a posés', () => {
     const etats = basculerEtat(basculerEtat([], 'petrifie'), 'a-terre');
     expect(etatsActifs(etats).map((e) => e.id)).toEqual(['a-terre', 'petrifie']);
+  });
+});
+
+describe('poser un état sans jamais le retirer', () => {
+  it('ajoute un état absent', () => {
+    expect(poserEtat([], 'invisible')).toEqual(['invisible']);
+  });
+
+  it('un état déjà présent n’est pas dupliqué — et surtout pas retiré', () => {
+    // La différence avec `basculerEtat` : rappeler deux fois de suite ne doit
+    // jamais faire disparaître l'état — l'effet qui l'auto-applique (voir
+    // App.tsx) se rejoue à chaque rendu tant que la concentration dure.
+    expect(poserEtat(['invisible'], 'invisible')).toEqual(['invisible']);
+  });
+
+  it('un identifiant inconnu est ignoré plutôt que stocké', () => {
+    expect(poserEtat([], 'ensorcele')).toEqual([]);
+  });
+
+  it('cohabite avec les états déjà présents', () => {
+    expect(poserEtat(['a-terre'], 'invisible')).toEqual(['a-terre', 'invisible']);
   });
 });
 

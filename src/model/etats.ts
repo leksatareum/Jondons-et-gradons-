@@ -62,6 +62,18 @@ export function basculerEtat(conditions: readonly string[], id: string): string[
 }
 
 /**
+ * Pose un état s'il n'y est pas déjà — sans jamais le retirer. Sert à
+ * l'appliquer automatiquement depuis la fiche d'un joueur (Invisibilité sur
+ * soi au moment du lancer, voir `spell-self-etat.ts`) sans risquer de
+ * l'inverser à chaque nouvelle lecture, comme le ferait `basculerEtat` rappelé
+ * deux fois par erreur.
+ */
+export function poserEtat(conditions: readonly string[], id: string): string[] {
+  if (!(id in CONDITIONS) || conditions.includes(id)) return [...conditions];
+  return [...conditions, id];
+}
+
+/**
  * Ce que les états actifs imposent, cumulé.
  *
  * Seuls les effets INCONDITIONNELS y entrent. Le désavantage d'Effrayé ne vaut

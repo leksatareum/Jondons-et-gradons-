@@ -15,8 +15,10 @@ import {
   deleteJournalEntry, deleteMessage, saveEncounter,
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
-import { addCombatants, type Combatant, type EncounterState } from '../domain/encounter';
+import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
+import { poserEtat } from '../model/etats';
+import { ETAT_AUTO_AU_LANCER } from '../model/spell-self-etat';
 
 /**
  * L'enchaînement des écrans.
@@ -361,6 +363,28 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
       }
     })();
   }, [client, sync, campaignId, stocke]);
+
+  // Certains sorts sur soi se traduisent directement par un état de combat
+  // (Invisibilité → « Invisible »). Le joueur qui les lance n'a pas le droit
+  // d'écrire sur la rencontre (RLS `jg_encounters_write`, MJ seulement) : cet
+  // effet tourne donc sur le CLIENT DU MJ, qui lit les fiches déjà
+  // synchronisées et pose l'état à sa place — sans qu'il ait à s'en souvenir.
+  // Idempotent par construction (`poserEtat` ne retire jamais) : rejouer sur
+  // un état déjà posé ne fait rien, pas de boucle.
+  useEffect(() => {
+    let suivant = affiche;
+    let modifie = false;
+    for (const fiche of snapshot.sheets) {
+      const spellId = fiche.data.live.concentration?.spellId;
+      const etatAuto = spellId ? ETAT_AUTO_AU_LANCER[spellId] : undefined;
+      if (!etatAuto) continue;
+      const combattant = suivant.combatants.find((c) => c.name === fiche.data.name);
+      if (!combattant || combattant.conditions.includes(etatAuto)) continue;
+      suivant = replaceCombatant(suivant, { ...combattant, conditions: poserEtat(combattant.conditions, etatAuto) });
+      modifie = true;
+    }
+    if (modifie) changer(suivant);
+  }, [snapshot.sheets, affiche, changer]);
 
   // La concentration vit sur la fiche (`live.concentration`), pas sur le
   // combattant : le joueur qui lance son propre sort n'a pas le droit
