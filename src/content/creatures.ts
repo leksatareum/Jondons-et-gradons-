@@ -5,13 +5,20 @@ export type CreatureTemplate = {
   hp: number;
   speed: string;
   cr: string;
-  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration' | 'humanoïde' | 'géant' | 'monstruosité';
+  kind: 'bête' | 'familier spécial' | 'mort-vivant' | 'aberration' | 'humanoïde' | 'géant' | 'monstruosité' | 'vase';
   actions?: CreatureAction[];
   traits?: string[];
   senses?: string;
   size?: 'TP' | 'P' | 'M' | 'G' | 'TG';
-  abilities?: { str: number; dex: number; con: number };
+  /**
+   * Les six caractéristiques. Pour une bête de Forme sauvage, `str`/`dex`/`con`
+   * seuls suffisent : les scores mentaux restent ceux du Druide (voir
+   * `BEAST_PHYSICAL` plus bas). Un adversaire (humanoïde, mort-vivant…) porte
+   * ses six scores, nécessaires à une compétence ou une DD d'incantation.
+   */
+  abilities?: Partial<Record<'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha', number>>;
   saveBonuses?: Partial<Record<'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha', number>>;
+  /** Bonus total (maîtrise incluse), tel qu'imprimé — pas le seul modificateur. Clé = nom affiché (« Discrétion », « Perception »…), pas un identifiant. */
   skillBonuses?: Record<string, number>;
   /** Étiquette(s) de thème pour la suggestion automatique de rencontre (« gobelin », « loup »…). Facultatif : sans thème, la créature n'apparaît que dans une suggestion « aléatoire ». */
   theme?: string[];
@@ -119,50 +126,108 @@ const RAW_PHB_CREATURES: CreatureTemplate[] = [
   { id: 'necrophage', name: 'Nécrophage', ac: 13, hp: 36, speed: '9 m', cr: '2', kind: 'mort-vivant', theme: ['mort-vivant'] },
   { id: 'ours-hibou', name: 'Ours-hibou', ac: 13, hp: 59, speed: '12 m', cr: '3', kind: 'monstruosité' },
   { id: 'mimique', name: 'Mimique', ac: 12, hp: 58, speed: '4,50 m', cr: '2', kind: 'monstruosité' },
+
+  // Deuxième complément : de quoi couvrir tout le niveau 5 (le Troll est la
+  // seule menace solo du lot jusqu'ici) et varier encore le tirage
+  // « Aléatoire » — deux gelées et un griffon, classiques de donjon.
+  { id: 'troll', name: 'Troll', ac: 15, hp: 84, speed: '9 m', cr: '5', kind: 'géant' },
+  { id: 'necromancien', name: 'Nécromancien', ac: 12, hp: 18, speed: '9 m', cr: '2', kind: 'humanoïde' },
+  { id: 'gelee-ocre', name: 'Gelée ocre', ac: 8, hp: 52, speed: '4,50 m · escalade 4,50 m · nage 4,50 m', cr: '2', kind: 'vase' },
+  { id: 'cube-gelatineux', name: 'Cube gélatineux', ac: 6, hp: 84, speed: '4,50 m', cr: '2', kind: 'vase' },
+  { id: 'griffon', name: 'Griffon', ac: 12, hp: 59, speed: '9 m · vol 24 m', cr: '2', kind: 'monstruosité' },
 ];
 
 // Caractéristiques utiles à Forme sauvage. Les scores mentaux restent ceux du
 // Druide, mais les maîtrises de sauvegarde et de compétence de la bête peuvent
 // fournir un meilleur bonus.
 const BEAST_PHYSICAL: Record<string, Pick<CreatureTemplate, 'size' | 'abilities' | 'saveBonuses' | 'skillBonuses'>> = {
-  ape: { size: 'M', abilities: { str: 16, dex: 14, con: 14 }, skillBonuses: { athletisme: 5, perception: 3 } },
-  badger: { size: 'TP', abilities: { str: 10, dex: 11, con: 16 }, skillBonuses: { perception: 3 } },
-  'black-bear': { size: 'M', abilities: { str: 15, dex: 12, con: 14 }, skillBonuses: { perception: 5 } },
+  ape: { size: 'M', abilities: { str: 16, dex: 14, con: 14 }, skillBonuses: { Athlétisme: 5, Perception: 3 } },
+  badger: { size: 'TP', abilities: { str: 10, dex: 11, con: 16 }, skillBonuses: { Perception: 3 } },
+  'black-bear': { size: 'M', abilities: { str: 15, dex: 12, con: 14 }, skillBonuses: { Perception: 5 } },
   boar: { size: 'M', abilities: { str: 13, dex: 11, con: 14 } },
-  'brown-bear': { size: 'G', abilities: { str: 17, dex: 12, con: 15 }, skillBonuses: { perception: 3 } },
+  'brown-bear': { size: 'G', abilities: { str: 17, dex: 12, con: 15 }, skillBonuses: { Perception: 3 } },
   camel: { size: 'G', abilities: { str: 15, dex: 8, con: 17 }, saveBonuses: { con: 5 } },
-  cat: { size: 'TP', abilities: { str: 3, dex: 15, con: 10 }, saveBonuses: { dex: 4 }, skillBonuses: { perception: 3, discretion: 4 } },
-  'constrictor-snake': { size: 'G', abilities: { str: 15, dex: 14, con: 12 }, skillBonuses: { perception: 2, discretion: 4 } },
-  crab: { size: 'TP', abilities: { str: 6, dex: 11, con: 12 }, skillBonuses: { discretion: 2 } },
-  crocodile: { size: 'G', abilities: { str: 15, dex: 10, con: 13 }, saveBonuses: { con: 3 }, skillBonuses: { discretion: 2 } },
-  'dire-wolf': { size: 'G', abilities: { str: 17, dex: 15, con: 15 }, skillBonuses: { perception: 5, discretion: 4 } },
+  cat: { size: 'TP', abilities: { str: 3, dex: 15, con: 10 }, saveBonuses: { dex: 4 }, skillBonuses: { Perception: 3, Discrétion: 4 } },
+  'constrictor-snake': { size: 'G', abilities: { str: 15, dex: 14, con: 12 }, skillBonuses: { Perception: 2, Discrétion: 4 } },
+  crab: { size: 'TP', abilities: { str: 6, dex: 11, con: 12 }, skillBonuses: { Discrétion: 2 } },
+  crocodile: { size: 'G', abilities: { str: 15, dex: 10, con: 13 }, saveBonuses: { con: 3 }, skillBonuses: { Discrétion: 2 } },
+  'dire-wolf': { size: 'G', abilities: { str: 17, dex: 15, con: 15 }, skillBonuses: { Perception: 5, Discrétion: 4 } },
   'draft-horse': { size: 'G', abilities: { str: 18, dex: 10, con: 15 } },
-  elk: { size: 'G', abilities: { str: 16, dex: 10, con: 11 }, skillBonuses: { perception: 2 } },
-  frog: { size: 'TP', abilities: { str: 1, dex: 13, con: 8 }, skillBonuses: { perception: 1, discretion: 3 } },
-  'giant-badger': { size: 'M', abilities: { str: 13, dex: 10, con: 17 }, skillBonuses: { perception: 3 } },
-  'giant-crab': { size: 'M', abilities: { str: 13, dex: 13, con: 11 }, skillBonuses: { discretion: 3 } },
-  'giant-goat': { size: 'G', abilities: { str: 17, dex: 13, con: 12 }, saveBonuses: { str: 5 }, skillBonuses: { perception: 3 } },
+  elk: { size: 'G', abilities: { str: 16, dex: 10, con: 11 }, skillBonuses: { Perception: 2 } },
+  frog: { size: 'TP', abilities: { str: 1, dex: 13, con: 8 }, skillBonuses: { Perception: 1, Discrétion: 3 } },
+  'giant-badger': { size: 'M', abilities: { str: 13, dex: 10, con: 17 }, skillBonuses: { Perception: 3 } },
+  'giant-crab': { size: 'M', abilities: { str: 13, dex: 13, con: 11 }, skillBonuses: { Discrétion: 3 } },
+  'giant-goat': { size: 'G', abilities: { str: 17, dex: 13, con: 12 }, saveBonuses: { str: 5 }, skillBonuses: { Perception: 3 } },
   'giant-seahorse': { size: 'G', abilities: { str: 15, dex: 12, con: 11 } },
-  'giant-spider': { size: 'G', abilities: { str: 14, dex: 16, con: 12 }, skillBonuses: { perception: 4, discretion: 7 } },
-  'giant-weasel': { size: 'M', abilities: { str: 11, dex: 17, con: 10 }, skillBonuses: { acrobaties: 5, perception: 3, discretion: 5 } },
-  goat: { size: 'M', abilities: { str: 11, dex: 10, con: 11 }, saveBonuses: { str: 2 }, skillBonuses: { perception: 2 } },
-  lion: { size: 'G', abilities: { str: 17, dex: 15, con: 11 }, skillBonuses: { perception: 3, discretion: 4 } },
+  'giant-spider': { size: 'G', abilities: { str: 14, dex: 16, con: 12 }, skillBonuses: { Perception: 4, Discrétion: 7 } },
+  'giant-weasel': { size: 'M', abilities: { str: 11, dex: 17, con: 10 }, skillBonuses: { Acrobaties: 5, Perception: 3, Discrétion: 5 } },
+  goat: { size: 'M', abilities: { str: 11, dex: 10, con: 11 }, saveBonuses: { str: 2 }, skillBonuses: { Perception: 2 } },
+  lion: { size: 'G', abilities: { str: 17, dex: 15, con: 11 }, skillBonuses: { Perception: 3, Discrétion: 4 } },
   lizard: { size: 'TP', abilities: { str: 2, dex: 11, con: 10 } },
-  mastiff: { size: 'M', abilities: { str: 13, dex: 14, con: 12 }, saveBonuses: { wis: 3 }, skillBonuses: { perception: 5 } },
+  mastiff: { size: 'M', abilities: { str: 13, dex: 14, con: 12 }, saveBonuses: { wis: 3 }, skillBonuses: { Perception: 5 } },
   mule: { size: 'M', abilities: { str: 14, dex: 10, con: 13 } },
-  octopus: { size: 'P', abilities: { str: 4, dex: 15, con: 11 }, skillBonuses: { perception: 2, discretion: 6 } },
-  panther: { size: 'M', abilities: { str: 14, dex: 15, con: 10 }, skillBonuses: { perception: 4, discretion: 6 } },
+  octopus: { size: 'P', abilities: { str: 4, dex: 15, con: 11 }, skillBonuses: { Perception: 2, Discrétion: 6 } },
+  panther: { size: 'M', abilities: { str: 14, dex: 15, con: 10 }, skillBonuses: { Perception: 4, Discrétion: 6 } },
   pony: { size: 'M', abilities: { str: 15, dex: 10, con: 13 }, saveBonuses: { str: 4 } },
-  rat: { size: 'TP', abilities: { str: 2, dex: 11, con: 9 }, skillBonuses: { perception: 2 } },
-  'reef-shark': { size: 'M', abilities: { str: 14, dex: 15, con: 13 }, skillBonuses: { perception: 2 } },
+  rat: { size: 'TP', abilities: { str: 2, dex: 11, con: 9 }, skillBonuses: { Perception: 2 } },
+  'reef-shark': { size: 'M', abilities: { str: 14, dex: 15, con: 13 }, skillBonuses: { Perception: 2 } },
   'riding-horse': { size: 'G', abilities: { str: 16, dex: 13, con: 12 } },
   scorpion: { size: 'TP', abilities: { str: 2, dex: 11, con: 8 } },
-  spider: { size: 'TP', abilities: { str: 2, dex: 14, con: 8 }, skillBonuses: { discretion: 4 } },
-  tiger: { size: 'G', abilities: { str: 17, dex: 16, con: 14 }, skillBonuses: { perception: 3, discretion: 7 } },
+  spider: { size: 'TP', abilities: { str: 2, dex: 14, con: 8 }, skillBonuses: { Discrétion: 4 } },
+  tiger: { size: 'G', abilities: { str: 17, dex: 16, con: 14 }, skillBonuses: { Perception: 3, Discrétion: 7 } },
   'venomous-snake': { size: 'TP', abilities: { str: 2, dex: 15, con: 11 } },
   warhorse: { size: 'G', abilities: { str: 18, dex: 12, con: 13 }, saveBonuses: { con: 3, wis: 3 } },
-  weasel: { size: 'TP', abilities: { str: 3, dex: 16, con: 8 }, skillBonuses: { acrobaties: 5, perception: 3, discretion: 5 } },
-  wolf: { size: 'M', abilities: { str: 14, dex: 15, con: 12 }, skillBonuses: { perception: 5, discretion: 4 } },
+  weasel: { size: 'TP', abilities: { str: 3, dex: 16, con: 8 }, skillBonuses: { Acrobaties: 5, Perception: 3, Discrétion: 5 } },
+  wolf: { size: 'M', abilities: { str: 14, dex: 15, con: 12 }, skillBonuses: { Perception: 5, Discrétion: 4 } },
+};
+
+// Caractéristiques des adversaires (humanoïdes, morts-vivants, monstrosités…) :
+// contrairement à une bête de Forme sauvage, ils portent leurs six scores —
+// une compétence ou une DD d'incantation peut réclamer l'Intelligence, la
+// Sagesse ou le Charisme, qu'aucune bête de la table ci-dessus n'a besoin de
+// porter. Valeurs alignées sur les profils publiés quand ils existent ;
+// original et prudent sinon, comme le reste de cet index.
+const MONSTER_ABILITIES: Record<string, Pick<CreatureTemplate, 'abilities' | 'saveBonuses' | 'skillBonuses'>> = {
+  imp: { abilities: { str: 6, dex: 17, con: 13, int: 11, wis: 12, cha: 14 }, skillBonuses: { Tromperie: 4, Intuition: 3, Persuasion: 4, Discrétion: 5 } },
+  pseudodragon: { abilities: { str: 6, dex: 15, con: 13, int: 10, wis: 13, cha: 10 }, skillBonuses: { Perception: 5, Discrétion: 3 } },
+  quasit: { abilities: { str: 5, dex: 17, con: 13, int: 11, wis: 12, cha: 14 }, skillBonuses: { Discrétion: 5 } },
+  skeleton: { abilities: { str: 10, dex: 14, con: 15, int: 6, wis: 8, cha: 5 } },
+  'slaad-tadpole': { abilities: { str: 8, dex: 15, con: 11, int: 2, wis: 10, cha: 3 } },
+  'sphinx-of-wonder': { abilities: { str: 10, dex: 15, con: 13, int: 13, wis: 13, cha: 11 }, skillBonuses: { Perception: 3 } },
+  sprite: { abilities: { str: 3, dex: 18, con: 10, int: 14, wis: 13, cha: 11 }, skillBonuses: { Perception: 3, Discrétion: 8 } },
+  zombie: { abilities: { str: 13, dex: 6, con: 16, int: 3, wis: 6, cha: 5 } },
+
+  'gobelin-larbin': { abilities: { str: 8, dex: 14, con: 10, int: 10, wis: 8, cha: 8 }, skillBonuses: { Discrétion: 6 } },
+  'gobelin-guerrier': { abilities: { str: 8, dex: 14, con: 10, int: 10, wis: 8, cha: 8 }, skillBonuses: { Discrétion: 6 } },
+  'gobelin-chef': { abilities: { str: 10, dex: 14, con: 10, int: 10, wis: 8, cha: 10 }, skillBonuses: { Discrétion: 5 } },
+  'gobelin-envouteur': { abilities: { str: 8, dex: 14, con: 10, int: 14, wis: 10, cha: 10 }, skillBonuses: { Escamotage: 5, Discrétion: 7 } },
+  bandit: { abilities: { str: 11, dex: 12, con: 12, int: 10, wis: 10, cha: 10 } },
+  'bandit-capitaine': { abilities: { str: 15, dex: 16, con: 14, int: 14, wis: 11, cha: 14 }, skillBonuses: { Athlétisme: 4, Tromperie: 4 } },
+  'kobold-guerrier': { abilities: { str: 7, dex: 15, con: 9, int: 8, wis: 7, cha: 8 } },
+  'kobold-aile': { abilities: { str: 8, dex: 16, con: 10, int: 8, wis: 9, cha: 8 } },
+  ogre: { abilities: { str: 19, dex: 8, con: 16, int: 5, wis: 7, cha: 7 } },
+  ogrillon: { abilities: { str: 17, dex: 8, con: 15, int: 6, wis: 8, cha: 7 } },
+  'ogre-zombie': { abilities: { str: 19, dex: 6, con: 18, int: 3, wis: 6, cha: 5 } },
+  worg: { abilities: { str: 16, dex: 13, con: 13, int: 7, wis: 11, cha: 8 }, skillBonuses: { Perception: 4 } },
+  harpie: { abilities: { str: 12, dex: 13, con: 12, int: 7, wis: 10, cha: 13 } },
+
+  'orc-guerrier': { abilities: { str: 16, dex: 12, con: 16, int: 7, wis: 11, cha: 10 } },
+  'orc-chef-de-guerre': { abilities: { str: 18, dex: 12, con: 18, int: 9, wis: 12, cha: 14 }, skillBonuses: { Intimidation: 4 } },
+  'hobgobelin-guerrier': { abilities: { str: 13, dex: 12, con: 12, int: 10, wis: 10, cha: 9 } },
+  malandrin: { abilities: { str: 15, dex: 14, con: 13, int: 8, wis: 11, cha: 9 }, skillBonuses: { Discrétion: 6, Survie: 2 } },
+  'gnoll-guerrier': { abilities: { str: 14, dex: 12, con: 11, int: 6, wis: 10, cha: 7 } },
+  ombre: { abilities: { str: 6, dex: 14, con: 13, int: 6, wis: 10, cha: 8 }, skillBonuses: { Discrétion: 4 } },
+  spectre: { abilities: { str: 1, dex: 14, con: 11, int: 10, wis: 10, cha: 11 } },
+  goule: { abilities: { str: 13, dex: 15, con: 10, int: 7, wis: 10, cha: 6 } },
+  necrophage: { abilities: { str: 16, dex: 17, con: 10, int: 11, wis: 10, cha: 8 }, skillBonuses: { Perception: 2 } },
+  'ours-hibou': { abilities: { str: 20, dex: 12, con: 17, int: 3, wis: 12, cha: 7 }, skillBonuses: { Perception: 3 } },
+  mimique: { abilities: { str: 17, dex: 12, con: 15, int: 5, wis: 13, cha: 8 }, skillBonuses: { Discrétion: 5 } },
+
+  troll: { abilities: { str: 18, dex: 13, con: 20, int: 7, wis: 9, cha: 7 }, skillBonuses: { Perception: 2 } },
+  necromancien: { abilities: { str: 9, dex: 13, con: 12, int: 16, wis: 11, cha: 11 }, skillBonuses: { Arcanes: 5, Histoire: 5 } },
+  'gelee-ocre': { abilities: { str: 15, dex: 6, con: 14, int: 2, wis: 6, cha: 1 } },
+  'cube-gelatineux': { abilities: { str: 14, dex: 3, con: 20, int: 1, wis: 6, cha: 1 } },
+  griffon: { abilities: { str: 18, dex: 15, con: 16, int: 2, wis: 13, cha: 8 }, skillBonuses: { Perception: 5 } },
 };
 
 // Données de résolution indispensables aux formes accessibles aux Druides 1-5.
@@ -338,23 +403,23 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
     { name: 'Gifle', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d8+1', damageType: 'contondants' },
   ] },
 
-  'gobelin-larbin': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +6.'], actions: [
+  'gobelin-larbin': { senses: 'Vision dans le noir 18 m · perception passive 9', actions: [
     { name: 'Dague', kind: 'attack', toHit: 4, reach: '1,50 m ou 6/18 m', damage: '1d4+2', damageType: 'perforants' },
     { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
   ] },
-  'gobelin-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +6.'], actions: [
+  'gobelin-guerrier': { senses: 'Vision dans le noir 18 m · perception passive 9', actions: [
     { name: 'Cimeterre', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'tranchants', detail: '+1d4 tranchants supplémentaires si le jet d’attaque avait l’avantage.' },
     { name: 'Arc court', kind: 'attack', toHit: 4, reach: '24/96 m', damage: '1d6+2', damageType: 'perforants', detail: '+1d4 perforants supplémentaires si le jet d’attaque avait l’avantage.' },
     { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
   ] },
-  'gobelin-chef': { senses: 'Vision dans le noir 18 m · perception passive 9', traits: ['Discrétion +5.'], actions: [
+  'gobelin-chef': { senses: 'Vision dans le noir 18 m · perception passive 9', actions: [
     { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques, Cimeterre ou Arc court en combinaison libre.' },
     { name: 'Cimeterre', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'tranchants', detail: '+1d4 tranchants supplémentaires si le jet d’attaque avait l’avantage.' },
     { name: 'Arc court', kind: 'attack', toHit: 4, reach: '24/96 m', damage: '1d6+2', damageType: 'perforants', detail: '+1d4 perforants supplémentaires si le jet d’attaque avait l’avantage.' },
     { name: 'Fuite preste', kind: 'utility', detail: 'Action bonus : Se dégager ou Se cacher.' },
     { name: 'Attaque déviée', kind: 'utility', detail: 'Réaction, quand une créature visible fait un jet d’attaque contre le gobelin : il choisit un allié P ou M à 1,50 m, ils échangent leur place et l’allié devient la cible.' },
   ] },
-  'gobelin-envouteur': { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Escamotage +5, Discrétion +7.'], actions: [
+  'gobelin-envouteur': { senses: 'Vision dans le noir 18 m · perception passive 10', actions: [
     { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques de Bâton maléfique ; l’une peut être remplacée par Incantation.' },
     { name: 'Bâton maléfique', kind: 'attack', toHit: 5, reach: '1,50 m ou 18 m', damage: '2d8+3', damageType: 'psychiques' },
     { name: 'Incantation', kind: 'utility', detail: 'DD 13, Intelligence. À volonté : Illusion mineure. 1/jour chacun : Cécité/Surdité, Feu de fée, Graisse.' },
@@ -365,7 +430,7 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
     { name: 'Cimeterre', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d6+1', damageType: 'tranchants' },
     { name: 'Arbalète légère', kind: 'attack', toHit: 3, reach: '24/96 m', damage: '1d8+1', damageType: 'perforants' },
   ] },
-  'bandit-capitaine': { senses: 'Perception passive 10', traits: ['Athlétisme +4, Tromperie +4.'], actions: [
+  'bandit-capitaine': { senses: 'Perception passive 10', actions: [
     { name: 'Multiattaque', kind: 'utility', attacks: 2, detail: 'Deux attaques, Cimeterre ou Pistolet en combinaison libre.' },
     { name: 'Cimeterre', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d6+3', damageType: 'tranchants' },
     { name: 'Pistolet', kind: 'attack', toHit: 5, reach: '9/27 m', damage: '1d10+3', damageType: 'perforants' },
@@ -392,7 +457,7 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
     { name: 'Gifle', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '2d8+4', damageType: 'contondants' },
   ] },
 
-  worg: { senses: 'Vision dans le noir 18 m · perception passive 14', traits: ['Perception +4.'], actions: [
+  worg: { senses: 'Vision dans le noir 18 m · perception passive 14', actions: [
     { name: 'Morsure', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'perforants', detail: 'La prochaine attaque contre la cible avant le début du prochain tour du worg a l’avantage.' },
   ] },
 
@@ -415,7 +480,7 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
     { name: 'Épée longue', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d8+1', damageType: 'tranchants', detail: 'À deux mains : 1d10+1.' },
     { name: 'Arc long', kind: 'attack', toHit: 3, reach: '45/180 m', damage: '1d8+1', damageType: 'perforants' },
   ] },
-  malandrin: { senses: 'Vision dans le noir 18 m · perception passive 10', traits: ['Discrétion +6.'], actions: [
+  malandrin: { senses: 'Vision dans le noir 18 m · perception passive 10', actions: [
     { name: 'Fléau d’armes', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '2d8+2', damageType: 'perforants', detail: 'Avec avantage (surprise) : +2d6 supplémentaires.' },
     { name: 'Javeline', kind: 'attack', toHit: 4, reach: '1,50 m ou 9/36 m', damage: '2d6+2', damageType: 'perforants' },
   ] },
@@ -464,10 +529,43 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
     { name: 'Pseudopode', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3', damageType: 'contondants' },
     { name: 'Morsure', kind: 'attack', toHit: 5, reach: '1,50 m', damage: '1d8+3 perforants + 1d8 acides', damageType: 'perforants et acides' },
   ] },
+
+  troll: { senses: 'Vision dans le noir 18 m · perception passive 12', traits: [
+    'Régénération : regagne 10 PV au début de son tour, sauf s’il a subi des dégâts de feu ou d’acide depuis son dernier tour.',
+  ], actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 3, sequence: ['Morsure', 'Griffe', 'Griffe'], detail: 'Une Morsure et deux Griffes.' },
+    { name: 'Morsure', kind: 'attack', toHit: 9, reach: '1,50 m', damage: '1d6+4', damageType: 'perforants' },
+    { name: 'Griffe', kind: 'attack', toHit: 9, reach: '1,50 m', damage: '2d6+4', damageType: 'tranchants' },
+  ] },
+  necromancien: { senses: 'Perception passive 10', traits: ['Incantation : DD 13, Intelligence.'], actions: [
+    { name: 'Dague', kind: 'attack', toHit: 3, reach: '1,50 m ou 6/18 m', damage: '1d4+1', damageType: 'perforants' },
+    { name: 'Rayon nécrotique', kind: 'attack', toHit: 5, reach: '36 m', damage: '2d8', damageType: 'nécrotiques' },
+    { name: 'Serviteur relevé (1/jour)', kind: 'utility', detail: 'Anime un cadavre à 3 m en Squelette ou Zombie sous son contrôle, pour 1 heure.' },
+  ] },
+  'gelee-ocre': { senses: 'Vision aveugle 18 m · perception passive 8', traits: [
+    'Amorphe : peut se faufiler dans un espace de 2,5 cm de large sans se serrer.',
+    'Résistance aux dégâts acides.',
+    'Immunité au poison, à Empoisonné, à Étourdi et à À terre.',
+  ], actions: [
+    { name: 'Pseudopode', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '2d6+2 contondants + 3d6 acides', damageType: 'contondants et acides', detail: 'Une arme non magique en métal qui la touche en mêlée subit 1d6 dégâts de corrosion.' },
+  ] },
+  'cube-gelatineux': { senses: 'Vision aveugle 18 m · perception passive 8', traits: [
+    'Transparent : sauvegarde de Sagesse (Perception) DD 15 pour la repérer à distance ; une créature qui ne l’a pas repérée et la heurte ou entre dans son espace est touchée automatiquement par Pseudopode et engloutie si possible.',
+    'Amorphe : peut se faufiler dans un espace de 2,5 cm de large sans se serrer.',
+    'Immunité au poison, à Empoisonné, à Étourdi et à À terre.',
+  ], actions: [
+    { name: 'Pseudopode', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '3d6', damageType: 'acides', detail: 'Cible M ou moins : Engloutie (occupe l’espace du cube, aveuglée, retenue, ne respire pas, subit les mêmes dégâts au début de chaque tour du cube ; libérée si le cube meurt ou se déplace hors d’elle).' },
+  ] },
+  griffon: { senses: 'Perception passive 15', actions: [
+    { name: 'Multiattaque', kind: 'utility', attacks: 2, sequence: ['Bec', 'Griffes'], detail: 'Un Bec et une attaque de Griffes.' },
+    { name: 'Bec', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '1d8+4', damageType: 'perforants' },
+    { name: 'Griffes', kind: 'attack', toHit: 6, reach: '1,50 m', damage: '2d6+4', damageType: 'tranchants' },
+  ] },
 };
 
 export const PHB_CREATURES: CreatureTemplate[] = RAW_PHB_CREATURES.map((creature) => ({
   ...creature,
   ...(BEAST_PHYSICAL[creature.id] || {}),
+  ...(MONSTER_ABILITIES[creature.id] || {}),
   ...(BEAST_COMBAT[creature.id] || {}),
 }));

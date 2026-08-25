@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PHB_CREATURES } from './creatures';
 import { THEMES_RENCONTRE } from '../domain/encounter-generator';
+import { SKILLS } from './character-basics';
 
 describe('le bestiaire', () => {
   it('un identifiant par créature, jamais deux fois le même', () => {
@@ -35,6 +36,7 @@ describe('le bestiaire', () => {
     const ajoutees = [
       'orc-guerrier', 'orc-chef-de-guerre', 'hobgobelin-guerrier', 'malandrin',
       'gnoll-guerrier', 'ombre', 'spectre', 'goule', 'necrophage', 'ours-hibou', 'mimique',
+      'troll', 'necromancien', 'gelee-ocre', 'cube-gelatineux', 'griffon',
     ];
     for (const id of ajoutees) {
       const creature = PHB_CREATURES.find((c) => c.id === id);
@@ -48,6 +50,31 @@ describe('le bestiaire', () => {
     // créature de ce genre » à chaque fois, silencieusement inutile.
     for (const [theme, libelle] of THEMES_RENCONTRE) {
       expect(PHB_CREATURES.some((creature) => creature.theme?.includes(theme)), libelle).toBe(true);
+    }
+  });
+
+  it('chaque clé de skillBonuses est un nom de compétence affiché, pas un identifiant', () => {
+    // `AddAdversaryDialog` utilise la clé telle quelle comme étiquette (voir
+    // `competencesDuTemplate`) : une clé du genre « discretion » s'afficherait
+    // telle quelle au MJ au lieu de « Discrétion ». Régression du bestiaire
+    // de Forme sauvage, qui utilisait par erreur des identifiants minuscules.
+    const nomsValides = new Set(SKILLS.map((skill) => skill.name));
+    for (const creature of PHB_CREATURES) {
+      for (const nom of Object.keys(creature.skillBonuses ?? {})) {
+        expect(nomsValides.has(nom), `${creature.id} : « ${nom} »`).toBe(true);
+      }
+    }
+  });
+
+  it('toute créature avec des caractéristiques mentales (adversaire, pas bête de Forme sauvage) porte ses six scores', () => {
+    // Une bête de Forme sauvage garde volontairement Int/Sag/Cha absents
+    // (ceux du Druide font foi) ; un adversaire, lui, doit porter les six —
+    // sans quoi une compétence ou une DD basée sur une mentale serait fausse.
+    for (const creature of PHB_CREATURES) {
+      if (creature.kind === 'bête' || !creature.abilities) continue;
+      for (const ability of ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const) {
+        expect(creature.abilities[ability], `${creature.id}.${ability}`).toBeTypeOf('number');
+      }
     }
   });
 
