@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  activeCombatant, addCombatant, addCombatants, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
   withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
@@ -125,6 +125,17 @@ describe('créatures homonymes', () => {
     ]).map((c) => c.name);
     expect(noms).toEqual(['Gobelin 1', 'Gobelin 2', 'Chef gobelin', 'Gobelin 3']);
   });
+
+  it('reste juste à trois ajouts successifs, pas seulement d’un coup', () => {
+    // Le cas qui cassait : `addCombatant` appelle cette fonction à chaque
+    // ajout, un par un. Un troisième « Gobelin » ajouté séparément doit
+    // devenir « Gobelin 3 », pas rester « Gobelin ».
+    let etat: EncounterState = { combatants: [], turnIndex: -1, round: 0 };
+    etat = addCombatant(etat, combattant('g1', 0, { name: 'Gobelin' }));
+    etat = addCombatant(etat, combattant('g2', 0, { name: 'Gobelin' }));
+    etat = addCombatant(etat, combattant('g3', 0, { name: 'Gobelin' }));
+    expect(etat.combatants.map((c) => c.name)).toEqual(['Gobelin 1', 'Gobelin 2', 'Gobelin 3']);
+  });
 });
 
 describe('mise à jour', () => {
@@ -195,6 +206,31 @@ describe('ajouter un combattant', () => {
     const apres = addCombatant(etat, base({ id: 'b', name: 'Loup', initiative: 20 }));
     expect(orderedCombatants(apres)[0].name).toBe('Loup');
     expect(apres.turnIndex).toBe(0); // le tour en cours n'est pas perturbé
+  });
+});
+
+describe('déclencher une rencontre préparée (ajouter plusieurs combattants d’un coup)', () => {
+  const base = (over: Partial<Combatant> = {}): Combatant => ({
+    id: 'x', name: 'Gobelin', side: 'creature', initiative: 0, dexterity: 2,
+    maxHp: 7, damageTaken: 0, temporaryHp: 0, armorClass: 15, conditions: [],
+    ...over,
+  });
+
+  it('ajoute tout le lot, sans toucher à ce qui existait déjà', () => {
+    const etat: EncounterState = { combatants: [base({ id: 'a', name: 'Dauby' })], turnIndex: -1, round: 0 };
+    const apres = addCombatants(etat, [base({ id: 'b' }), base({ id: 'c', name: 'Ogre' })]);
+    expect(apres.combatants.map((c) => c.name)).toEqual(['Dauby', 'Gobelin', 'Ogre']);
+  });
+
+  it('renomme les homonymes du lot entre eux, comme un ajout un par un', () => {
+    const etat: EncounterState = { combatants: [], turnIndex: -1, round: 0 };
+    const apres = addCombatants(etat, [base({ id: 'a' }), base({ id: 'b' }), base({ id: 'c' })]);
+    expect(apres.combatants.map((c) => c.name)).toEqual(['Gobelin 1', 'Gobelin 2', 'Gobelin 3']);
+  });
+
+  it('un lot vide ne change rien', () => {
+    const etat: EncounterState = { combatants: [base({ id: 'a' })], turnIndex: -1, round: 0 };
+    expect(addCombatants(etat, [])).toEqual(etat);
   });
 });
 

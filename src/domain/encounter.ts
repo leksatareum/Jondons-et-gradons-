@@ -190,18 +190,28 @@ export function applyHealing(combatant: Combatant, amount: number): Combatant {
  * Numérote les créatures homonymes (Gobelin 1, Gobelin 2…) sans toucher aux
  * noms uniques. Trois « Gobelin » indiscernables dans la liste sont l'une des
  * plaies classiques de la gestion de combat.
+ *
+ * Regroupe par nom DE BASE (le suffixe « N » retiré), pas par nom littéral :
+ * `addCombatant` rappelle cette fonction à chaque ajout, un par un. Grouper
+ * par nom littéral faisait dérailler la numérotation dès le troisième
+ * « Gobelin » ajouté séparément — les deux premiers devenaient « Gobelin 1 »
+ * et « Gobelin 2 », deux noms désormais uniques à ses yeux, et le troisième
+ * restait « Gobelin » tout court au lieu de « Gobelin 3 ».
  */
 export function withDistinctNames(combatants: Combatant[]): Combatant[] {
+  const baseNameOf = (name: string) => name.replace(/ \d+$/, '');
   const counts = new Map<string, number>();
   for (const combatant of combatants) {
-    counts.set(combatant.name, (counts.get(combatant.name) ?? 0) + 1);
+    const base = baseNameOf(combatant.name);
+    counts.set(base, (counts.get(base) ?? 0) + 1);
   }
   const seen = new Map<string, number>();
   return combatants.map((combatant) => {
-    if ((counts.get(combatant.name) ?? 0) <= 1) return combatant;
-    const rank = (seen.get(combatant.name) ?? 0) + 1;
-    seen.set(combatant.name, rank);
-    return { ...combatant, name: `${combatant.name} ${rank}` };
+    const base = baseNameOf(combatant.name);
+    if ((counts.get(base) ?? 0) <= 1) return combatant;
+    const rank = (seen.get(base) ?? 0) + 1;
+    seen.set(base, rank);
+    return { ...combatant, name: `${base} ${rank}` };
   });
 }
 
@@ -220,6 +230,14 @@ export const replaceCombatant = (state: EncounterState, combatant: Combatant): E
  */
 export const addCombatant = (state: EncounterState, combatant: Combatant): EncounterState =>
   ({ ...state, combatants: withDistinctNames([...state.combatants, combatant]) });
+
+/**
+ * Ajoute plusieurs combattants d'un coup — déclencher une rencontre préparée
+ * (voir `jg_encounter_templates`), c'est ça : le sac de créatures composé à
+ * l'avance rejoint la rencontre en cours, sans y toucher pour le reste.
+ */
+export const addCombatants = (state: EncounterState, combatants: Combatant[]): EncounterState =>
+  combatants.reduce(addCombatant, state);
 
 /**
  * Retire un combattant — adversaire ajouté par erreur, ou qu'on ne veut

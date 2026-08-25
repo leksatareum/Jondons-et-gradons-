@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  ENCOUNTERS_TABLE, JOURNAL_TABLE, MESSAGES_TABLE, NOTES_TABLE, SHEETS_TABLE, type CampaignSync,
+  ENCOUNTER_TEMPLATES_TABLE, ENCOUNTERS_TABLE, JOURNAL_TABLE, MESSAGES_TABLE, NOTES_TABLE, SHEETS_TABLE,
+  type CampaignSync,
 } from './campaign-sync';
 import type { SyncRow } from './supabase-transport';
 import type { CharacterSheet } from '../model/character';
-import type { EncounterState } from '../domain/encounter';
+import type { Combatant, EncounterState } from '../domain/encounter';
 
 /**
  * Les écritures.
@@ -205,3 +206,42 @@ export async function createEncounter(
   sync?.ingest(ENCOUNTERS_TABLE, row);
   return row;
 }
+
+/**
+ * Rencontres préparées à l'avance : un nom et un sac de créatures, jamais lus
+ * par un joueur (RLS `jg_encounter_templates_all`, MJ seulement). Les
+ * déclencher revient à copier leurs créatures dans la rencontre en cours
+ * (voir `addCombatants`, src/domain/encounter.ts) — cette table-ci n'est
+ * jamais elle-même « la » rencontre.
+ */
+export async function createEncounterTemplate(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  campaignId: string,
+  name: string,
+  combatants: Combatant[],
+): Promise<SyncRow> {
+  const { data, error } = await client
+    .from(ENCOUNTER_TEMPLATES_TABLE)
+    .insert({ campaign_id: campaignId, name, combatants })
+    .select()
+    .single();
+  if (error) throw new WriteError(ENCOUNTER_TEMPLATES_TABLE, error.message);
+  if (!data) throw new WriteError(ENCOUNTER_TEMPLATES_TABLE, 'création refusée');
+  const row = data as SyncRow;
+  sync?.ingest(ENCOUNTER_TEMPLATES_TABLE, row);
+  return row;
+}
+
+export const saveEncounterTemplate = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+  patch: { name?: string; combatants?: Combatant[] },
+): Promise<SyncRow> => writeRow(client, sync, ENCOUNTER_TEMPLATES_TABLE, id, patch);
+
+export const deleteEncounterTemplate = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+): Promise<void> => deleteRow(client, sync, ENCOUNTER_TEMPLATES_TABLE, id);

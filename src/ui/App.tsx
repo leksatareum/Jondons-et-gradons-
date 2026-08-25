@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { GmCombatScreen } from './GmCombatScreen';
 import { SheetView, type SheetTab } from './SheetView';
 import { JournalScreen } from './JournalScreen';
+import { PreparedEncountersScreen } from './PreparedEncountersScreen';
 import { SignInScreen } from './SignInScreen';
 import { SyncBanner } from './SyncBanner';
 import { useCampaign } from './useCampaign';
@@ -10,10 +11,11 @@ import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from 
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { withParty } from './roster';
 import {
-  createEncounter, createJournalEntry, createMessage, deleteJournalEntry, deleteMessage, saveEncounter,
+  createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
+  deleteJournalEntry, deleteMessage, saveEncounter,
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
-import type { EncounterState } from '../domain/encounter';
+import { addCombatants, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
 
 /**
@@ -94,7 +96,7 @@ function Table({ client, compte, campagne }: {
   /** Fiche que le MJ regarde. `null` : il est sur sa liste d'initiative. */
   const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
   /** Écran principal du MJ, hors fiche ouverte : son combat, ou le journal. */
-  const [ecranMj, setEcranMj] = useState<'combat' | 'journal'>('combat');
+  const [ecranMj, setEcranMj] = useState<'combat' | 'rencontres' | 'journal'>('combat');
 
   // La fiche du joueur, c'est la sienne — la propriété vient de la base, pas
   // d'un choix d'écran.
@@ -159,13 +161,14 @@ function Table({ client, compte, campagne }: {
       <>
         {bandeau}
         <MjOnglets valeur={ecranMj} onChanger={setEcranMj} />
-        {ecranMj === 'combat' ? (
+        {ecranMj === 'combat' || ecranMj === 'rencontres' ? (
           <EcranMj
             client={client}
             sync={sync}
             campaignId={campagne.campaignId}
             snapshot={snapshot}
             onOuvrirFiche={setFicheOuverte}
+            vue={ecranMj}
           />
         ) : (
           <JournalScreen
@@ -263,10 +266,12 @@ function BandeauMj({ nom, onRetour }: { nom: string; onRetour: () => void }) {
  * pied de page de combat) — inutile de reproduire le même piège ici.
  */
 function MjOnglets({ valeur, onChanger }: {
-  valeur: 'combat' | 'journal';
-  onChanger: (valeur: 'combat' | 'journal') => void;
+  valeur: 'combat' | 'rencontres' | 'journal';
+  onChanger: (valeur: 'combat' | 'rencontres' | 'journal') => void;
 }) {
-  const items: ['combat' | 'journal', string][] = [['combat', 'Combat'], ['journal', 'Journal']];
+  const items: ['combat' | 'rencontres' | 'journal', string][] = [
+    ['combat', 'Combat'], ['rencontres', 'Rencontres'], ['journal', 'Journal'],
+  ];
   return (
     <nav style={{
       display: 'flex', gap: 4, padding: '8px 14px',
@@ -307,12 +312,14 @@ const vide: EncounterState = { turnIndex: -1, round: 0, combatants: [] };
  *   réseau, puis la ligne renvoyée par la base reprend la main. Sans lui, tenir
  *   « Suivant » deux fois de suite perdrait le premier appui.
  */
-function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
+function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
   client: SupabaseClient;
   sync: CampaignSync;
   campaignId: string;
   snapshot: CampaignSnapshot;
   onOuvrirFiche: (sheetId: string) => void;
+  /** Combat en cours, ou composition des rencontres préparées — les deux partagent la même rencontre en cours. */
+  vue: 'combat' | 'rencontres';
 }) {
   const [brouillon, setBrouillon] = useState<EncounterState | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -370,6 +377,21 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
     return table;
   }, [snapshot.sheets]);
 
+  /**
+   * Déclencher une rencontre préparée : ses créatures rejoignent la rencontre
+   * en cours — celle-là même que `GmCombatScreen` édite, avec le groupe déjà
+   * dedans (`affiche`). Marche aussi bien avant que le combat ne soit lancé
+   * (on enrichit la préparation) qu'en plein combat (on corse la rencontre).
+   */
+  const declencher = (combatants: Combatant[]) => changer(addCombatants(affiche, combatants));
+
+  const creerRencontre = (name: string, combatants: Combatant[]) => {
+    void createEncounterTemplate(client, sync, campaignId, name, combatants);
+  };
+  const supprimerRencontre = (id: string) => {
+    void deleteEncounterTemplate(client, sync, id);
+  };
+
   return (
     <>
       {erreur && (
@@ -380,16 +402,25 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche }: {
           {erreur}
         </p>
       )}
-      <GmCombatScreen
-        state={affiche}
-        onChange={changer}
-        concentrationParNom={concentrationParNom}
-        onOpenSheet={(combatantId) => {
-          // L'identifiant du combattant issu du groupe EST celui de la fiche
-          // (voir `withParty`) : une créature, elle, n'en a pas.
-          if (snapshot.sheets.some((fiche) => fiche.id === combatantId)) onOuvrirFiche(combatantId);
-        }}
-      />
+      {vue === 'combat' ? (
+        <GmCombatScreen
+          state={affiche}
+          onChange={changer}
+          concentrationParNom={concentrationParNom}
+          onOpenSheet={(combatantId) => {
+            // L'identifiant du combattant issu du groupe EST celui de la fiche
+            // (voir `withParty`) : une créature, elle, n'en a pas.
+            if (snapshot.sheets.some((fiche) => fiche.id === combatantId)) onOuvrirFiche(combatantId);
+          }}
+        />
+      ) : (
+        <PreparedEncountersScreen
+          templates={snapshot.encounterTemplates}
+          onCreer={creerRencontre}
+          onSupprimer={supprimerRencontre}
+          onDeclencher={declencher}
+        />
+      )}
     </>
   );
 }

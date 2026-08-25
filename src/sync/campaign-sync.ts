@@ -2,7 +2,7 @@ import { SyncConnection, type SyncEnvironment, type SyncStatus } from './connect
 import { applySyncEvent, createSupabaseTransport, type SyncEvent, type SyncRow } from './supabase-transport';
 import { VersionedStore } from './versioned-store';
 import type { CharacterSheet } from '../model/character';
-import type { EncounterState } from '../domain/encounter';
+import type { Combatant, EncounterState } from '../domain/encounter';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -36,6 +36,12 @@ export interface CampaignSnapshot {
    * pour le MJ.
    */
   messages: Message[];
+  /**
+   * Rencontres préparées à l'avance — toujours vide côté joueur, la RLS ne
+   * leur en renvoie aucune. Distinct de `encounter` : celles-ci n'ont ni
+   * initiative ni tour, elles attendent d'être déclenchées.
+   */
+  encounterTemplates: StoredEncounterTemplate[];
 }
 
 export interface StoredSheet {
@@ -49,6 +55,14 @@ export interface StoredEncounter {
   id: string;
   version: number;
   state: EncounterState;
+}
+
+export interface StoredEncounterTemplate {
+  id: string;
+  version: number;
+  name: string;
+  /** Toujours côté créature : voir la migration 0007. */
+  combatants: Combatant[];
 }
 
 export interface JournalEntry {
@@ -85,6 +99,7 @@ export interface Message {
 
 export const SHEETS_TABLE = 'jg_sheets';
 export const ENCOUNTERS_TABLE = 'jg_encounters';
+export const ENCOUNTER_TEMPLATES_TABLE = 'jg_encounter_templates';
 export const JOURNAL_TABLE = 'jg_journal_entries';
 export const NOTES_TABLE = 'jg_notes';
 export const MESSAGES_TABLE = 'jg_messages';
@@ -115,6 +130,13 @@ const toEncounter = (row: SyncRow): StoredEncounter => ({
   id: row.id,
   version: row.version,
   state: row.state as EncounterState,
+});
+
+const toEncounterTemplate = (row: SyncRow): StoredEncounterTemplate => ({
+  id: row.id,
+  version: row.version,
+  name: String(row.name ?? ''),
+  combatants: (row.combatants as Combatant[] | null) ?? [],
 });
 
 const toJournalEntry = (row: SyncRow): JournalEntry => ({
@@ -162,6 +184,8 @@ export class CampaignSync {
 
   private readonly encounters = new VersionedStore<SyncRow>();
 
+  private readonly encounterTemplates = new VersionedStore<SyncRow>();
+
   private readonly journal = new VersionedStore<SyncRow>();
 
   private readonly notes = new VersionedStore<SyncRow>();
@@ -174,12 +198,14 @@ export class CampaignSync {
 
   private snapshot: CampaignSnapshot = {
     status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [], messages: [],
+    encounterTemplates: [],
   };
 
   constructor(options: CampaignSyncOptions) {
     const tables = [
       { name: SHEETS_TABLE, store: this.sheets },
       { name: ENCOUNTERS_TABLE, store: this.encounters },
+      { name: ENCOUNTER_TEMPLATES_TABLE, store: this.encounterTemplates },
       { name: JOURNAL_TABLE, store: this.journal },
       { name: NOTES_TABLE, store: this.notes },
       { name: MESSAGES_TABLE, store: this.messages },
@@ -242,6 +268,7 @@ export class CampaignSync {
     switch (table) {
       case SHEETS_TABLE: return this.sheets;
       case ENCOUNTERS_TABLE: return this.encounters;
+      case ENCOUNTER_TEMPLATES_TABLE: return this.encounterTemplates;
       case JOURNAL_TABLE: return this.journal;
       case NOTES_TABLE: return this.notes;
       case MESSAGES_TABLE: return this.messages;
@@ -262,6 +289,7 @@ export class CampaignSync {
       journalEntries: this.journal.all().map(toJournalEntry),
       notes: this.notes.all().map(toNote),
       messages: this.messages.all().map(toMessage),
+      encounterTemplates: this.encounterTemplates.all().map(toEncounterTemplate),
     };
     // `useSyncExternalStore` compare par identité : republier un instantané
     // identique ferait re-rendre tous les écrans à chaque battement de canal.
@@ -291,5 +319,6 @@ function sameSnapshot(a: CampaignSnapshot, b: CampaignSnapshot): boolean {
   return sameVersions(a.sheets, b.sheets)
     && sameVersions(a.journalEntries, b.journalEntries)
     && sameVersions(a.notes, b.notes)
-    && sameVersions(a.messages, b.messages);
+    && sameVersions(a.messages, b.messages)
+    && sameVersions(a.encounterTemplates, b.encounterTemplates);
 }
