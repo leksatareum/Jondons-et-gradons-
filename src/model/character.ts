@@ -120,6 +120,15 @@ export interface LiveState {
    * Tueur d'ennemis 20, Maître des bêtes 11).
    */
   huntersMark?: HuntersMark | null;
+  /**
+   * Vrai quand le MJ a autorisé une montée de niveau : le personnage a
+   * gagné assez d'XP ou franchi le jalon, mais les choix qui vont avec
+   * (jet de vie, sous-classe, augmentation ou don, invocations…) restent au
+   * joueur — jamais au MJ. Ce drapeau n'est qu'un déclencheur ; il n'ouvre
+   * `LevelUpDialog` que sur l'écran du joueur, et se referme dès qu'il l'a
+   * traversé (voir `SheetView`).
+   */
+  levelUpUnlocked?: boolean;
 }
 
 /**

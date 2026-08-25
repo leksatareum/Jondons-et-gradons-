@@ -274,8 +274,26 @@ export function SheetView({
   };
 
   const monterDeNiveau = (suivante: CharacterSheet) => {
-    void saveSheet(client, sync, fiche.id, suivante);
+    // La montée effectuée referme la porte que le MJ avait ouverte : sans ce
+    // même geste, elle resterait proposée pour toujours.
+    void saveSheet(client, sync, fiche.id, { ...suivante, live: { ...suivante.live, levelUpUnlocked: false } });
     setNiveauEnCours(false);
+  };
+
+  /**
+   * Le MJ décide QUAND une montée de niveau est possible ; les choix qui vont
+   * avec (jet de vie, sous-classe, don ou augmentation, invocations…)
+   * restent au joueur, jamais au MJ. `levelUpUnlocked` n'est donc qu'un
+   * déclencheur, synchronisé comme le reste de la fiche : l'écran du joueur
+   * le voit apparaître en temps réel, sans qu'il ait à rafraîchir quoi que
+   * ce soit.
+   */
+  const niveauDisponible = Boolean(fiche.data.live.levelUpUnlocked);
+  const basculerNiveauDisponible = () => {
+    void saveSheet(client, sync, fiche.id, {
+      ...fiche.data,
+      live: { ...fiche.data.live, levelUpUnlocked: !niveauDisponible },
+    });
   };
 
   // L'onglet Fiche montre les formes/créature liée seulement si elles ont
@@ -392,7 +410,10 @@ export function SheetView({
           onLier={lierCompagnon}
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
-          onNiveauSuperieur={estMj ? () => setNiveauEnCours(true) : undefined}
+          niveauDisponible={niveauDisponible}
+          onNiveauSuperieur={estMj
+            ? basculerNiveauDisponible
+            : (niveauDisponible ? () => setNiveauEnCours(true) : undefined)}
           onRepos={() => onOnglet('repos')}
           onReglages={() => onOnglet('parametres')}
           onRegles={() => onOnglet('regles')}

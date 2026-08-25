@@ -25,7 +25,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon,
-  onNiveauSuperieur, onRepos, onReglages, onRegles, onChoixDeClasse,
+  onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -38,8 +38,14 @@ export function FicheScreen({
   onLier: (optionId: string) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
-  /** MJ seulement : ouvre la fenêtre de montée de niveau. */
+  /**
+   * Côté MJ : bascule la montée de niveau proposée (dé)/verrouillée.
+   * Côté joueur : ouvre la fenêtre de choix, présente seulement quand le MJ
+   * l'a proposée (`niveauDisponible`).
+   */
   onNiveauSuperieur?: () => void;
+  /** Vrai quand le MJ a autorisé une montée de niveau pour ce personnage. */
+  niveauDisponible?: boolean;
   /** Ouvrent les écrans fils : la barre d'onglets, elle, ne les liste plus. */
   onRepos: () => void;
   onReglages: () => void;
@@ -121,14 +127,33 @@ export function FicheScreen({
               onClick={onNiveauSuperieur}
               style={{
                 flexShrink: 0, minHeight: 'var(--tap)', padding: '0 16px',
-                borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)',
-                color: 'var(--accent)', fontSize: 14, fontWeight: 700,
+                borderRadius: 'var(--radius-sm)',
+                border: `1px solid ${niveauDisponible ? 'var(--line)' : 'var(--accent)'}`,
+                color: niveauDisponible ? 'var(--muted)' : 'var(--accent)',
+                fontSize: 14, fontWeight: 700,
               }}
             >
-              Niveau +
+              {niveauDisponible ? 'Niveau + · proposé' : 'Niveau +'}
+            </button>
+          )}
+          {!estMj && niveauDisponible && (
+            <button
+              onClick={onNiveauSuperieur}
+              style={{
+                flexShrink: 0, minHeight: 'var(--tap)', padding: '0 16px',
+                borderRadius: 'var(--radius-sm)', border: 'none',
+                background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 14, fontWeight: 700,
+              }}
+            >
+              Monter de niveau !
             </button>
           )}
         </div>
+        {estMj && niveauDisponible && (
+          <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 6 }}>
+            En attente du joueur — reclique pour annuler.
+          </div>
+        )}
       </section>
 
       <section>
