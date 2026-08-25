@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, dupliquerCombatant, endEncounter, isDown,
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
@@ -34,6 +34,8 @@ import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basic
  * de vie, on voit le groupe, mais aucun tour n'est actif et les écrans des
  * joueurs restent en mode fiche.
  */
+
+const nouvelId = () => `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 function HpBar({ combatant }: { combatant: Combatant }) {
   const ratio = combatant.maxHp > 0 ? remainingHp(combatant) / combatant.maxHp : 0;
@@ -277,11 +279,13 @@ function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: (
   );
 }
 
-function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
+function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, onClose }: {
   target: Combatant;
   onApply: (amount: number, mode: 'degats' | 'soins') => void;
   /** Pose ou retire un état, sans confirmation : c'est un aller-retour. */
   onBasculerEtat: (id: string) => void;
+  /** Absent pour un joueur : on ne clone jamais un joueur, seulement un stat-bloc de créature. */
+  onDupliquer?: () => void;
   /** Absent pour un joueur : on ne retire jamais un joueur du combat. */
   onSupprimer?: () => void;
   onClose: () => void;
@@ -324,6 +328,19 @@ function DamagePad({ target, onApply, onBasculerEtat, onSupprimer, onClose }: {
             {remainingHp(target)}/{target.maxHp}
           </div>
         </div>
+
+        {onDupliquer && (
+          <button
+            onClick={() => { onDupliquer(); onClose(); }}
+            style={{
+              width: '100%', minHeight: 'var(--tap)', marginBottom: 10,
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--accent)',
+              color: 'var(--accent)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Dupliquer {target.name}
+          </button>
+        )}
 
         {onSupprimer && <SupprimerCombattant nom={target.name} onConfirmer={onSupprimer} />}
 
@@ -443,10 +460,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
     onChange(typeof suivant === 'function' ? suivant(state) : suivant);
 
   const ajouterAdversaire = (combatant: Omit<Combatant, 'id'>) => {
-    setState((current) => addCombatant(current, {
-      ...combatant,
-      id: `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    }));
+    setState((current) => addCombatant(current, { ...combatant, id: nouvelId() }));
     setAjoutEnCours(false);
   };
 
@@ -494,6 +508,16 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
     if (!target || target.side !== 'creature') return;
     setState((current) => removeCombatant(current, target.id));
     setTargetId(null);
+  };
+
+  /**
+   * Clone le stat-bloc de la cible en un nouvel individu, PV au complet et
+   * sans état — pour composer vite un groupe (« encore un bandit ») sans
+   * ressaisir CA, attaques, sauvegardes… Jamais pour un joueur.
+   */
+  const dupliquer = () => {
+    if (!target || target.side !== 'creature') return;
+    setState((current) => addCombatant(current, { ...dupliquerCombatant(target), id: nouvelId() }));
   };
 
   return (
@@ -594,6 +618,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
           target={target}
           onApply={apply}
           onBasculerEtat={basculerEtatDeLaCible}
+          onDupliquer={target.side === 'creature' ? dupliquer : undefined}
           onSupprimer={target.side === 'creature' ? retirer : undefined}
           onClose={() => setTargetId(null)}
         />

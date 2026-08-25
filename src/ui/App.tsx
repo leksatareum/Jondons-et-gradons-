@@ -12,7 +12,7 @@ import { chargerAppartenances, choisirCampagne, type Appartenance } from '../syn
 import { withParty } from './roster';
 import {
   createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
-  deleteJournalEntry, deleteMessage, saveEncounter,
+  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate,
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
@@ -412,6 +412,9 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
   const creerRencontre = (name: string, combatants: Combatant[]) => {
     void createEncounterTemplate(client, sync, campaignId, name, combatants);
   };
+  const modifierRencontre = (id: string, name: string, combatants: Combatant[]) => {
+    void saveEncounterTemplate(client, sync, id, { name, combatants });
+  };
   const supprimerRencontre = (id: string) => {
     void deleteEncounterTemplate(client, sync, id);
   };
@@ -441,6 +444,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
         <PreparedEncountersScreen
           templates={snapshot.encounterTemplates}
           onCreer={creerRencontre}
+          onModifier={modifierRencontre}
           onSupprimer={supprimerRencontre}
           onDeclencher={declencher}
         />

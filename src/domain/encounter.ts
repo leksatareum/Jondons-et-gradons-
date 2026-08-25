@@ -215,6 +215,20 @@ export function withDistinctNames(combatants: Combatant[]): Combatant[] {
   });
 }
 
+/**
+ * Duplique un combattant : même stat-bloc (attaques, caractéristiques,
+ * sauvegardes, compétences, CA, PV max…), mais un nouvel individu — PV au
+ * complet, sans dégâts ni état. Pour composer vite un groupe homogène (trois
+ * bandits identiques) sans ressaisir le bloc à chaque fois dans
+ * `AddAdversaryDialog`. L'identifiant reste à la charge de l'appelant, comme
+ * pour un adversaire tout juste saisi — `withDistinctNames`/`addCombatant`
+ * s'occupent de démêler les noms.
+ */
+export const dupliquerCombatant = (combatant: Combatant): Omit<Combatant, 'id'> => {
+  const { id: _id, ...reste } = combatant;
+  return { ...reste, damageTaken: 0, temporaryHp: 0, conditions: [] };
+};
+
 /** Remplace un combattant par sa version modifiée, en conservant l'ordre. */
 export const replaceCombatant = (state: EncounterState, combatant: Combatant): EncounterState =>
   ({ ...state, combatants: state.combatants.map((entry) => (entry.id === combatant.id ? combatant : entry)) });

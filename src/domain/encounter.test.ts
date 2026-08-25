@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activeCombatant, addCombatant, addCombatants, applyDamage, applyHealing, beginEncounter, endEncounter, isDown,
+  activeCombatant, addCombatant, addCombatants, applyDamage, applyHealing, beginEncounter, dupliquerCombatant, endEncounter, isDown,
   isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
   withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
@@ -231,6 +231,38 @@ describe('déclencher une rencontre préparée (ajouter plusieurs combattants d�
   it('un lot vide ne change rien', () => {
     const etat: EncounterState = { combatants: [base({ id: 'a' })], turnIndex: -1, round: 0 };
     expect(addCombatants(etat, [])).toEqual(etat);
+  });
+});
+
+describe('dupliquer un combattant', () => {
+  const bandit: Combatant = {
+    id: 'a', name: 'Bandit', side: 'creature', initiative: 12, dexterity: 1,
+    maxHp: 11, damageTaken: 5, temporaryHp: 2, armorClass: 12, conditions: ['blesse'],
+    attacks: [{ id: 'att-1', name: 'Cimeterre', toHit: 3, damage: '1d6+1', damageType: 'tranchants' }],
+    abilities: { str: 11, dex: 12, con: 12 }, proficiencyBonus: 2,
+    savingThrows: { con: 3 }, skills: { discretion: 4 },
+  };
+
+  it('reprend le stat-bloc mais repart frais : PV au complet, sans état ni PV temporaires', () => {
+    const clone = dupliquerCombatant(bandit);
+    expect(clone).not.toHaveProperty('id');
+    expect(clone.name).toBe('Bandit');
+    expect(clone.maxHp).toBe(11);
+    expect(clone.armorClass).toBe(12);
+    expect(clone.attacks).toEqual(bandit.attacks);
+    expect(clone.abilities).toEqual(bandit.abilities);
+    expect(clone.proficiencyBonus).toBe(2);
+    expect(clone.savingThrows).toEqual({ con: 3 });
+    expect(clone.skills).toEqual({ discretion: 4 });
+    expect(clone.damageTaken).toBe(0);
+    expect(clone.temporaryHp).toBe(0);
+    expect(clone.conditions).toEqual([]);
+  });
+
+  it('rejoint la rencontre et se renomme comme n’importe quel ajout homonyme', () => {
+    const etat: EncounterState = { combatants: [bandit], turnIndex: -1, round: 0 };
+    const apres = addCombatant(etat, { ...dupliquerCombatant(bandit), id: 'b' });
+    expect(apres.combatants.map((c) => c.name)).toEqual(['Bandit 1', 'Bandit 2']);
   });
 });
 

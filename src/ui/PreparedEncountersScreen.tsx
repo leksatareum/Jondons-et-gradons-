@@ -3,7 +3,7 @@ import { AddAdversaryDialog, attaquesDuTemplate, caracteristiquesDuTemplate, com
 import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
 import { budgetDeRencontre, suggererComposition, THEMES_RENCONTRE, type Difficulte } from '../domain/encounter-generator';
 import type { StoredEncounterTemplate } from '../sync/campaign-sync';
-import { withDistinctNames, type Combatant } from '../domain/encounter';
+import { dupliquerCombatant, withDistinctNames, type Combatant } from '../domain/encounter';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
@@ -181,19 +181,23 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
   );
 }
 
-function NouvelleRencontre({ onEnregistrer, onFermer }: {
+function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
+  /** Présent en édition : préremplit le formulaire avec une rencontre déjà enregistrée. */
+  modele?: StoredEncounterTemplate;
   onEnregistrer: (name: string, combatants: Combatant[]) => void;
   onFermer: () => void;
 }) {
-  const [nom, setNom] = useState('');
-  const [combatants, setCombatants] = useState<Combatant[]>([]);
+  const [nom, setNom] = useState(modele?.name ?? '');
+  const [combatants, setCombatants] = useState<Combatant[]>(modele?.combatants ?? []);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
 
   const ajouter = (combatant: Omit<Combatant, 'id'>) => {
-    setCombatants((liste) => [...liste, { ...combatant, id: nouvelId() }]);
+    setCombatants((liste) => withDistinctNames([...liste, { ...combatant, id: nouvelId() }]));
     setAjoutEnCours(false);
   };
   const retirer = (id: string) => setCombatants((liste) => liste.filter((c) => c.id !== id));
+  const dupliquer = (combatant: Combatant) =>
+    setCombatants((liste) => withDistinctNames([...liste, { ...dupliquerCombatant(combatant), id: nouvelId() }]));
 
   const nomValide = nom.trim().length > 0;
   const pret = nomValide && combatants.length > 0;
@@ -209,7 +213,9 @@ function NouvelleRencontre({ onEnregistrer, onFermer }: {
         borderBottom: '1px solid var(--line)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Nouvelle rencontre</h2>
+        <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>
+          {modele ? 'Modifier la rencontre' : 'Nouvelle rencontre'}
+        </h2>
         <button
           onClick={onFermer}
           aria-label="Annuler"
@@ -273,6 +279,17 @@ function NouvelleRencontre({ onEnregistrer, onFermer }: {
                   </div>
                 </div>
                 <button
+                  onClick={() => dupliquer(combatant)}
+                  aria-label={`Dupliquer ${combatant.name}`}
+                  title="Dupliquer"
+                  style={{
+                    flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                  }}
+                >
+                  ⧉
+                </button>
+                <button
                   onClick={() => retirer(combatant.id)}
                   aria-label={`Retirer ${combatant.name}`}
                   style={{
@@ -298,7 +315,8 @@ function NouvelleRencontre({ onEnregistrer, onFermer }: {
             fontSize: 15, fontWeight: 700, cursor: pret ? 'pointer' : 'not-allowed',
           }}
         >
-          {!nomValide ? 'Donne-lui un nom' : combatants.length === 0 ? 'Ajoute au moins une créature' : 'Enregistrer la rencontre'}
+          {!nomValide ? 'Donne-lui un nom' : combatants.length === 0 ? 'Ajoute au moins une créature'
+            : modele ? 'Enregistrer les modifications' : 'Enregistrer la rencontre'}
         </button>
       </div>
 
@@ -307,20 +325,22 @@ function NouvelleRencontre({ onEnregistrer, onFermer }: {
   );
 }
 
-export function PreparedEncountersScreen({ templates, onCreer, onSupprimer, onDeclencher }: {
+export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSupprimer, onDeclencher }: {
   templates: StoredEncounterTemplate[];
   onCreer: (name: string, combatants: Combatant[]) => void;
+  onModifier: (id: string, name: string, combatants: Combatant[]) => void;
   onSupprimer: (id: string) => void;
   /** Copie les créatures du modèle dans la rencontre en cours. */
   onDeclencher: (combatants: Combatant[]) => void;
 }) {
-  const [creationOuverte, setCreationOuverte] = useState(false);
+  // `'nouvelle'` pour une création, une rencontre existante pour l'édition, `null` pour rien d'ouvert.
+  const [edition, setEdition] = useState<StoredEncounterTemplate | 'nouvelle' | null>(null);
 
   return (
     <div style={{ paddingBottom: TAB_BAR_CLEARANCE }}>
       <div style={{ padding: '14px 16px 0' }}>
         <button
-          onClick={() => setCreationOuverte(true)}
+          onClick={() => setEdition('nouvelle')}
           style={{
             width: '100%', minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 14, fontWeight: 700,
@@ -356,6 +376,16 @@ export function PreparedEncountersScreen({ templates, onCreer, onSupprimer, onDe
                   Déclencher
                 </button>
                 <button
+                  onClick={() => setEdition(template)}
+                  aria-label={`Modifier la rencontre ${template.name}`}
+                  style={{
+                    flexShrink: 0, minHeight: 'var(--tap)', padding: '0 14px',
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 13,
+                  }}
+                >
+                  Modifier
+                </button>
+                <button
                   onClick={() => onSupprimer(template.id)}
                   aria-label={`Supprimer la rencontre ${template.name}`}
                   style={{
@@ -371,10 +401,15 @@ export function PreparedEncountersScreen({ templates, onCreer, onSupprimer, onDe
         </div>
       )}
 
-      {creationOuverte && (
+      {edition && (
         <NouvelleRencontre
-          onEnregistrer={(name, combatants) => { onCreer(name, combatants); setCreationOuverte(false); }}
-          onFermer={() => setCreationOuverte(false)}
+          modele={edition === 'nouvelle' ? undefined : edition}
+          onEnregistrer={(name, combatants) => {
+            if (edition === 'nouvelle') onCreer(name, combatants);
+            else onModifier(edition.id, name, combatants);
+            setEdition(null);
+          }}
+          onFermer={() => setEdition(null)}
         />
       )}
     </div>
