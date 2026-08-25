@@ -280,3 +280,19 @@ export function removeCombatant(state: EncounterState, combatantId: string): Enc
     ? { ...state, combatants, turnIndex: 0, round: state.round + 1 }
     : { ...state, combatants, turnIndex };
 }
+
+/**
+ * Retire tous les adversaires d'un coup — jamais les joueurs. Utile après un
+ * « Déclencher » appuyé plusieurs fois par erreur (voir `PreparedEncountersScreen`) :
+ * plutôt que de retirer chaque créature une à une, un seul geste.
+ *
+ * Réutilise `removeCombatant` créature par créature plutôt que de recalculer
+ * `turnIndex` soi-même : chaque retrait part du résultat du précédent, donc
+ * le combattant actif reste le même du début à la fin, exactement comme des
+ * retraits faits un à un à la main.
+ */
+export const removeAllCreatures = (state: EncounterState): EncounterState =>
+  state.combatants
+    .filter((combatant) => combatant.side === 'creature')
+    .map((combatant) => combatant.id)
+    .reduce(removeCombatant, state);

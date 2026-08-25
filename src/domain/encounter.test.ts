@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeCombatant, addCombatant, addCombatants, applyDamage, applyHealing, beginEncounter, dupliquerCombatant, endEncounter, isDown,
-  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeAllCreatures, removeCombatant, replaceCombatant,
   withDistinctNames, type Combatant, type EncounterState,
 } from './encounter';
 
@@ -322,5 +322,41 @@ describe('retirer un combattant', () => {
   it('un identifiant inconnu ne change rien', () => {
     const etat = trio();
     expect(removeCombatant(etat, 'fantome')).toEqual(etat);
+  });
+});
+
+describe('retirer tous les adversaires d’un coup', () => {
+  const joueur = (id: string, initiative: number): Combatant =>
+    ({ ...combattant(id, initiative), side: 'joueur' });
+
+  it('retire les créatures, jamais les joueurs', () => {
+    const etat = rencontre([joueur('veya', 15), combattant('gobelin', 10), combattant('loup', 8)]);
+    const apres = removeAllCreatures(etat);
+    expect(apres.combatants.map((c) => c.id)).toEqual(['veya']);
+  });
+
+  it('aucune créature à retirer : ne change rien', () => {
+    const etat = rencontre([joueur('veya', 15)]);
+    expect(removeAllCreatures(etat)).toEqual(etat);
+  });
+
+  it('en plein combat, le joueur actif le reste — le tour ne saute pas', () => {
+    // Ordre trié : veya (15), gobelin (10), loup (8). Le gobelin (index 1) est actif.
+    const etat: EncounterState = {
+      combatants: [joueur('veya', 15), combattant('gobelin', 10), combattant('loup', 8)],
+      turnIndex: 1, round: 2,
+    };
+    const apres = removeAllCreatures(etat);
+    expect(apres.combatants.map((c) => c.id)).toEqual(['veya']);
+    expect(activeCombatant(apres)?.id).toBe('veya');
+  });
+
+  it('plus aucun combattant si tout le monde n’était que des créatures : le tour par tour s’arrête', () => {
+    const etat: EncounterState = {
+      combatants: [combattant('gobelin', 10), combattant('loup', 8)], turnIndex: 0, round: 1,
+    };
+    const apres = removeAllCreatures(etat);
+    expect(apres.combatants).toEqual([]);
+    expect(isRunning(apres)).toBe(false);
   });
 });

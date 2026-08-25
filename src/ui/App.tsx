@@ -201,6 +201,7 @@ function Table({ client, compte, campagne }: {
             snapshot={snapshot}
             onOuvrirFiche={setFicheOuverte}
             vue={ecranMj}
+            onDeclencher={() => setEcranMj('combat')}
           />
         ) : (
           <JournalScreen
@@ -347,7 +348,7 @@ const vide: EncounterState = { turnIndex: -1, round: 0, combatants: [] };
  *   réseau, puis la ligne renvoyée par la base reprend la main. Sans lui, tenir
  *   « Suivant » deux fois de suite perdrait le premier appui.
  */
-function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
+function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDeclencher }: {
   client: SupabaseClient;
   sync: CampaignSync;
   campaignId: string;
@@ -355,6 +356,13 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
   onOuvrirFiche: (sheetId: string) => void;
   /** Combat en cours, ou composition des rencontres préparées — les deux partagent la même rencontre en cours. */
   vue: 'combat' | 'rencontres';
+  /**
+   * Appelé après qu'une rencontre préparée a rejoint le combat en cours —
+   * pour basculer sur l'onglet Combat, où ça se voit. Sans lui, « Déclencher »
+   * ne change rien à l'écran : plusieurs appuis coup sur coup (le temps de
+   * comprendre que ça a marché) ajoutaient le même lot plusieurs fois.
+   */
+  onDeclencher?: () => void;
 }) {
   const [brouillon, setBrouillon] = useState<EncounterState | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -440,7 +448,10 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue }: {
    * dedans (`affiche`). Marche aussi bien avant que le combat ne soit lancé
    * (on enrichit la préparation) qu'en plein combat (on corse la rencontre).
    */
-  const declencher = (combatants: Combatant[]) => changer(addCombatants(affiche, combatants));
+  const declencher = (combatants: Combatant[]) => {
+    changer(addCombatants(affiche, combatants));
+    onDeclencher?.();
+  };
 
   const creerRencontre = (name: string, combatants: Combatant[]) => {
     void createEncounterTemplate(client, sync, campaignId, name, combatants);

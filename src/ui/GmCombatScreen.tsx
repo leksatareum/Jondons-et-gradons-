@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   activeCombatant, addCombatant, applyDamage, applyHealing, beginEncounter, dupliquerCombatant, endEncounter, isDown,
-  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeCombatant, replaceCombatant,
+  isRunning, nextTurn, orderedCombatants, previousTurn, remainingHp, removeAllCreatures, removeCombatant, replaceCombatant,
   type Combatant, type EncounterState,
 } from '../domain/encounter';
 import { basculerEtat, etatsActifs, etatsDe } from '../model/etats';
@@ -279,6 +279,48 @@ function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: (
   );
 }
 
+/**
+ * Bandeau de confirmation pour « Retirer tous les adversaires » : un geste
+ * qu'on ne veut surtout pas déclencher par erreur en visant le mauvais
+ * bouton d'en-tête — d'où la même mécanique en deux temps que
+ * `SupprimerCombattant`, mais en bandeau plutôt qu'en pavé, puisqu'il n'y a
+ * pas de cible unique à montrer.
+ */
+function ConfirmerRetraitTout({ nombre, onConfirmer, onAnnuler }: {
+  nombre: number;
+  onConfirmer: () => void;
+  onAnnuler: () => void;
+}) {
+  return (
+    <div style={{
+      flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
+      padding: '9px 14px', background: 'var(--vital)',
+    }}>
+      <div style={{ flexGrow: 1, fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>
+        Retirer {nombre} adversaire{nombre > 1 ? 's' : ''} ?
+      </div>
+      <button
+        onClick={onConfirmer}
+        style={{
+          minHeight: 34, padding: '0 14px', borderRadius: 999,
+          background: 'var(--accent-ink)', color: 'var(--vital)', fontSize: 13, fontWeight: 700,
+        }}
+      >
+        Confirmer
+      </button>
+      <button
+        onClick={onAnnuler}
+        style={{
+          minHeight: 34, padding: '0 14px', borderRadius: 999,
+          border: '1px solid var(--accent-ink)', color: 'var(--accent-ink)', fontSize: 13, fontWeight: 700,
+        }}
+      >
+        Annuler
+      </button>
+    </div>
+  );
+}
+
 function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, onClose }: {
   target: Combatant;
   onApply: (amount: number, mode: 'degats' | 'soins') => void;
@@ -456,6 +498,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
   const [targetId, setTargetId] = useState<string | null>(null);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
   const [initiativesEnCours, setInitiativesEnCours] = useState(false);
+  const [retraitToutEnCours, setRetraitToutEnCours] = useState(false);
   const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
     onChange(typeof suivant === 'function' ? suivant(state) : suivant);
 
@@ -468,6 +511,20 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
   const running = isRunning(state);
   const active = activeCombatant(state);
   const target = ordered.find((combatant) => combatant.id === targetId) ?? null;
+  const nombreAdversaires = useMemo(
+    () => state.combatants.filter((combatant) => combatant.side === 'creature').length,
+    [state.combatants],
+  );
+
+  /**
+   * Retire tous les adversaires d'un coup — l'antidote à un « Déclencher »
+   * appuyé plusieurs fois par erreur, qui obligeait jusqu'ici à retirer
+   * chaque créature une à une.
+   */
+  const retirerTout = () => {
+    setState(removeAllCreatures);
+    setRetraitToutEnCours(false);
+  };
 
   /**
    * Un état se pose et se retire d'un appui, sans confirmation : c'est un
@@ -559,6 +616,21 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
             </button>
           )}
 
+          {nombreAdversaires > 0 && (
+            <button
+              onClick={() => setRetraitToutEnCours(true)}
+              aria-label="Retirer tous les adversaires"
+              style={{
+                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+                display: 'grid', placeItems: 'center', color: 'var(--muted)',
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+              </svg>
+            </button>
+          )}
+
           <button
             onClick={() => setAjoutEnCours(true)}
             aria-label="Ajouter un adversaire"
@@ -594,6 +666,14 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
           </div>
         )}
       </header>
+
+      {retraitToutEnCours && (
+        <ConfirmerRetraitTout
+          nombre={nombreAdversaires}
+          onConfirmer={retirerTout}
+          onAnnuler={() => setRetraitToutEnCours(false)}
+        />
+      )}
 
       <main style={{
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
