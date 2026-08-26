@@ -783,32 +783,41 @@ export function CombatScreen({
         )}
       </header>
 
+      {/*
+        Les onglets : figés eux aussi, juste sous l'en-tête — pas de
+        `position: sticky` à l'intérieur du rouleau qui défile. Sur iOS,
+        un sticky imbriqué dans un conteneur à défilement propre se met à
+        clignoter et laisser passer un bout de carte au-dessus de lui
+        pendant le défilement ; le sortir du rouleau règle le problème à
+        la racine, et garde les onglets visibles en permanence — un
+        avantage, pas une concession.
+      */}
+      <div style={{
+        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+        padding: '8px 14px 8px', display: 'flex', gap: 6,
+      }}>
+        {CARD_CATEGORIES.map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setOnglet(id)}
+            style={{
+              flexGrow: 1, minHeight: 36, borderRadius: 999,
+              border: `1px solid ${onglet === id ? 'var(--accent)' : 'var(--line)'}`,
+              background: onglet === id ? 'var(--accent-wash)' : 'transparent',
+              color: onglet === id ? 'var(--accent)' : 'var(--muted)',
+              fontSize: 13, fontWeight: 700,
+            }}
+          >
+            {label}{comptesParCategorie[id] > 0 ? ` · ${comptesParCategorie[id]}` : ''}
+          </button>
+        ))}
+      </div>
+
       {/* ───── Rouleau réordonné ───── */}
       <main style={{
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11,
       }}>
-        <div style={{
-          position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)',
-          display: 'flex', gap: 6, paddingBottom: 2, marginBottom: 2,
-        }}>
-          {CARD_CATEGORIES.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setOnglet(id)}
-              style={{
-                flexGrow: 1, minHeight: 36, borderRadius: 999,
-                border: `1px solid ${onglet === id ? 'var(--accent)' : 'var(--line)'}`,
-                background: onglet === id ? 'var(--accent-wash)' : 'transparent',
-                color: onglet === id ? 'var(--accent)' : 'var(--muted)',
-                fontSize: 13, fontWeight: 700,
-              }}
-            >
-              {label}{comptesParCategorie[id] > 0 ? ` · ${comptesParCategorie[id]}` : ''}
-            </button>
-          ))}
-        </div>
-
         {featured.map((card, index) => (
           <ActionCard key={card.id} card={card} playable hero={index === 0} onPlay={play} />
         ))}
