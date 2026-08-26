@@ -151,19 +151,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: radial-gradient(circle at 34% 28%, #ffe6ad, var(--gold) 46%, #33230c 100%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .8), inset 0 -1px 1px rgba(0, 0, 0, .5);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .jg-hero-tile { animation: jg-hero-breath 3.2s ease-in-out infinite; }
-}
-@keyframes jg-hero-breath {
-  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 235, 190, .2), inset 0 -3px 6px rgba(0, 0, 0, .6), 0 0 0 1px var(--gold-dim), 0 14px 30px -18px #000; }
-  50%      { box-shadow: inset 0 1px 0 rgba(255, 235, 190, .3), inset 0 -3px 6px rgba(0, 0, 0, .6), 0 0 0 1.5px var(--gold-bright), 0 0 30px -6px var(--accent-wash), 0 14px 30px -18px #000; }
-}
-
-.jg-cap {
-  font-family: 'Bitter', Georgia, serif; font-weight: 800; font-size: 1.5em; line-height: 0;
-  color: var(--gold-bright); text-shadow: 0 2px 5px rgba(0, 0, 0, .9), 0 0 16px var(--accent-wash);
-}
-
 /* Plein, sans reflet qui balaie — un aplat de l'accent, pas du plastique brillant. */
 .jg-btn-hot {
   color: #2a0f03; text-shadow: 0 1px 0 rgba(255, 220, 170, .5);

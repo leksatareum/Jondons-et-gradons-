@@ -368,8 +368,12 @@ function ActionCard({ card, playable, hero, onPlay }: {
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
   return (
     <div
-      className={`card jg-tile${hero ? ' jg-hero-tile' : ''}`}
+      className="card jg-tile"
       style={{
+        // La première carte jouable se distingue par sa bordure et ses
+        // grands chiffres — jamais par un bouton plein, des cabochons ou une
+        // lueur qui pulse : ça la faisait ressembler à une recommandation de
+        // l'appli, alors que ce n'est qu'un tri par économie d'action.
         borderColor: hero ? 'var(--gold-bright)' : 'var(--gold-dim)',
         borderWidth: hero ? 1.5 : 1,
         borderStyle: card.granted ? 'dashed' : 'solid',
@@ -380,18 +384,8 @@ function ActionCard({ card, playable, hero, onPlay }: {
         opacity: playable ? 1 : 0.42,
       }}
     >
-      {hero && (
-        <>
-          <span className="jg-stud" style={{ top: 6, left: 6 }} />
-          <span className="jg-stud" style={{ top: 6, right: 6 }} />
-          <span className="jg-stud" style={{ bottom: 6, left: 6 }} />
-          <span className="jg-stud" style={{ bottom: 6, right: 6 }} />
-        </>
-      )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <div className="ttl" style={{ fontSize: hero ? 17 : 15, lineHeight: 1.5, flexGrow: 1 }}>
-          {hero ? (<><span className="jg-cap">{card.name.charAt(0)}</span>{card.name.slice(1)}</>) : card.name}
-        </div>
+        <div className="ttl" style={{ fontSize: hero ? 17 : 15, flexGrow: 1 }}>{card.name}</div>
         <div className="lbl" style={{ color: hero ? 'var(--accent)' : undefined }}>
           {ECONOMY_LABEL[card.economy]}
         </div>
@@ -441,11 +435,10 @@ function ActionCard({ card, playable, hero, onPlay }: {
           */}
           <button
             onClick={() => onPlay(card)}
-            className={hero ? 'jg-btn-hot' : 'jg-btn-cold'}
+            className="jg-btn-cold"
             style={{
-              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: hero ? 10 : 9,
-              border: hero ? 'none' : '1.5px solid var(--accent)',
-              fontSize: 13, fontWeight: 700, letterSpacing: hero ? '.04em' : undefined,
+              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 9,
+              border: '1.5px solid var(--accent)', fontSize: 13, fontWeight: 700,
             }}
           >
             {card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
