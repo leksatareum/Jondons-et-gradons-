@@ -23,6 +23,7 @@ import {
   createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
   deleteNote, saveNote, saveSheet,
 } from '../sync/mutations';
+import { uploadPortrait } from '../sync/portraits';
 import { seDeconnecter } from '../sync/session';
 import { GrantSpellDialog } from './GrantSpellDialog';
 import { LevelUpDialog } from './LevelUpDialog';
@@ -335,6 +336,13 @@ export function SheetView({
     void saveSheet(client, sync, fiche.id, equiperArme(fiche.data, weaponId));
   const degainerUneArme = () =>
     void saveSheet(client, sync, fiche.id, degainerArme(fiche.data));
+  // L'envoi peut échouer (réseau, format refusé côté bucket) : on laisse
+  // l'erreur remonter jusqu'au médaillon, qui l'affiche — saveSheet, elle,
+  // n'a plus de raison d'échouer une fois l'URL obtenue.
+  const choisirPortrait = async (file: File) => {
+    const url = await uploadPortrait(client, fiche.id, file);
+    await saveSheet(client, sync, fiche.id, { ...fiche.data, portraitUrl: url });
+  };
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
@@ -444,6 +452,7 @@ export function SheetView({
           onReglages={() => onOnglet('parametres')}
           onRegles={() => onOnglet('regles')}
           onChoixDeClasse={enregistrerChoixDeClasse}
+          onChoisirPortrait={choisirPortrait}
         />
       );
     }

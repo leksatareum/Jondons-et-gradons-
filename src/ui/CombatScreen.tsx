@@ -9,6 +9,7 @@ import {
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
 import { spellById } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
+import { themeDeClasse } from '../content/class-themes';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 
 /**
@@ -53,17 +54,44 @@ const ECONOMY_LABEL: Record<Economy, string> = {
   action: 'Action', bonus: 'Bonus', reaction: 'Réaction', libre: 'Libre',
 };
 
+/** Une icône par onglet — étoile pour la magie, arc pour le tir, épées croisées pour le corps à corps. */
+function TabIcon({ categorie, color }: { categorie: CardCategory; color: string }) {
+  if (categorie === 'magie') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill={color} aria-hidden>
+        <path d="M12 1.5 L14.2 8.6 L21.5 8.8 L15.6 13.2 L17.7 20.4 L12 16 L6.3 20.4 L8.4 13.2 L2.5 8.8 L9.8 8.6 Z" />
+      </svg>
+    );
+  }
+  if (categorie === 'distance') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5.5 20 Q2.5 12 5.5 4" />
+        <path d="M5.5 4 L19 12 L5.5 20" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 4 L8 15" />
+      <path d="M15.5 4 L20 4 L20 8.5" />
+      <path d="M5 18 L9 14" />
+      <path d="M4 21 L7 18" />
+    </svg>
+  );
+}
+
+/** Une pastille de paiement — une gemme taillée, dans l'esprit « Braise et fer ». */
 function Pip({ filled }: { filled: boolean }) {
   return (
-    <span
-      aria-hidden
-      style={{
-        width: 11, height: 11, borderRadius: '50%',
-        background: filled ? 'var(--accent)' : 'transparent',
-        border: filled ? 'none' : '1.5px solid var(--line)',
-        display: 'inline-block',
-      }}
-    />
+    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden style={{ filter: filled ? 'drop-shadow(0 0 4px var(--accent-wash))' : undefined }}>
+      <path
+        d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"
+        fill={filled ? 'var(--accent)' : 'rgba(0,0,0,.5)'}
+        stroke={filled ? 'var(--gold-bright)' : 'var(--gold-dim)'}
+        strokeWidth="1"
+      />
+    </svg>
   );
 }
 
@@ -83,11 +111,15 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
 }) {
   if (resources.length === 0) return null;
   return (
-    <div style={{
-      marginBottom: 7, border: '1px solid var(--line)',
-      borderRadius: 'var(--radius-sm)', padding: '6px 9px',
-    }}>
-      <div className="lbl" style={{ marginBottom: 4, fontSize: 10 }}>Ressources</div>
+    <div className="jg-tile" style={{ marginBottom: 7, borderRadius: 9, padding: '8px 10px 9px' }}>
+      <span className="jg-stud" style={{ top: 5, left: 5 }} />
+      <span className="jg-stud" style={{ top: 5, right: 5 }} />
+      <div className="lbl" style={{ marginBottom: 6, fontSize: 10, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 5 }}>
+        <svg width="6" height="6" viewBox="0 0 10 10" style={{ transform: 'rotate(45deg)', flexShrink: 0 }} aria-hidden>
+          <rect width="10" height="10" fill="var(--gold)" />
+        </svg>
+        Ressources
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {resources.map((res) => (
           <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -96,7 +128,8 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
               disabled={res.remaining <= 0}
               style={{
                 flexGrow: 1, minWidth: 0, minHeight: 32, padding: '0 10px',
-                borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+                borderRadius: 7, border: '1px solid var(--gold-dim)',
+                background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
                 textAlign: 'left', fontSize: 13, fontWeight: 700,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 opacity: res.remaining <= 0 ? 0.4 : 1,
@@ -107,7 +140,7 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
             {/* Le compteur, juste en face du bouton : ce qu'il reste, sans avoir à compter des pastilles. */}
             <div className="num" style={{
               minWidth: 38, textAlign: 'center', fontSize: 15, fontWeight: 700,
-              color: res.remaining > 0 ? 'var(--ink)' : 'var(--muted)',
+              color: res.remaining > 0 ? 'var(--gold-bright)' : 'var(--muted)',
             }}>
               {res.remaining}/{res.max}
             </div>
@@ -117,7 +150,7 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
                 aria-label={`Rendre une utilisation de ${res.name}`}
                 style={{
                   flexShrink: 0, minHeight: 32, minWidth: 32,
-                  borderRadius: 'var(--radius-sm)', color: 'var(--muted)', fontSize: 14, fontWeight: 700,
+                  borderRadius: 7, border: '1px solid var(--gold-dim)', color: 'var(--gold)', fontSize: 14, fontWeight: 700,
                 }}
               >
                 ↺
@@ -130,44 +163,90 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
   );
 }
 
-function HitPoints({ current, max, temporary, onChange }: {
-  current: number; max: number; temporary: number; onChange: (delta: number) => void;
+/**
+ * L'orbe de vie, avec l'écusson de CA accroché dessus.
+ *
+ * Les deux vivaient en deux boîtes côte à côte ; ils partagent maintenant un
+ * seul repère visuel — l'écusson EST accroché à l'orbe, pas juste posé à
+ * côté — parce que « combien de PV, quelle CA » est la première paire de
+ * chiffres qu'on relit à chaque coup encaissé. Le niveau du liquide suit
+ * `current / max` en direct ; `onChange` et les cibles tactiles des boutons
+ * n'ont pas changé.
+ */
+function HitPoints({ current, max, armorClass, temporary, onChange }: {
+  current: number; max: number; armorClass: number; temporary: number; onChange: (delta: number) => void;
 }) {
-  const step = (delta: number, label: string) => (
+  const hauteur = max > 0 ? Math.max(0, Math.min(100, Math.round((current / max) * 100))) : 0;
+  const step = (delta: number, label: string, side: 'left' | 'right') => (
     <button
       onClick={() => onChange(delta)}
       aria-label={label}
       style={{
-        width: 52, height: 56, display: 'grid', placeItems: 'center',
-        color: 'var(--ink)',
-        [delta < 0 ? 'borderRight' : 'borderLeft']: '1px solid var(--line)',
+        position: 'absolute', top: '50%', [side]: -40, marginTop: -17,
+        width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center',
+        background: 'radial-gradient(circle at 35% 28%, var(--surface-raised), #150e09)',
+        boxShadow: '0 0 0 1.5px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.18), 0 3px 8px rgba(0,0,0,.6)',
+        color: 'var(--gold)',
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden>
         {delta < 0 ? <path d="M5 12h14" /> : <path d="M12 5v14M5 12h14" />}
       </svg>
     </button>
   );
 
   return (
-    <div style={{
-      flexGrow: 1, display: 'flex', alignItems: 'center',
-      border: '1.5px solid var(--vital)', borderRadius: 'var(--radius)', overflow: 'hidden',
-    }}>
-      {step(-1, 'Retirer un point de vie')}
-      <div style={{ flexGrow: 1, textAlign: 'center' }}>
-        <div className="num" style={{ fontSize: 29, fontWeight: 700, lineHeight: 1, color: 'var(--vital)' }}>
-          {current}
-          <span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 500 }}>/{max}</span>
-          {temporary > 0 && (
-            <span style={{ fontSize: 15, color: 'var(--ok)', fontWeight: 600 }}> +{temporary}</span>
-          )}
+    <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+      <div style={{ position: 'relative' }}>
+        <div className="jg-orb-ring">
+          <div className="jg-orb" style={{ width: 100, height: 100 }}>
+            <div className="jg-orb-fill" style={{ height: `${hauteur}%` }}>
+              <div className="jg-wave jg-wave-a" />
+              <div className="jg-wave jg-wave-b" />
+            </div>
+            <div className="jg-orb-glass" />
+          </div>
         </div>
-        <div className="lbl" style={{ marginTop: 2 }}>
-          {temporary > 0 ? 'pv · temporaires' : 'points de vie'}
+
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+          <div style={{ textAlign: 'center', marginTop: -2 }}>
+            <div className="num" style={{
+              fontSize: 34, fontWeight: 800, lineHeight: .9, color: '#fff',
+              textShadow: '0 2px 4px rgba(0,0,0,.95), 0 0 20px rgba(255,120,90,.9)',
+            }}>
+              {current}
+            </div>
+            <div className="lbl" style={{ marginTop: 3, color: 'rgba(255,225,215,.8)', fontSize: 8.5 }}>
+              {temporary > 0 ? `+${temporary} temp. · ${max} PV` : `sur ${max} PV`}
+            </div>
+          </div>
+        </div>
+
+        {step(-1, 'Retirer un point de vie', 'left')}
+        {step(+1, 'Rendre un point de vie', 'right')}
+
+        <div style={{ position: 'absolute', right: -18, bottom: -8, width: 50, height: 56 }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
+            background: 'conic-gradient(from 200deg, #4a3413, var(--gold-bright) 24%, #3a280f 48%, var(--gold) 72%, #4a3413)',
+            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.85))',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 2.5,
+            clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
+            background: 'linear-gradient(180deg, #3b2c1a, #17100a)',
+            display: 'grid', placeItems: 'center', boxShadow: 'inset 0 3px 9px rgba(0,0,0,.9)',
+          }}>
+            <div style={{ marginTop: -6, textAlign: 'center' }}>
+              <div className="num" style={{ fontSize: 19, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
+                {armorClass}
+              </div>
+              <div className="lbl" style={{ fontSize: 7, color: 'var(--muted)' }}>CA</div>
+            </div>
+          </div>
         </div>
       </div>
-      {step(+1, 'Rendre un point de vie')}
     </div>
   );
 }
@@ -185,11 +264,16 @@ function SaveStrip({ modifiers, proficient, bonus, malusD20 = 0 }: {
         return (
           <div
             key={ability}
+            className="jg-rune"
             title={`Sauvegarde de ${ABILITY_NAMES[ability]}`}
             style={{
-              textAlign: 'center', padding: '3px 0', borderRadius: 'var(--radius-sm)',
-              border: isProficient ? '1.5px solid var(--accent)' : '1px solid var(--line)',
-              background: isProficient ? 'var(--accent-wash)' : 'transparent',
+              border: isProficient ? '1.5px solid var(--accent)' : '1px solid var(--gold-dim)',
+              background: isProficient
+                ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.45))'
+                : 'linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.42))',
+              boxShadow: isProficient
+                ? '0 0 9px -1px var(--accent-wash), inset 0 1px 2px rgba(0,0,0,.4)'
+                : 'inset 0 1px 2px rgba(0,0,0,.4)',
             }}
           >
             <div className="lbl" style={{ fontSize: 8, color: isProficient ? 'var(--accent)' : undefined }}>
@@ -284,20 +368,30 @@ function ActionCard({ card, playable, hero, onPlay }: {
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
   return (
     <div
-      className="card"
+      className={`card jg-tile${hero ? ' jg-hero-tile' : ''}`}
       style={{
-        background: 'var(--surface)',
-        border: hero ? '1.5px solid var(--accent)' : '1px solid var(--line)',
+        borderColor: hero ? 'var(--gold-bright)' : 'var(--gold-dim)',
+        borderWidth: hero ? 1.5 : 1,
         borderStyle: card.granted ? 'dashed' : 'solid',
-        borderRadius: 'var(--radius)',
+        borderRadius: 12,
         padding: playable ? 14 : '12px 14px',
         // Seul ce qui n'est PAS jouable est atténué. Une carte jouable reste
         // pleinement lisible, même quand elle n'est pas la première.
         opacity: playable ? 1 : 0.42,
       }}
     >
+      {hero && (
+        <>
+          <span className="jg-stud" style={{ top: 6, left: 6 }} />
+          <span className="jg-stud" style={{ top: 6, right: 6 }} />
+          <span className="jg-stud" style={{ bottom: 6, left: 6 }} />
+          <span className="jg-stud" style={{ bottom: 6, right: 6 }} />
+        </>
+      )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <div className="ttl" style={{ fontSize: hero ? 17 : 15, flexGrow: 1 }}>{card.name}</div>
+        <div className="ttl" style={{ fontSize: hero ? 17 : 15, lineHeight: 1.5, flexGrow: 1 }}>
+          {hero ? (<><span className="jg-cap">{card.name.charAt(0)}</span>{card.name.slice(1)}</>) : card.name}
+        </div>
         <div className="lbl" style={{ color: hero ? 'var(--accent)' : undefined }}>
           {ECONOMY_LABEL[card.economy]}
         </div>
@@ -347,19 +441,21 @@ function ActionCard({ card, playable, hero, onPlay }: {
           */}
           <button
             onClick={() => onPlay(card)}
+            className={hero ? 'jg-btn-hot' : 'jg-btn-cold'}
             style={{
-              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 10,
-              border: '1.5px solid var(--accent)', color: 'var(--accent)',
-              fontSize: 13, fontWeight: 700,
+              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: hero ? 10 : 9,
+              border: hero ? 'none' : '1.5px solid var(--accent)',
+              fontSize: 13, fontWeight: 700, letterSpacing: hero ? '.04em' : undefined,
             }}
           >
             {card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
           </button>
           {paiementAffiche && (
             <div style={{
-              minWidth: 74, minHeight: 'var(--tap)', borderRadius: 10,
-              border: '1px solid var(--line)', display: 'grid', placeItems: 'center', gap: 3,
-              padding: '0 8px',
+              minWidth: 74, minHeight: 'var(--tap)', borderRadius: 9,
+              border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
+              boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
+              display: 'grid', placeItems: 'center', gap: 3, padding: '0 8px',
             }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
@@ -513,6 +609,10 @@ export function CombatScreen({
     setSpent({});
   }
   const derived = useMemo(() => deriveCharacter(sheet), [sheet]);
+  // La matière de « Braise et fer » : l'accent et le métal d'ornement
+  // changent avec la classe, jamais le reste — voir `class-themes.ts`. Un
+  // multiclassé prend la matière de sa classe au plus haut niveau.
+  const theme = useMemo(() => themeDeClasse(sheet.classLevels), [sheet.classLevels]);
   const layout = useMemo(() => layoutCombatCards(cards, { turn, spent }), [cards, turn, spent]);
   const inCombat = turn.mode === 'combat';
   const isYourTurn = turn.mode === 'combat' && turn.isYourTurn;
@@ -579,6 +679,16 @@ export function CombatScreen({
     <div style={{
       height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       paddingBottom: TAB_BAR_CLEARANCE, boxSizing: 'border-box',
+      // Surcharge la matière socle par celle de la classe — seuls ces jetons
+      // bougent (voir `theme.css`) : la structure et le rouge vital restent
+      // fixes, quelle que soit la classe regardée.
+      ...{
+        '--accent': theme.accent,
+        '--accent-wash': theme.accentGlow,
+        '--gold': theme.gold,
+        '--gold-bright': theme.goldBright,
+        '--gold-dim': theme.goldDim,
+      } as React.CSSProperties,
     }}>
 
       {/* ───── Zone figée : ne défile jamais ───── */}
@@ -593,24 +703,14 @@ export function CombatScreen({
           Dans un en-tête qui ne défile jamais, une ligne purement décorative
           se paie sur toute la hauteur restante.
         */}
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 9, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: 6 }}>
           <HitPoints
             current={derived.currentHp}
             max={derived.maxHp}
+            armorClass={derived.armorClass}
             temporary={derived.temporaryHp}
             onChange={(delta) => onSpendHp?.(delta)}
           />
-          <div style={{
-            width: 66, border: '1px solid var(--line)', borderRadius: 'var(--radius)',
-            display: 'grid', placeItems: 'center',
-          }}>
-            <div>
-              <div className="num" style={{ fontSize: 23, fontWeight: 700, lineHeight: 1, textAlign: 'center' }}>
-                {derived.armorClass}
-              </div>
-              <div className="lbl" style={{ marginTop: 3 }}>CA</div>
-            </div>
-          </div>
         </div>
 
         <div style={{ marginBottom: 7 }}>
@@ -793,22 +893,30 @@ export function CombatScreen({
         avantage, pas une concession.
       */}
       <div style={{
-        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--line)',
-        padding: '8px 14px 8px', display: 'flex', gap: 6,
+        flexShrink: 0, background: 'var(--surface)', borderBottom: '1.5px solid var(--gold-dim)',
+        padding: '9px 14px 9px', display: 'flex', gap: 6,
       }}>
         {CARD_CATEGORIES.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setOnglet(id)}
             style={{
-              flexGrow: 1, minHeight: 36, borderRadius: 999,
-              border: `1px solid ${onglet === id ? 'var(--accent)' : 'var(--line)'}`,
-              background: onglet === id ? 'var(--accent-wash)' : 'transparent',
-              color: onglet === id ? 'var(--accent)' : 'var(--muted)',
-              fontSize: 13, fontWeight: 700,
+              flexGrow: 1, minHeight: 38, borderRadius: '8px 8px 4px 4px', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 5,
+              background: onglet === id
+                ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.3))'
+                : 'linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.3))',
+              boxShadow: onglet === id
+                ? '0 0 0 1.5px var(--gold), inset 0 1px 0 rgba(255,235,190,.3), 0 0 16px -4px var(--accent-wash)'
+                : '0 0 0 1px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.08)',
+              color: onglet === id ? 'var(--gold-bright)' : 'var(--muted)',
+              fontSize: 12, fontWeight: 700,
             }}
           >
-            {label}{comptesParCategorie[id] > 0 ? ` · ${comptesParCategorie[id]}` : ''}
+            <TabIcon categorie={id} color={onglet === id ? 'var(--gold-bright)' : 'var(--muted)'} />
+            <span className="ttl" style={{ fontSize: 11, letterSpacing: '.03em' }}>
+              {label}{comptesParCategorie[id] > 0 ? ` ${comptesParCategorie[id]}` : ''}
+            </span>
           </button>
         ))}
       </div>

@@ -4,10 +4,12 @@ import type { DerivedCharacter } from '../model/derive';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
 import { WeaponsScreen } from './WeaponsScreen';
+import { PortraitMedallion } from './Portrait';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { decisionsDeClasse } from '../model/choix-de-classe';
 import { speciesById } from '../content/species';
 import { classById } from '../content/classes';
+import { themeDeClasse } from '../content/class-themes';
 
 /**
  * La fiche : l'identité du personnage, ses caractéristiques, ses compétences,
@@ -27,7 +29,7 @@ export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
   onEquiperArme, onDegainerArme,
-  onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse,
+  onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse, onChoisirPortrait,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -57,6 +59,8 @@ export function FicheScreen({
   onRegles: () => void;
   /** Enregistre une décision de classe (Ordre primordial, terrain du cercle…). */
   onChoixDeClasse: (classId: string, key: string, optionId: string) => void;
+  /** Envoie le fichier choisi et enregistre son URL sur la fiche. */
+  onChoisirPortrait: (file: File) => Promise<void>;
 }) {
   // Décisions que le MJ a rouvertes pour correction, le temps de l'écran.
   const [aCorriger, setACorriger] = useState<ReadonlySet<string>>(new Set());
@@ -65,6 +69,7 @@ export function FicheScreen({
   const classes = sheet.classLevels
     .map((entry) => `${classById(entry.classId)?.name ?? entry.classId} ${entry.level}`)
     .join(' / ');
+  const theme = themeDeClasse(sheet.classLevels);
 
   return (
     <main style={{
@@ -75,6 +80,12 @@ export function FicheScreen({
       {/* ───── Identité : qui l'on est, et les gestes qui s'y rattachent ───── */}
       <section>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <PortraitMedallion
+            portraitUrl={sheet.portraitUrl}
+            theme={theme}
+            size={52}
+            onChoisir={onChoisirPortrait}
+          />
           <div style={{ flexGrow: 1, minWidth: 0 }}>
             <h1 className="ttl" style={{ margin: 0, fontSize: 21 }}>{sheet.name}</h1>
             <div className="lbl" style={{ textTransform: 'none', marginTop: 3, fontSize: 13 }}>

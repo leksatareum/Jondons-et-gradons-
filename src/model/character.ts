@@ -175,6 +175,13 @@ export interface SpellGrant {
 export interface CharacterSheet {
   id: string;
   name: string;
+  /**
+   * Portrait choisi par le joueur — une URL publique dans le bucket Supabase
+   * `portraits`, jamais un fichier local : la fiche doit rester ce qu'elle a
+   * toujours été, un JSON qui voyage, pas une image embarquée qui l'alourdit.
+   * Absent ou `null` : la fiche retombe sur un médaillon générique.
+   */
+  portraitUrl?: string | null;
 
   // ── Décisions de création ────────────────────────────────────────────
   speciesId: string;

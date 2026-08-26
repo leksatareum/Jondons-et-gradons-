@@ -8,10 +8,12 @@
  *    où le rouge est partout ne signale plus rien.
  * 2. L'accent (`--accent`) marque ce qui est jouable maintenant, rien d'autre.
  *
- * Les thèmes par classe (Druide, Occultiste, Rôdeur) viendront plus tard : ils
- * ne surchargeront que `--accent` et ses dérivés, jamais la structure ni les
- * couleurs vitales. D'où ce découpage entre jetons « socle » et jetons
- * « identité » — c'est ce qui rend l'ajout trivial le jour venu.
+ * Les thèmes par classe (Druide, Occultiste, Rôdeur…) sont arrivés avec
+ * l'écran de combat « Braise et fer » : ils ne surchargent que `--accent`,
+ * `--accent-wash` et le couple `--gold`, jamais la structure ni les couleurs
+ * vitales. D'où ce découpage entre jetons « socle » et jetons « identité » —
+ * c'est ce qui a rendu l'ajout trivial le jour venu (voir
+ * `content/class-themes.ts` et la surcharge posée par `CombatScreen`).
  */
 :root {
   /* Socle : commun à tous les thèmes */
@@ -32,6 +34,11 @@
   --accent: #e0a15a;
   --accent-ink: #1c1f24;
   --accent-wash: #2a2119;
+  /* Le métal d'ornement de « Braise et fer » — par défaut l'or du Rôdeur,
+     socle historique de l'app ; `CombatScreen` le surcharge selon la classe. */
+  --gold: #d4ab5c;
+  --gold-bright: #f6e0a8;
+  --gold-dim: rgba(150, 116, 58, .55);
 
   --radius: 12px;
   --radius-sm: 7px;
@@ -77,3 +84,103 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
   .card { transition: opacity 140ms ease, border-color 140ms ease; }
 }
+
+/**
+ * ═══ « Braise et fer » ═══
+ *
+ * Le vocabulaire visuel de l'écran de combat : orbe de vie, tuiles de pierre
+ * gravée, boutons en métal chauffé. Tout est piloté par `--accent`/`--gold`
+ * (et leurs dérivés) : une classe ne change jamais que ces jetons-là, jamais
+ * la forme — c'est ce qui permet à un Druide et à un Occultiste de partager
+ * exactement le même écran avec deux matières différentes.
+ *
+ * Regroupé ici plutôt qu'en styles en ligne pour deux raisons concrètes :
+ * les animations (`@keyframes`) n'existent pas en style en ligne, et l'effet
+ * de verre de l'orbe (deux vagues qui roulent à des vitesses différentes)
+ * demande des pseudo-éléments qu'un style en ligne ne peut pas poser.
+ */
+
+.jg-orb {
+  position: relative; border-radius: 50%; overflow: hidden;
+  background: #1a0705;
+  box-shadow: inset 0 8px 22px rgba(0, 0, 0, .95), inset 0 -3px 10px rgba(255, 120, 90, .14);
+}
+.jg-orb-fill {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #f0574a 0%, #c22c26 55%, #7d130f 100%);
+  transition: height 400ms ease;
+}
+.jg-wave {
+  position: absolute; left: 50%; width: 260px; height: 260px; border-radius: 43%;
+  background: rgba(255, 150, 120, .5);
+}
+.jg-wave-a { top: -238px; animation: jg-roll 7s linear infinite; }
+.jg-wave-b { top: -244px; background: rgba(120, 10, 10, .5); animation: jg-roll 11s linear infinite reverse; }
+@keyframes jg-roll {
+  from { transform: translateX(-50%) rotate(0turn); }
+  to   { transform: translateX(-50%) rotate(1turn); }
+}
+.jg-orb-glass {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background:
+    radial-gradient(ellipse 46% 30% at 32% 17%, rgba(255, 255, 255, .4), transparent 70%),
+    radial-gradient(ellipse 90% 90% at 50% 50%, transparent 52%, rgba(0, 0, 0, .55) 100%);
+}
+.jg-orb-ring {
+  position: relative; padding: 5px; border-radius: 50%;
+  background: conic-gradient(from 210deg, #4a3413, var(--gold-bright) 18%, #4a3413 34%, var(--gold) 52%, #3a280f 70%, var(--gold-bright) 88%, #4a3413);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .jg-orb-ring { animation: jg-pulse-ring 3.4s ease-in-out infinite; }
+}
+@keyframes jg-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold-dim), 0 0 26px -4px var(--vital-glow, rgba(214, 73, 60, .4)), inset 0 0 18px rgba(0, 0, 0, .6); }
+  50%      { box-shadow: 0 0 0 2px var(--gold),     0 0 44px -2px var(--vital-glow, rgba(214, 73, 60, .4)), inset 0 0 18px rgba(0, 0, 0, .6); }
+}
+
+.jg-tile {
+  position: relative;
+  background:
+    linear-gradient(158deg, rgba(255, 255, 255, .055), transparent 42%),
+    linear-gradient(180deg, var(--surface-raised), var(--surface) 60%, #100b06);
+  border: 1px solid var(--gold-dim);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, .16), inset 0 -3px 6px rgba(0, 0, 0, .6), 0 12px 26px -16px #000;
+}
+.jg-stud {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffe6ad, var(--gold) 46%, #33230c 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .8), inset 0 -1px 1px rgba(0, 0, 0, .5);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .jg-hero-tile { animation: jg-hero-breath 3.2s ease-in-out infinite; }
+}
+@keyframes jg-hero-breath {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 235, 190, .2), inset 0 -3px 6px rgba(0, 0, 0, .6), 0 0 0 1px var(--gold-dim), 0 14px 30px -18px #000; }
+  50%      { box-shadow: inset 0 1px 0 rgba(255, 235, 190, .3), inset 0 -3px 6px rgba(0, 0, 0, .6), 0 0 0 1.5px var(--gold-bright), 0 0 30px -6px var(--accent-wash), 0 14px 30px -18px #000; }
+}
+
+.jg-cap {
+  font-family: 'Bitter', Georgia, serif; font-weight: 800; font-size: 1.5em; line-height: 0;
+  color: var(--gold-bright); text-shadow: 0 2px 5px rgba(0, 0, 0, .9), 0 0 16px var(--accent-wash);
+}
+
+.jg-btn-hot {
+  color: #2a0f03; text-shadow: 0 1px 0 rgba(255, 220, 170, .5);
+  background-image: linear-gradient(112deg, var(--gold-dim) 0%, var(--accent) 34%, #ffd79a 48%, var(--accent) 62%, var(--gold-dim) 100%);
+  background-size: 220% 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -3px 3px rgba(0, 0, 0, .4), 0 5px 16px -5px var(--accent-wash), 0 0 0 1px #2a1707;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .jg-btn-hot { animation: jg-sheen 3.4s ease-in-out infinite; }
+}
+@keyframes jg-sheen {
+  from { background-position: -180% 0; }
+  to   { background-position: 280% 0; }
+}
+.jg-btn-cold {
+  color: var(--gold-bright);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(0, 0, 0, .25));
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, .22), inset 0 0 0 1px rgba(0, 0, 0, .5), 0 0 0 1px var(--gold-dim);
+}
+
+.jg-rune { text-align: center; padding: 4px 0; border-radius: 3px 3px 7px 7px; }
