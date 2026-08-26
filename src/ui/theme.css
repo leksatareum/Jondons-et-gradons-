@@ -33,7 +33,11 @@
   /* Identité : le seul groupe qu'un thème de classe remplacera */
   --accent: #e0a15a;
   --accent-ink: #1c1f24;
+  /* OPAQUE — un fond, jamais un halo : la moitié de l'appli s'en sert pour
+     couvrir ce qu'il y a derrière (compétence maîtrisée, sort préparé,
+     bandeau MJ…). Pour un halo translucide, `--accent-glow`, plus bas. */
   --accent-wash: #2a2119;
+  --accent-glow: rgba(240, 138, 46, .34);
   /* Le métal d'ornement de « Braise et fer » — par défaut l'or du Rôdeur,
      socle historique de l'app ; `CombatScreen` le surcharge selon la classe. */
   --gold: #d4ab5c;
@@ -155,7 +159,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .jg-btn-hot {
   color: #2a0f03; text-shadow: 0 1px 0 rgba(255, 220, 170, .5);
   background: var(--accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -2px 2px rgba(0, 0, 0, .3), 0 5px 16px -5px var(--accent-wash), 0 0 0 1px #2a1707;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -2px 2px rgba(0, 0, 0, .3), 0 5px 16px -5px var(--accent-glow), 0 0 0 1px #2a1707;
 }
 .jg-btn-cold {
   color: var(--gold-bright);
@@ -163,4 +167,4 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   box-shadow: inset 0 1px 0 rgba(255, 235, 190, .22), inset 0 0 0 1px rgba(0, 0, 0, .5), 0 0 0 1px var(--gold-dim);
 }
 
-.jg-rune { text-align: center; padding: 4px 0; border-radius: 3px 3px 7px 7px; }
+.jg-rune { text-align: center; padding: 3px 0; border-radius: 3px 3px 7px 7px; }

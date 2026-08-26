@@ -16,6 +16,17 @@ describe('une matière par classe', () => {
       }
     }
   });
+
+  it('accentWash reste opaque — jamais confondu avec accentGlow, translucide', () => {
+    // Régression : un fond translucide sous le bandeau MJ ou une compétence
+    // maîtrisée laisse transparaître ce qu'il y a derrière. `accentWash`
+    // doit rester une couleur pleine (hex), `accentGlow` une rgba.
+    for (const [id, theme] of Object.entries(CLASS_THEMES)) {
+      expect(theme.accentWash, `${id}.accentWash`).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(theme.accentGlow, `${id}.accentGlow`).toMatch(/^rgba\(/);
+      expect(theme.accentWash).not.toBe(theme.accentGlow);
+    }
+  });
 });
 
 describe('la classe thématique d’une fiche', () => {

@@ -84,7 +84,7 @@ function TabIcon({ categorie, color }: { categorie: CardCategory; color: string 
 /** Une pastille de paiement — une gemme taillée, dans l'esprit « Braise et fer ». */
 function Pip({ filled }: { filled: boolean }) {
   return (
-    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden style={{ filter: filled ? 'drop-shadow(0 0 4px var(--accent-wash))' : undefined }}>
+    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden style={{ filter: filled ? 'drop-shadow(0 0 4px var(--accent-glow))' : undefined }}>
       <path
         d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"
         fill={filled ? 'var(--accent)' : 'rgba(0,0,0,.5)'}
@@ -111,23 +111,23 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
 }) {
   if (resources.length === 0) return null;
   return (
-    <div className="jg-tile" style={{ marginBottom: 7, borderRadius: 9, padding: '8px 10px 9px' }}>
+    <div className="jg-tile" style={{ marginBottom: 5, borderRadius: 9, padding: '6px 10px 7px' }}>
       <span className="jg-stud" style={{ top: 5, left: 5 }} />
       <span className="jg-stud" style={{ top: 5, right: 5 }} />
-      <div className="lbl" style={{ marginBottom: 6, fontSize: 10, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div className="lbl" style={{ marginBottom: 4, fontSize: 10, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 5 }}>
         <svg width="6" height="6" viewBox="0 0 10 10" style={{ transform: 'rotate(45deg)', flexShrink: 0 }} aria-hidden>
           <rect width="10" height="10" fill="var(--gold)" />
         </svg>
         Ressources
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {resources.map((res) => (
           <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <button
               onClick={() => onDepenser?.(res.key)}
               disabled={res.remaining <= 0}
               style={{
-                flexGrow: 1, minWidth: 0, minHeight: 32, padding: '0 10px',
+                flexGrow: 1, minWidth: 0, minHeight: 30, padding: '0 10px',
                 borderRadius: 7, border: '1px solid var(--gold-dim)',
                 background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
                 textAlign: 'left', fontSize: 13, fontWeight: 700,
@@ -149,7 +149,7 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
                 onClick={() => onRestaurer?.(res.key)}
                 aria-label={`Rendre une utilisation de ${res.name}`}
                 style={{
-                  flexShrink: 0, minHeight: 32, minWidth: 32,
+                  flexShrink: 0, minHeight: 30, minWidth: 30,
                   borderRadius: 7, border: '1px solid var(--gold-dim)', color: 'var(--gold)', fontSize: 14, fontWeight: 700,
                 }}
               >
@@ -181,8 +181,11 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
     <button
       onClick={() => onChange(delta)}
       aria-label={label}
+      // La taille ne coûte rien en hauteur (le bouton reste dans l'empreinte
+      // verticale de l'orbe) : pas de raison de descendre sous une cible
+      // tactile correcte pour le geste le plus répété de tout l'écran.
       style={{
-        position: 'absolute', top: '50%', [side]: -40, marginTop: -17,
+        position: 'absolute', top: '50%', [side]: -34, marginTop: -17,
         width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center',
         background: 'radial-gradient(circle at 35% 28%, var(--surface-raised), #150e09)',
         boxShadow: '0 0 0 1.5px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.18), 0 3px 8px rgba(0,0,0,.6)',
@@ -196,10 +199,10 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
   );
 
   return (
-    <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+    <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
       <div style={{ position: 'relative' }}>
         <div className="jg-orb-ring">
-          <div className="jg-orb" style={{ width: 100, height: 100 }}>
+          <div className="jg-orb" style={{ width: 76, height: 76 }}>
             <div className="jg-orb-fill" style={{ height: `${hauteur}%` }}>
               <div className="jg-wave jg-wave-a" />
               <div className="jg-wave jg-wave-b" />
@@ -211,12 +214,12 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <div style={{ textAlign: 'center', marginTop: -2 }}>
             <div className="num" style={{
-              fontSize: 34, fontWeight: 800, lineHeight: .9, color: '#fff',
+              fontSize: 25, fontWeight: 800, lineHeight: .9, color: '#fff',
               textShadow: '0 2px 4px rgba(0,0,0,.95), 0 0 20px rgba(255,120,90,.9)',
             }}>
               {current}
             </div>
-            <div className="lbl" style={{ marginTop: 3, color: 'rgba(255,225,215,.8)', fontSize: 8.5 }}>
+            <div className="lbl" style={{ marginTop: 2, color: 'rgba(255,225,215,.8)', fontSize: 7.5 }}>
               {temporary > 0 ? `+${temporary} temp. · ${max} PV` : `sur ${max} PV`}
             </div>
           </div>
@@ -225,24 +228,24 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         {step(-1, 'Retirer un point de vie', 'left')}
         {step(+1, 'Rendre un point de vie', 'right')}
 
-        <div style={{ position: 'absolute', right: -18, bottom: -8, width: 50, height: 56 }}>
+        <div style={{ position: 'absolute', right: -13, bottom: -6, width: 40, height: 45 }}>
           <div style={{
             position: 'absolute', inset: 0,
             clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
             background: 'conic-gradient(from 200deg, #4a3413, var(--gold-bright) 24%, #3a280f 48%, var(--gold) 72%, #4a3413)',
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,.85))',
+            filter: 'drop-shadow(0 3px 6px rgba(0,0,0,.85))',
           }} />
           <div style={{
-            position: 'absolute', inset: 2.5,
+            position: 'absolute', inset: 2,
             clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
             background: 'linear-gradient(180deg, #3b2c1a, #17100a)',
-            display: 'grid', placeItems: 'center', boxShadow: 'inset 0 3px 9px rgba(0,0,0,.9)',
+            display: 'grid', placeItems: 'center', boxShadow: 'inset 0 2px 7px rgba(0,0,0,.9)',
           }}>
-            <div style={{ marginTop: -6, textAlign: 'center' }}>
-              <div className="num" style={{ fontSize: 19, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
+            <div style={{ marginTop: -4, textAlign: 'center' }}>
+              <div className="num" style={{ fontSize: 15, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
                 {armorClass}
               </div>
-              <div className="lbl" style={{ fontSize: 7, color: 'var(--muted)' }}>CA</div>
+              <div className="lbl" style={{ fontSize: 6, color: 'var(--muted)' }}>CA</div>
             </div>
           </div>
         </div>
@@ -272,7 +275,7 @@ function SaveStrip({ modifiers, proficient, bonus, malusD20 = 0 }: {
                 ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.45))'
                 : 'linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.42))',
               boxShadow: isProficient
-                ? '0 0 9px -1px var(--accent-wash), inset 0 1px 2px rgba(0,0,0,.4)'
+                ? '0 0 9px -1px var(--accent-glow), inset 0 1px 2px rgba(0,0,0,.4)'
                 : 'inset 0 1px 2px rgba(0,0,0,.4)',
             }}
           >
@@ -674,10 +677,13 @@ export function CombatScreen({
       paddingBottom: TAB_BAR_CLEARANCE, boxSizing: 'border-box',
       // Surcharge la matière socle par celle de la classe — seuls ces jetons
       // bougent (voir `theme.css`) : la structure et le rouge vital restent
-      // fixes, quelle que soit la classe regardée.
+      // fixes, quelle que soit la classe regardée. `--accent-wash` reste
+      // OPAQUE (comme partout ailleurs dans l'appli, bandeau MJ compris) —
+      // `--accent-glow`, translucide, est le seul jeton fait pour les halos.
       ...{
         '--accent': theme.accent,
-        '--accent-wash': theme.accentGlow,
+        '--accent-wash': theme.accentWash,
+        '--accent-glow': theme.accentGlow,
         '--gold': theme.gold,
         '--gold-bright': theme.goldBright,
         '--gold-dim': theme.goldDim,
@@ -687,16 +693,19 @@ export function CombatScreen({
       {/* ───── Zone figée : ne défile jamais ───── */}
       <header style={{
         flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--line)',
-        boxShadow: 'var(--raise)', padding: '11px 14px 12px',
-        paddingTop: 'calc(11px + env(safe-area-inset-top))',
+        boxShadow: 'var(--raise)', padding: '8px 14px 8px',
+        paddingTop: 'calc(8px + env(safe-area-inset-top))',
       }}>
         {/*
           Pas de nom ni de classe ici : la Fiche les porte désormais en tête,
           et le MJ a le bandeau « Tu modifies la fiche de X » juste au-dessus.
           Dans un en-tête qui ne défile jamais, une ligne purement décorative
           se paie sur toute la hauteur restante.
+
+          L'en-tête entier est resserré au maximum : c'est le rouleau de
+          cartes en dessous qui doit gagner la hauteur, pas l'orbe.
         */}
-        <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: 4 }}>
           <HitPoints
             current={derived.currentHp}
             max={derived.maxHp}
@@ -706,8 +715,8 @@ export function CombatScreen({
           />
         </div>
 
-        <div style={{ marginBottom: 7 }}>
-          <div className="lbl" style={{ marginBottom: 3, fontSize: 10 }}>Jets de sauvegarde</div>
+        <div style={{ marginBottom: 5 }}>
+          <div className="lbl" style={{ marginBottom: 2, fontSize: 10 }}>Jets de sauvegarde</div>
           <SaveStrip
             modifiers={derived.modifiers}
             proficient={derived.saveProficiencies}
@@ -887,20 +896,20 @@ export function CombatScreen({
       */}
       <div style={{
         flexShrink: 0, background: 'var(--surface)', borderBottom: '1.5px solid var(--gold-dim)',
-        padding: '9px 14px 9px', display: 'flex', gap: 6,
+        padding: '6px 14px 6px', display: 'flex', gap: 6,
       }}>
         {CARD_CATEGORIES.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setOnglet(id)}
             style={{
-              flexGrow: 1, minHeight: 38, borderRadius: '8px 8px 4px 4px', display: 'flex',
+              flexGrow: 1, minHeight: 34, borderRadius: '8px 8px 4px 4px', display: 'flex',
               alignItems: 'center', justifyContent: 'center', gap: 5,
               background: onglet === id
                 ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.3))'
                 : 'linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.3))',
               boxShadow: onglet === id
-                ? '0 0 0 1.5px var(--gold), inset 0 1px 0 rgba(255,235,190,.3), 0 0 16px -4px var(--accent-wash)'
+                ? '0 0 0 1.5px var(--gold), inset 0 1px 0 rgba(255,235,190,.3), 0 0 16px -4px var(--accent-glow)'
                 : '0 0 0 1px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.08)',
               color: onglet === id ? 'var(--gold-bright)' : 'var(--muted)',
               fontSize: 12, fontWeight: 700,

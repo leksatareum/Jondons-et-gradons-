@@ -569,9 +569,14 @@ export function SheetView({
     <div
       style={{
         display: 'contents',
+        // `--accent-wash` reste OPAQUE : la moitié de l'appli (bandeau MJ,
+        // compétence maîtrisée, sort préparé…) s'en sert comme fond, pas
+        // comme halo — un fond translucide y laisse transparaître ce qu'il
+        // devrait couvrir. `--accent-glow` est le jeton fait pour ça.
         ...({
           '--accent': theme.accent,
-          '--accent-wash': theme.accentGlow,
+          '--accent-wash': theme.accentWash,
+          '--accent-glow': theme.accentGlow,
           '--gold': theme.gold,
           '--gold-bright': theme.goldBright,
           '--gold-dim': theme.goldDim,
