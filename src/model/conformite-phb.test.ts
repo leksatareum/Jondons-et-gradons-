@@ -42,6 +42,10 @@ import { sortDuCercleDeLaTerre } from './choix-de-classe';
 import { paiementsPourSort } from '../ui/spell-cards';
 import { spellById } from '../content/spell-catalogue';
 import { eligibleForms, wildShapeAccess } from './wild-shape';
+import {
+  activerCourrouxDeLaMer, activerFormeStellaire, changerConstellation, courrouxDeLaMerDes,
+  finCourrouxDeLaMer, finFormeStellaire, formeStellaireDes,
+} from './wild-shape';
 import { INFATIGABLE_KEY, infatigablePvTemporaires, utiliserInfatigable } from './rodeur';
 import { linkedCreatureOptionsFor } from '../domain/linked-creatures';
 import { effectiveAbilities } from './character';
@@ -1110,6 +1114,104 @@ describe('p. 88 — Cercle des Étoiles : Carte stellaire et Présage cosmique',
     const accordes = deriveCharacter(druideAvec(3, 'etoiles')).spellcasting.alwaysPrepared;
     expect(accordes).toContain('assistance');
     expect(accordes).toContain('trait-lumiere');
+  });
+
+  it('Trait de lumière se propose sans emplacement, en tête des paiements', () => {
+    const sheet = { ...druideAvec(3, 'etoiles'), spells: [{ id: 'trait-lumiere', sourceClass: 'druide', prepared: true }] };
+    const paiements = paiementsPourSort(spellById('trait-lumiere')!, deriveCharacter(sheet), sheet);
+    expect(paiements[0]).toMatchObject({ key: 'druide:carte-etoiles', max: 3, label: 'Carte stellaire · sans emplacement' });
+  });
+
+  it('un autre cercle ne le voit pas', () => {
+    const sheet = { ...druideAvec(3, 'lune'), spells: [{ id: 'trait-lumiere', sourceClass: 'druide', prepared: true }] };
+    const paiements = paiementsPourSort(spellById('trait-lumiere')!, deriveCharacter(sheet), sheet);
+    expect(paiements.some((p) => p.key === 'druide:carte-etoiles')).toBe(false);
+  });
+});
+
+describe('p. 87 — Cercle de la Mer : Courroux de la mer', () => {
+  it('dépense une utilisation de Forme sauvage, exclusif avec une forme de bête', () => {
+    let sheet = druideAvec(3, 'mer');
+    sheet = transform(sheet, deriveCharacter(sheet), eligibleForms(sheet, deriveCharacter(sheet))[0]!.id);
+    expect(sheet.live.activeWildShape).not.toBeNull();
+    const avant = deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining;
+
+    sheet = activerCourrouxDeLaMer(sheet, deriveCharacter(sheet));
+    expect(sheet.live.courrouxDeLaMer).toBe(true);
+    expect(sheet.live.activeWildShape).toBeNull();
+    const apres = deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining;
+    expect(apres).toBe(avant - 1);
+  });
+
+  it('refuse hors du cercle, ou sans charge restante', () => {
+    const autreCercle = druideAvec(3, 'lune');
+    expect(activerCourrouxDeLaMer(autreCercle, deriveCharacter(autreCercle))).toBe(autreCercle);
+
+    let epuise = druideAvec(3, 'mer');
+    const max = deriveCharacter(epuise).resources.find((r) => r.key === 'druide:forme-sauvage')!.max;
+    for (let i = 0; i < max; i += 1) epuise = activerCourrouxDeLaMer(epuise, deriveCharacter(epuise));
+    epuise = finCourrouxDeLaMer(epuise); // relâcher ne rend pas la charge
+    expect(activerCourrouxDeLaMer(epuise, deriveCharacter(epuise))).toBe(epuise);
+  });
+
+  it('terminer est gratuit — la charge ne revient pas, mais l’état s’efface', () => {
+    let sheet = activerCourrouxDeLaMer(druideAvec(3, 'mer'), deriveCharacter(druideAvec(3, 'mer')));
+    const chargeAvant = deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining;
+    sheet = finCourrouxDeLaMer(sheet);
+    expect(sheet.live.courrouxDeLaMer).toBe(false);
+    expect(deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining).toBe(chargeAvant);
+  });
+
+  it('le nombre de d6 de froid suit la Sagesse, minimum 1', () => {
+    expect(courrouxDeLaMerDes(3)).toBe(3);
+    expect(courrouxDeLaMerDes(-1)).toBe(1);
+  });
+});
+
+describe('p. 88-89 — Cercle des Étoiles : Forme stellaire', () => {
+  it('dépense une utilisation de Forme sauvage, garde la constellation choisie', () => {
+    let sheet = druideAvec(3, 'etoiles');
+    const avant = deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining;
+    sheet = activerFormeStellaire(sheet, deriveCharacter(sheet), 'archer');
+    expect(sheet.live.formeStellaire).toEqual({ constellation: 'archer' });
+    expect(deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining).toBe(avant - 1);
+  });
+
+  it('exclusive avec Courroux de la mer et une forme de bête', () => {
+    let sheet = druideAvec(3, 'etoiles');
+    sheet = activerFormeStellaire(sheet, deriveCharacter(sheet), 'calice');
+    expect(sheet.live.formeStellaire).not.toBeNull();
+    // Rien à activer d'autre à sa place ici (mauvais cercle pour Courroux de
+    // la mer) — le test porte sur le nettoyage réciproque des trois champs.
+    expect(sheet.live.activeWildShape).toBeFalsy();
+    expect(sheet.live.courrouxDeLaMer).toBeFalsy();
+  });
+
+  it('refuse hors du cercle', () => {
+    const autreCercle = druideAvec(3, 'terre');
+    expect(activerFormeStellaire(autreCercle, deriveCharacter(autreCercle), 'dragon')).toBe(autreCercle);
+  });
+
+  it('changer de constellation sans dépenser de charge : réservé au niveau 10+', () => {
+    let sheet = activerFormeStellaire(druideAvec(9, 'etoiles'), deriveCharacter(druideAvec(9, 'etoiles')), 'archer');
+    expect(changerConstellation(sheet, 'dragon')).toBe(sheet); // niveau 9 : refusé
+
+    sheet = activerFormeStellaire(druideAvec(10, 'etoiles'), deriveCharacter(druideAvec(10, 'etoiles')), 'archer');
+    const charge = deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining;
+    sheet = changerConstellation(sheet, 'dragon');
+    expect(sheet.live.formeStellaire).toEqual({ constellation: 'dragon' });
+    expect(deriveCharacter(sheet).resources.find((r) => r.key === 'druide:forme-sauvage')!.remaining).toBe(charge);
+  });
+
+  it('l’Archer et le Calice passent de d8 à 2d8 au niveau 10', () => {
+    expect(formeStellaireDes(druideAvec(9, 'etoiles'))).toBe(1);
+    expect(formeStellaireDes(druideAvec(10, 'etoiles'))).toBe(2);
+  });
+
+  it('terminer est gratuit', () => {
+    let sheet = activerFormeStellaire(druideAvec(3, 'etoiles'), deriveCharacter(druideAvec(3, 'etoiles')), 'archer');
+    sheet = finFormeStellaire(sheet);
+    expect(sheet.live.formeStellaire).toBeNull();
   });
 });
 

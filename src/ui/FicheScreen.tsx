@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
+import type { Constellation } from '../model/wild-shape';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
 import { WeaponsScreen } from './WeaponsScreen';
@@ -28,6 +29,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
+  onCourrouxDeLaMer, onFinCourrouxDeLaMer, onFormeStellaire, onFinFormeStellaire,
   onEquiperArme, onDegainerArme,
   onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse, onChoisirPortrait,
 }: {
@@ -39,6 +41,12 @@ export function FicheScreen({
   onRevenir: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
+  /** Courroux de la mer (Cercle de la Mer 3) : activer, terminer — dépense/relâche une Forme sauvage. */
+  onCourrouxDeLaMer: () => void;
+  onFinCourrouxDeLaMer: () => void;
+  /** Forme stellaire (Cercle des Étoiles 3) : activer avec une constellation, terminer. */
+  onFormeStellaire: (constellation: Constellation) => void;
+  onFinFormeStellaire: () => void;
   onLier: (optionId: string, nom?: string) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
@@ -298,6 +306,10 @@ export function FicheScreen({
             derived={derived}
             onTransformer={onTransformer}
             onRevenir={onRevenir}
+            onCourrouxDeLaMer={onCourrouxDeLaMer}
+            onFinCourrouxDeLaMer={onFinCourrouxDeLaMer}
+            onFormeStellaire={onFormeStellaire}
+            onFinFormeStellaire={onFinFormeStellaire}
             onApprendre={onApprendre}
             onEchanger={onEchanger}
             onLier={onLier}

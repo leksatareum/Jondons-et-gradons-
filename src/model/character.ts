@@ -106,6 +106,20 @@ export interface LiveState {
    */
   wildShapeSwapOpen?: boolean;
   /**
+   * Courroux de la mer actif (Cercle de la Mer, niveau 3) — PHB 2024 p. 87.
+   * Une AUTRE façon de dépenser une utilisation de Forme sauvage, « plutôt
+   * que de te métamorphoser » : exclusif avec `activeWildShape` et
+   * `formeStellaire`, jamais les deux à la fois.
+   */
+  courrouxDeLaMer?: boolean;
+  /**
+   * Forme stellaire active (Cercle des Étoiles, niveau 3) — PHB 2024 p. 88-89.
+   * Garde les statistiques du personnage ; seule la constellation choisie
+   * change ce qu'elle ajoute. Exclusive avec `activeWildShape` et
+   * `courrouxDeLaMer`, pour la même raison.
+   */
+  formeStellaire?: { constellation: 'archer' | 'calice' | 'dragon' } | null;
+  /**
    * Identité du tour (`turnIdentity`) où Résurgence sauvage a déjà converti un
    * emplacement en utilisation de Forme sauvage. La règle l'autorise « une
    * fois au maximum pendant chacun des tours du Druide » : il faut donc savoir

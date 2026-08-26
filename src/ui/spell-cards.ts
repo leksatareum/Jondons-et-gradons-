@@ -6,7 +6,8 @@ import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PayableResource, PlayableCard } from './combat-layout';
 import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
 import { arcanumChoisis, arcanumResourceKey, invocationsChoisies } from '../model/invocations';
-import { SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
+import { CARTE_ETOILES_KEY, SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
+import { estCercleDesEtoiles } from '../model/wild-shape';
 import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
 import { PAS_DES_FEES_KEY } from '../domain/warlock-patron-resources';
@@ -169,6 +170,21 @@ export function paiementsPourSort(
         remaining: gratuit.remaining,
         max: gratuit.max,
         label: 'Pas des fées · sans emplacement',
+      }, ...paiements];
+    }
+  }
+
+  // Carte stellaire (Druide · Cercle des Étoiles, niveau 3+) : Trait de
+  // lumière sans emplacement, même mécanique que Pas des fées ci-dessus —
+  // la réserve était comptée, jamais offerte comme paiement du sort lui-même.
+  if (sheet && spell.id === 'trait-lumiere' && estCercleDesEtoiles(sheet)) {
+    const gratuit = derived.resources.find((resource) => resource.key === CARTE_ETOILES_KEY);
+    if (gratuit) {
+      return [{
+        key: gratuit.key,
+        remaining: gratuit.remaining,
+        max: gratuit.max,
+        label: 'Carte stellaire · sans emplacement',
       }, ...paiements];
     }
   }

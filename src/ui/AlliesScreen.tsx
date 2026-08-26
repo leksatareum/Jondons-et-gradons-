@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import {
-  activeWildShapeStatBlock, eclatLunaireActif, eligibleForms, hasRoomToLearn, knownForms, wildShapeAccess,
+  activeWildShapeStatBlock, CONSTELLATIONS, type Constellation, courrouxDeLaMerDes,
+  eclatLunaireActif, eligibleForms, estCercleDeLaMer, estCercleDesEtoiles, formeStellaireDes,
+  hasRoomToLearn, knownForms, wildShapeAccess,
 } from '../model/wild-shape';
 import { availableCompanions } from '../model/companions';
 import type { LinkedCreature, CharacterSheet } from '../model/character';
@@ -64,15 +66,23 @@ function BoutonAction({ label, onClick, accent, disabled }: {
   );
 }
 
-function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onApprendre, onEchanger }: {
+function SectionFormeSauvage({
+  sheet, derived, onTransformer, onRevenir, onApprendre, onEchanger,
+  onCourrouxDeLaMer, onFinCourrouxDeLaMer, onFormeStellaire, onFinFormeStellaire,
+}: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   onTransformer: (formId: string) => void;
   onRevenir: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
+  onCourrouxDeLaMer: () => void;
+  onFinCourrouxDeLaMer: () => void;
+  onFormeStellaire: (constellation: Constellation) => void;
+  onFinFormeStellaire: () => void;
 }) {
   const [echangeDe, setEchangeDe] = useState<string | null>(null);
+  const [constellationChoisie, setConstellationChoisie] = useState<Constellation>('archer');
   const acces = wildShapeAccess(sheet, derived);
   if (acces.knownLimit === 0) return null;
 
@@ -82,6 +92,13 @@ function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onAppre
   const eligibles = eligibleForms(sheet, derived);
   const apprenables = eligibles.filter((profile) => !connues.includes(profile.id));
   const fenetreOuverte = Boolean(sheet.live.wildShapeSwapOpen);
+  const mer = estCercleDeLaMer(sheet);
+  const etoiles = estCercleDesEtoiles(sheet);
+  const courrouxActif = Boolean(sheet.live.courrouxDeLaMer);
+  const formeActive = sheet.live.formeStellaire ?? null;
+  // Les trois usages de la même réserve sont exclusifs : dès qu'un des trois
+  // est engagé, les cartes des deux autres n'ont plus rien à proposer.
+  const uneAutreFormeEnCours = Boolean(actif) || courrouxActif || formeActive !== null;
 
   return (
     <>
@@ -135,9 +152,54 @@ function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onAppre
             Reprendre forme humanoïde
           </button>
         </div>
+      ) : courrouxActif ? (
+        <div className="card" style={{
+          padding: '12px 14px', borderRadius: 'var(--radius)',
+          border: '1px solid var(--accent)', background: 'var(--accent-wash)',
+        }}>
+          <div className="ttl" style={{ fontSize: 17 }}>Courroux de la mer</div>
+          <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.45 }}>
+            En action bonus — à l’activation puis à chacun de tes tours suivants : une créature visible dans
+            l’émanation (1,50 m) fait une sauvegarde de Constitution ; en cas d’échec, {courrouxDeLaMerDes(derived.modifiers.wis)}d6 dégâts
+            de froid et, si Grand ou moins, repoussée jusqu’à 4,50 m.
+          </div>
+          <button
+            onClick={onFinCourrouxDeLaMer}
+            style={{
+              width: '100%', minHeight: 44, marginTop: 12, borderRadius: 'var(--radius-sm)',
+              background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Terminer Courroux de la mer
+          </button>
+        </div>
+      ) : formeActive ? (
+        <div className="card" style={{
+          padding: '12px 14px', borderRadius: 'var(--radius)',
+          border: '1px solid var(--accent)', background: 'var(--accent-wash)',
+        }}>
+          <div className="ttl" style={{ fontSize: 17 }}>
+            Forme stellaire · {CONSTELLATIONS.find((c) => c.id === formeActive.constellation)?.name}
+          </div>
+          <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.45 }}>
+            {formeActive.constellation === 'dragon'
+              ? CONSTELLATIONS.find((c) => c.id === 'dragon')!.desc
+              : `À l’activation puis en action bonus à tes tours suivants : ${formeStellaireDes(sheet)}d8 + Sagesse `
+                + (formeActive.constellation === 'archer' ? 'dégâts radiants (attaque de sort à distance, 18 m).' : 'PV rendus (avec un sort qui en rend, à toi ou une créature visible à 9 m).')}
+          </div>
+          <button
+            onClick={onFinFormeStellaire}
+            style={{
+              width: '100%', minHeight: 44, marginTop: 12, borderRadius: 'var(--radius-sm)',
+              background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Terminer la Forme stellaire
+          </button>
+        </div>
       ) : (
         <>
-          {connues.length === 0 && (
+          {connues.length === 0 && !mer && !etoiles && (
             <p style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0' }}>
               Aucune forme apprise pour l’instant.
             </p>
@@ -177,10 +239,75 @@ function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onAppre
               />
             );
           })}
+
+          {mer && (
+            <div className="card" style={{
+              padding: '10px 12px', borderRadius: 'var(--radius)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flexGrow: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>Courroux de la mer</div>
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
+                    Émanation d’embruns · {courrouxDeLaMerDes(derived.modifiers.wis)}d6 froid
+                  </div>
+                </div>
+                <BoutonAction
+                  label="Activer" accent
+                  disabled={!charge || charge.remaining <= 0}
+                  onClick={onCourrouxDeLaMer}
+                />
+              </div>
+            </div>
+          )}
+
+          {etoiles && (
+            <div className="card" style={{
+              padding: '10px 12px', borderRadius: 'var(--radius)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+            }}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Forme stellaire</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {CONSTELLATIONS.map((constellation) => (
+                  <label
+                    key={constellation.id}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                  >
+                    <input
+                      type="radio"
+                      name="constellation"
+                      checked={constellationChoisie === constellation.id}
+                      onChange={() => setConstellationChoisie(constellation.id)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{constellation.name}</span>
+                      <span className="lbl" style={{ textTransform: 'none', display: 'block', marginTop: 1 }}>
+                        {constellation.desc}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={() => onFormeStellaire(constellationChoisie)}
+                disabled={!charge || charge.remaining <= 0}
+                style={{
+                  width: '100%', minHeight: 'var(--tap)', marginTop: 10, borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--accent)',
+                  color: (!charge || charge.remaining <= 0) ? 'var(--muted)' : 'var(--accent)',
+                  opacity: (!charge || charge.remaining <= 0) ? 0.5 : 1,
+                  fontSize: 14, fontWeight: 700,
+                }}
+              >
+                Activer
+              </button>
+            </div>
+          )}
         </>
       )}
 
-      {apprenables.length > 0 && (
+      {!uneAutreFormeEnCours && apprenables.length > 0 && (
         <details>
           <summary className="lbl" style={{ cursor: 'pointer', minHeight: 34, display: 'flex', alignItems: 'center' }}>
             {hasRoomToLearn(sheet, derived)
@@ -364,11 +491,19 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
   );
 }
 
-export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon }: {
+export function AlliesScreen({
+  sheet, derived, onTransformer, onRevenir, onCourrouxDeLaMer, onFinCourrouxDeLaMer,
+  onFormeStellaire, onFinFormeStellaire, onApprendre, onEchanger, onLier,
+  onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
+}: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   onTransformer: (formId: string) => void;
   onRevenir: () => void;
+  onCourrouxDeLaMer: () => void;
+  onFinCourrouxDeLaMer: () => void;
+  onFormeStellaire: (constellation: Constellation) => void;
+  onFinFormeStellaire: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
   onLier: (optionId: string, nom?: string) => void;
@@ -383,6 +518,8 @@ export function AlliesScreen({ sheet, derived, onTransformer, onRevenir, onAppre
       <SectionFormeSauvage
         sheet={sheet} derived={derived}
         onTransformer={onTransformer} onRevenir={onRevenir}
+        onCourrouxDeLaMer={onCourrouxDeLaMer} onFinCourrouxDeLaMer={onFinCourrouxDeLaMer}
+        onFormeStellaire={onFormeStellaire} onFinFormeStellaire={onFinFormeStellaire}
         onApprendre={onApprendre} onEchanger={onEchanger}
       />
       <SectionCompagnon

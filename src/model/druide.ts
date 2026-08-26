@@ -277,6 +277,14 @@ export function magicienDeLaNature(
 /** Le lancement gratuit d'un sort de cercle, une fois par repos long. */
 export const SORT_DE_CERCLE_GRATUIT_KEY = 'druide:sort-cercle-gratuit';
 
+/**
+ * Carte stellaire (Cercle des Étoiles 3, PHB 2024 p. 88) : Trait de lumière
+ * sans emplacement, modificateur de Sagesse fois par repos long. Partagée par
+ * `derive.ts` (qui la déclare) et `ui/spell-cards.ts` (qui l'offre comme
+ * paiement de Trait de lumière).
+ */
+export const CARTE_ETOILES_KEY = 'druide:carte-etoiles';
+
 /** La récupération d'emplacements au repos court, une fois par repos long. */
 export const RECUPERATION_NATURELLE_KEY = 'druide:recuperation-naturelle';
 

@@ -176,6 +176,120 @@ export function revert(sheet: CharacterSheet): CharacterSheet {
   return { ...sheet, live: { ...sheet.live, activeWildShape: null } };
 }
 
+/** Le Cercle de la Mer se lit sur la sous-classe déclarée du niveau de Druide. */
+export function estCercleDeLaMer(sheet: CharacterSheet): boolean {
+  return sheet.classLevels.some((entry) => (
+    entry.classId === 'druide'
+    && (entry.subclassId === 'mer' || entry.subclass === 'Cercle de la Mer')
+  ));
+}
+
+/** Le Cercle des Étoiles se lit sur la sous-classe déclarée du niveau de Druide. */
+export function estCercleDesEtoiles(sheet: CharacterSheet): boolean {
+  return sheet.classLevels.some((entry) => (
+    entry.classId === 'druide'
+    && (entry.subclassId === 'etoiles' || entry.subclass === 'Cercle des Étoiles')
+  ));
+}
+
+/**
+ * Courroux de la mer (Cercle de la Mer, niveau 3 — PHB 2024 p. 87) : « Action
+ * bonus : dépense une Forme sauvage pour manifester pendant 10 minutes une
+ * émanation d'embruns… » — une AUTRE façon de dépenser la même réserve que la
+ * transformation en bête, jamais les deux à la fois. Refuse en silence si la
+ * sous-classe ne correspond pas, le niveau n'y est pas, ou la réserve est vide.
+ */
+export function activerCourrouxDeLaMer(sheet: CharacterSheet, derived: DerivedCharacter): CharacterSheet {
+  if (!estCercleDeLaMer(sheet) || druidLevel(sheet) < 3) return sheet;
+  const ressource = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
+  if (!ressource || ressource.remaining <= 0) return sheet;
+  return {
+    ...sheet,
+    live: {
+      ...sheet.live,
+      activeWildShape: null,
+      formeStellaire: null,
+      courrouxDeLaMer: true,
+      resourcesSpent: {
+        ...sheet.live.resourcesSpent,
+        [WILD_SHAPE_RESOURCE_KEY]: (sheet.live.resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0) + 1,
+      },
+    },
+  };
+}
+
+/** Fin volontaire — gratuite, comme reprendre forme humanoïde. */
+export function finCourrouxDeLaMer(sheet: CharacterSheet): CharacterSheet {
+  if (!sheet.live.courrouxDeLaMer) return sheet;
+  return { ...sheet, live: { ...sheet.live, courrouxDeLaMer: false } };
+}
+
+/** Dés de dégâts de froid : modificateur de Sagesse, minimum 1 (PHB 2024 p. 87). */
+export const courrouxDeLaMerDes = (wisdomModifier: number): number => Math.max(1, wisdomModifier);
+
+export type Constellation = 'archer' | 'calice' | 'dragon';
+
+export const CONSTELLATIONS: { id: Constellation; name: string; desc: string }[] = [
+  {
+    id: 'archer', name: 'Archer',
+    desc: 'À l’activation puis en action bonus à tes tours suivants : attaque de sort à distance (18 m), 1d8 + Sagesse dégâts radiants.',
+  },
+  {
+    id: 'calice', name: 'Calice',
+    desc: 'Quand un sort lancé avec un emplacement rend des PV, toi ou une créature visible à 9 m en récupérez 1d8 + Sagesse de plus.',
+  },
+  {
+    id: 'dragon', name: 'Dragon',
+    desc: 'Tests d’Intelligence, de Sagesse et sauvegardes de concentration : un 9 ou moins compte comme un 10.',
+  },
+];
+
+/**
+ * Forme stellaire (Cercle des Étoiles, niveau 3 — PHB 2024 p. 88-89) : dépense
+ * une Forme sauvage « plutôt que de te métamorphoser » — tu gardes tes
+ * statistiques, seule la constellation choisie change ce qu'elle ajoute.
+ */
+export function activerFormeStellaire(
+  sheet: CharacterSheet, derived: DerivedCharacter, constellation: Constellation,
+): CharacterSheet {
+  if (!estCercleDesEtoiles(sheet) || druidLevel(sheet) < 3) return sheet;
+  const ressource = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
+  if (!ressource || ressource.remaining <= 0) return sheet;
+  return {
+    ...sheet,
+    live: {
+      ...sheet.live,
+      activeWildShape: null,
+      courrouxDeLaMer: false,
+      formeStellaire: { constellation },
+      resourcesSpent: {
+        ...sheet.live.resourcesSpent,
+        [WILD_SHAPE_RESOURCE_KEY]: (sheet.live.resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0) + 1,
+      },
+    },
+  };
+}
+
+/** Fin volontaire — gratuite. */
+export function finFormeStellaire(sheet: CharacterSheet): CharacterSheet {
+  if (!sheet.live.formeStellaire) return sheet;
+  return { ...sheet, live: { ...sheet.live, formeStellaire: null } };
+}
+
+/**
+ * Changer de constellation SANS dépenser de nouvelle utilisation — réservé au
+ * niveau 10+ (« Constellations scintillantes », PHB 2024 p. 89 : « au début
+ * de chacun de tes tours en Forme stellaire »). Avant ce niveau, la
+ * constellation choisie à l'activation tient jusqu'à la fin de la forme.
+ */
+export function changerConstellation(sheet: CharacterSheet, constellation: Constellation): CharacterSheet {
+  if (!sheet.live.formeStellaire || druidLevel(sheet) < 10) return sheet;
+  return { ...sheet, live: { ...sheet.live, formeStellaire: { constellation } } };
+}
+
+/** Dé de l'Archer et du Calice : d8, ou 2d8 au niveau 10 (« Constellations scintillantes »). */
+export const formeStellaireDes = (sheet: CharacterSheet): number => (druidLevel(sheet) >= 10 ? 2 : 1);
+
 /**
  * Au niveau 18, un Druide lance ses sorts en forme de bête sans restriction ;
  * avant, seul le Cercle de la Lune le peut, et seulement pour une poignée de

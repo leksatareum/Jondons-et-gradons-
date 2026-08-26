@@ -33,7 +33,8 @@ import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
 import { themeDeClasse } from '../content/class-themes';
 import {
-  bonusConcentrationEclatLunaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
+  activerCourrouxDeLaMer, activerFormeStellaire, bonusConcentrationEclatLunaire, type Constellation,
+  finCourrouxDeLaMer, finFormeStellaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
 } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
 import { degainerArme, equiperArme } from '../model/weapons';
@@ -377,6 +378,14 @@ export function SheetView({
     enregistrer(transform(donnees, derivee, formId));
   const revenirDeLaForme = () =>
     enregistrer(revenirDeForme(donnees));
+  const activerCourroux = () =>
+    enregistrer(activerCourrouxDeLaMer(donnees, derivee));
+  const terminerCourroux = () =>
+    enregistrer(finCourrouxDeLaMer(donnees));
+  const activerEtoiles = (constellation: Constellation) =>
+    enregistrer(activerFormeStellaire(donnees, derivee, constellation));
+  const terminerEtoiles = () =>
+    enregistrer(finFormeStellaire(donnees));
   const apprendreForme = (formId: string) =>
     enregistrer(learnForm(donnees, derivee, formId));
   const echangerForme = (fromId: string, toId: string) =>
@@ -500,6 +509,10 @@ export function SheetView({
           estMj={Boolean(estMj)}
           onTransformer={transformerEnForme}
           onRevenir={revenirDeLaForme}
+          onCourrouxDeLaMer={activerCourroux}
+          onFinCourrouxDeLaMer={terminerCourroux}
+          onFormeStellaire={activerEtoiles}
+          onFinFormeStellaire={terminerEtoiles}
           onApprendre={apprendreForme}
           onEchanger={echangerForme}
           onLier={lierCompagnon}
