@@ -1,4 +1,5 @@
-import { WEAPONS, weaponById, type WeaponDef } from '../content/weapons';
+import { weaponById, type WeaponDef } from '../content/weapons';
+import { ownedWeapons } from '../domain/weapon-ownership';
 import { unarmedStrikeAttack, weaponAttackFor, type WeaponAttack } from '../domain/weapon-attacks';
 import { multiclassAttacksPerAction } from '../domain/multiclassing';
 import type { CharacterSheet } from './character';
@@ -8,19 +9,40 @@ import type { DerivedCharacter } from './derive';
  * Les armes en main, greffées sur `CharacterSheet` — même principe que
  * `model/companions.ts` : le domaine calcule, ce module ne fait que le
  * brancher sur la fiche et donner un type précis à ce qu'il manipule.
+ *
+ * On ne peut mettre en main qu'une arme qu'on POSSÈDE — reconnue dans le sac
+ * (`domain/weapon-ownership.ts`), équipement de départ ou trouvaille en jeu.
+ * Jamais le catalogue entier : ce serait autoriser n'importe quel personnage
+ * à se présenter au combat avec une arme qu'il n'a jamais eue.
  */
 
-/** Toutes les armes du catalogue, triées pour un sélecteur — simples d'abord, puis martiales, alphabétique dans chaque groupe. */
-export const armesDuCatalogue = (): WeaponDef[] =>
-  WEAPONS.slice().sort((a, b) => (a.cat === b.cat ? a.name.localeCompare(b.name, 'fr') : a.cat === 'simple' ? -1 : 1));
+const possedees = (sheet: CharacterSheet): WeaponDef[] => ownedWeapons(sheet.inventory);
 
-/** Les armes que porte le personnage, résolues depuis le catalogue — un id qui n'y est plus est silencieusement ignoré. */
+/**
+ * Les armes en main, résolues et VALIDÉES contre le sac — un id qui y était
+ * mais dont l'objet a disparu du sac depuis (vendu, perdu, donné) sort de la
+ * liste sans qu'il faille y penser : la possession fait foi à chaque lecture,
+ * jamais figée au moment où l'arme a été mise en main.
+ */
 export function armesPortees(sheet: CharacterSheet): WeaponDef[] {
-  return (sheet.weaponIds ?? []).map(weaponById).filter((weapon): weapon is WeaponDef => Boolean(weapon));
+  const possible = new Set(possedees(sheet).map((weapon) => weapon.id));
+  return (sheet.weaponIds ?? [])
+    .map(weaponById)
+    .filter((weapon): weapon is WeaponDef => Boolean(weapon) && possible.has(weapon!.id));
 }
 
+/** Ce qui peut encore être mis en main : possédé, pas déjà en main. */
+export function armesAAjouter(sheet: CharacterSheet): WeaponDef[] {
+  const enMain = new Set(sheet.weaponIds ?? []);
+  return possedees(sheet)
+    .filter((weapon) => !enMain.has(weapon.id))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+/** Refuse une arme non possédée — la liste proposée à l'écran l'exclut déjà, ceci n'est qu'un garde-fou. */
 export function ajouterArme(sheet: CharacterSheet, weaponId: string): CharacterSheet {
-  if (!weaponById(weaponId) || (sheet.weaponIds ?? []).includes(weaponId)) return sheet;
+  const estPossedee = possedees(sheet).some((weapon) => weapon.id === weaponId);
+  if (!estPossedee || (sheet.weaponIds ?? []).includes(weaponId)) return sheet;
   return { ...sheet, weaponIds: [...(sheet.weaponIds ?? []), weaponId] };
 }
 
@@ -38,9 +60,7 @@ export function attaquesDuPersonnage(sheet: CharacterSheet, derived: DerivedChar
   const classIds = sheet.classLevels.map((entry) => entry.classId);
   const modifiers = { str: derived.modifiers.str, dex: derived.modifiers.dex };
   const armes = armesPortees(sheet);
-  const attaques = armes.length > 0
-    ? armes.map((weapon) => weaponAttackFor(weapon, modifiers, derived.proficiencyBonus, classIds))
-    : [];
+  const attaques = armes.map((weapon) => weaponAttackFor(weapon, modifiers, derived.proficiencyBonus, classIds));
   return [
     ...attaques,
     unarmedStrikeAttack(derived.modifiers.str, derived.proficiencyBonus),

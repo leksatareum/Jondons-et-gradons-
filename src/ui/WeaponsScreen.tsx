@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { armesDuCatalogue, armesPortees, attaquesDuPersonnage, attaquesParAction } from '../model/weapons';
+import { armesAAjouter, attaquesDuPersonnage, attaquesParAction } from '../model/weapons';
 import { isProficientWithWeapon } from '../domain/weapon-proficiency';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 
 /**
- * Les armes en main : ce que le personnage attaque avec, indépendamment de
- * ce qu'il transporte dans son sac (texte libre, jamais relié au catalogue).
+ * Les armes en main : ce que le personnage attaque avec, parmi ce qu'il
+ * possède réellement — reconnu dans son sac, équipement de départ ou
+ * trouvaille en jeu. Jamais le catalogue entier : on ne combat pas avec une
+ * arme qu'on n'a jamais eue.
  *
- * Sans cet écran, l'application ne savait montrer QUE des sorts en combat —
+ * Avant cet écran, l'application ne savait montrer QUE des sorts en combat —
  * un guerrier, un rôdeur n'avaient jamais de bonus au toucher ni de dégâts
  * affichés, seulement le texte de leurs éventuels sorts.
  */
@@ -22,11 +24,10 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
   onRetirer: (weaponId: string) => void;
 }) {
   const [choix, setChoix] = useState('');
-  const armees = armesPortees(sheet);
   const attaques = attaquesDuPersonnage(sheet, derived);
   const parAction = attaquesParAction(sheet);
   const classIds = sheet.classLevels.map((entry) => entry.classId);
-  const disponibles = armesDuCatalogue().filter((weapon) => !armees.some((portee) => portee.id === weapon.id));
+  const disponibles = armesAAjouter(sheet);
 
   return (
     <>
@@ -63,7 +64,7 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
         ))}
       </div>
 
-      {disponibles.length > 0 && (
+      {disponibles.length > 0 ? (
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <select
             value={choix}
@@ -93,6 +94,10 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
             Ajouter
           </button>
         </div>
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '8px 0 0' }}>
+          Aucune arme reconnue dans ton sac pour l’instant — ajoute-la au Sac (équipement de départ ou trouvaille en jeu) pour pouvoir la mettre en main ici.
+        </p>
       )}
     </>
   );
