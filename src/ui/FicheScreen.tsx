@@ -79,11 +79,11 @@ export function FicheScreen({
     }}>
       {/* ───── Identité : qui l'on est, et les gestes qui s'y rattachent ───── */}
       <section>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <PortraitMedallion
             portraitUrl={sheet.portraitUrl}
             theme={theme}
-            size={52}
+            size={76}
             onChoisir={onChoisirPortrait}
           />
           <div style={{ flexGrow: 1, minWidth: 0 }}>
