@@ -350,7 +350,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
               fontSize: 13, fontWeight: 700,
             }}
           >
-            {card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
+            {card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
           </button>
           {paiementAffiche && (
             <div style={{
@@ -449,7 +449,7 @@ function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
 }
 
 export function CombatScreen({
-  sheet, cards, turn, onSpendHp, onPlayCard, turnId, cibles = [], etats = [],
+  sheet, cards, turn, onSpendHp, onPlayCard, onEquiperArme, turnId, cibles = [], etats = [],
   onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource, onRompreConcentration,
 }: {
   sheet: CharacterSheet;
@@ -466,6 +466,8 @@ export function CombatScreen({
    * cet écran (`spent`) — elle n'a de sens que le temps du tour, pas au-delà.
    */
   onPlayCard?: (card: PlayableCard, resourceKey: string, cible?: CibleMarquee) => void;
+  /** Une carte « Équiper » vient d'être jouée : bascule l'arme en main, hors du paiement par ressource. */
+  onEquiperArme?: (weaponId: string) => void;
   /**
    * Les créatures que le MJ a mises en jeu, pour Marque du chasseur. Vide
    * hors combat : on ne marque pas une cible qui n'existe pas.
@@ -525,7 +527,8 @@ export function CombatScreen({
 
   const confirmer = (card: PlayableCard, paiement?: PayableResource, cible?: CibleMarquee) => {
     setSpent((current) => ({ ...current, [card.economy]: true }));
-    if (paiement) onPlayCard?.(card, paiement.key, cible);
+    if (card.equipWeaponId) onEquiperArme?.(card.equipWeaponId);
+    else if (paiement) onPlayCard?.(card, paiement.key, cible);
     setChoix(null);
   };
 

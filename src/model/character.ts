@@ -247,13 +247,18 @@ export interface CharacterSheet {
   gold: number;
 
   /**
-   * Armes en main — ids du catalogue (`content/weapons.ts`), indépendantes du
+   * L'arme en main — id du catalogue (`content/weapons.ts`), indépendant du
    * sac : le sac est en texte libre, jamais relié au catalogue, alors qu'une
    * attaque a besoin de connaître précisément l'arme pour calculer son bonus
-   * et ses dégâts. Absent ou vide : seule l'attaque à mains nues reste
+   * et ses dégâts. Une seule à la fois — on ne manie pas une épée longue et
+   * un arc en même temps — `null`/absent : seule l'attaque à mains nues reste
    * proposée, toujours disponible, elle.
+   *
+   * Changer d'arme HORS combat est libre (on ajuste son équipement entre deux
+   * scènes) ; EN combat, ça passe par une carte d'Action dans l'écran de
+   * combat, qui coûte l'Action du tour comme n'importe quelle autre carte.
    */
-  weaponIds?: string[];
+  equippedWeaponId?: string | null;
 
   // ── État vivant ──────────────────────────────────────────────────────
   live: LiveState;

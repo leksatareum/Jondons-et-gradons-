@@ -47,6 +47,13 @@ export interface PlayableCard {
   granted?: boolean;
   /** D'où vient ce qui a été accordé, en clair — « Génie du désert ». */
   grantedBy?: string;
+  /**
+   * Change l'arme en main au lieu d'attaquer ou de lancer un sort — l'id du
+   * catalogue vers lequel basculer. Ne coûte ni emplacement ni ressource,
+   * seulement l'Action du tour (comme n'importe quelle autre carte) : hors
+   * combat, où l'économie d'action ne s'applique pas, l'équiper reste libre.
+   */
+  equipWeaponId?: string;
 }
 
 /**

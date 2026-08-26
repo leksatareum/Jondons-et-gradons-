@@ -31,7 +31,7 @@ import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
-import { ajouterArme, retirerArme } from '../model/weapons';
+import { degainerArme, equiperArme } from '../model/weapons';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import { activeCombatant, type EncounterState } from '../domain/encounter';
@@ -324,10 +324,10 @@ export function SheetView({
     void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
   const ramenerCompagnonLie = (companionId: string, rang: number) =>
     void saveSheet(client, sync, fiche.id, ramenerCompagnon(fiche.data, companionId, rang));
-  const ajouterUneArme = (weaponId: string) =>
-    void saveSheet(client, sync, fiche.id, ajouterArme(fiche.data, weaponId));
-  const retirerUneArme = (weaponId: string) =>
-    void saveSheet(client, sync, fiche.id, retirerArme(fiche.data, weaponId));
+  const equiperUneArme = (weaponId: string) =>
+    void saveSheet(client, sync, fiche.id, equiperArme(fiche.data, weaponId));
+  const degainerUneArme = () =>
+    void saveSheet(client, sync, fiche.id, degainerArme(fiche.data));
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
@@ -422,8 +422,8 @@ export function SheetView({
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
           onRamenerCompagnon={ramenerCompagnonLie}
-          onAjouterArme={ajouterUneArme}
-          onRetirerArme={retirerUneArme}
+          onEquiperArme={equiperUneArme}
+          onDegainerArme={degainerUneArme}
           niveauDisponible={niveauDisponible}
           onNiveauSuperieur={estMj
             ? basculerNiveauDisponible
@@ -512,6 +512,7 @@ export function SheetView({
         cards={cartes}
         onSpendHp={soignerOuBlesser}
         onPlayCard={jouerCarte}
+        onEquiperArme={equiperUneArme}
         cibles={ciblesMarquables}
         etats={monCombattant?.conditions ?? []}
         onFinMarque={finDeMarque}

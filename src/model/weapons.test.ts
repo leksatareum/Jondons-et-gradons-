@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ajouterArme, armesAAjouter, armesPortees, attaquesDuPersonnage, attaquesParAction, retirerArme } from './weapons';
+import { armeEnMain, armesEquipables, attaquesDuPersonnage, attaquesParAction, degainerArme, equiperArme } from './weapons';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
@@ -16,49 +16,56 @@ const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
   ...over,
 });
 
-/** Un sac qui possède réellement une Épée longue, comme un kit de départ le donnerait. */
-const avecEpeeLongue = (over: Partial<CharacterSheet> = {}): CharacterSheet =>
-  fiche({ inventory: [{ id: 'kit0', name: 'Épée longue', qty: 1 }], ...over });
-
-describe('armes en main — seulement ce qu’on possède', () => {
-  it('vide au départ', () => {
-    expect(armesPortees(fiche())).toEqual([]);
+/** Un sac qui possède réellement une Épée longue et un Arc long, comme un kit de départ le donnerait. */
+const avecDeuxArmes = (over: Partial<CharacterSheet> = {}): CharacterSheet =>
+  fiche({
+    inventory: [
+      { id: 'kit0', name: 'Épée longue', qty: 1 },
+      { id: 'kit1', name: 'Arc long', qty: 1 },
+    ],
+    ...over,
   });
 
-  it('un id qu’on ne possède pas ne s’ajoute pas', () => {
+describe('une seule arme en main — jamais deux à la fois', () => {
+  it('rien au départ', () => {
+    expect(armeEnMain(fiche())).toBeNull();
+  });
+
+  it('un id qu’on ne possède pas ne s’équipe pas', () => {
     const sheet = fiche(); // sac vide
-    expect(ajouterArme(sheet, 'epeelongue')).toBe(sheet);
+    expect(equiperArme(sheet, 'epeelongue')).toBe(sheet);
   });
 
-  it('une arme possédée (reconnue dans le sac) s’ajoute', () => {
-    const armee = ajouterArme(avecEpeeLongue(), 'epeelongue');
-    expect(armesPortees(armee).map((weapon) => weapon.id)).toEqual(['epeelongue']);
+  it('une arme possédée (reconnue dans le sac) s’équipe', () => {
+    const armee = equiperArme(avecDeuxArmes(), 'epeelongue');
+    expect(armeEnMain(armee)?.id).toBe('epeelongue');
   });
 
-  it('un id inconnu du catalogue ne s’ajoute pas', () => {
-    const sheet = avecEpeeLongue();
-    expect(ajouterArme(sheet, 'rien-du-tout')).toBe(sheet);
+  it('équiper une seconde arme remplace la première, ne s’y ajoute jamais', () => {
+    const premiere = equiperArme(avecDeuxArmes(), 'epeelongue');
+    const seconde = equiperArme(premiere, 'arclong');
+    expect(armeEnMain(seconde)?.id).toBe('arclong');
   });
 
-  it('ne s’ajoute pas deux fois', () => {
-    const armee = ajouterArme(ajouterArme(avecEpeeLongue(), 'epeelongue'), 'epeelongue');
-    expect(armesPortees(armee)).toHaveLength(1);
+  it('un id inconnu du catalogue ne s’équipe pas', () => {
+    const sheet = avecDeuxArmes();
+    expect(equiperArme(sheet, 'rien-du-tout')).toBe(sheet);
   });
 
-  it('se retire proprement', () => {
-    const armee = ajouterArme(avecEpeeLongue(), 'epeelongue');
-    expect(armesPortees(retirerArme(armee, 'epeelongue'))).toEqual([]);
+  it('se dégaine proprement — ne reste que les mains nues', () => {
+    const armee = equiperArme(avecDeuxArmes(), 'epeelongue');
+    expect(armeEnMain(degainerArme(armee))).toBeNull();
   });
 
-  it('perdue du sac (vendue, donnée) : disparaît de la main sans qu’on l’ait retirée soi-même', () => {
-    const armee = ajouterArme(avecEpeeLongue(), 'epeelongue');
+  it('perdue du sac (vendue, donnée) : disparaît de la main sans qu’on l’ait dégainée soi-même', () => {
+    const armee = equiperArme(avecDeuxArmes(), 'epeelongue');
     const sacVide = { ...armee, inventory: [] };
-    expect(armesPortees(sacVide)).toEqual([]);
+    expect(armeEnMain(sacVide)).toBeNull();
   });
 
-  it('« à ajouter » exclut ce qui est déjà en main', () => {
-    const armee = ajouterArme(avecEpeeLongue(), 'epeelongue');
-    expect(armesAAjouter(armee)).toEqual([]);
+  it('« équipables » exclut l’arme déjà en main, propose l’autre', () => {
+    const armee = equiperArme(avecDeuxArmes(), 'epeelongue');
+    expect(armesEquipables(armee).map((weapon) => weapon.id)).toEqual(['arclong']);
   });
 });
 
@@ -70,7 +77,7 @@ describe('attaques du personnage — toujours au moins les mains nues', () => {
   });
 
   it('avec une arme possédée et en main : elle s’ajoute, les mains nues restent listées', () => {
-    const sheet = ajouterArme(avecEpeeLongue(), 'epeelongue');
+    const sheet = equiperArme(avecDeuxArmes(), 'epeelongue');
     const attaques = attaquesDuPersonnage(sheet, deriveCharacter(sheet));
     expect(attaques.map((attaque) => attaque.id)).toEqual(['arme-epeelongue', 'mains-nues']);
     expect(attaques[0].proficient).toBe(true); // Guerrier : maîtrisé avec toute arme

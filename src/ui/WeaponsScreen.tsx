@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import { armesAAjouter, attaquesDuPersonnage, attaquesParAction } from '../model/weapons';
+import { armesEquipables, attaquesDuPersonnage, attaquesParAction } from '../model/weapons';
 import { isProficientWithWeapon } from '../domain/weapon-proficiency';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 
 /**
- * Les armes en main : ce que le personnage attaque avec, parmi ce qu'il
- * possède réellement — reconnu dans son sac, équipement de départ ou
- * trouvaille en jeu. Jamais le catalogue entier : on ne combat pas avec une
- * arme qu'on n'a jamais eue.
+ * L'arme en main : ce que le personnage attaque avec, une seule à la fois,
+ * parmi ce qu'il possède réellement — reconnu dans son sac, équipement de
+ * départ ou trouvaille en jeu. Jamais le catalogue entier, jamais deux armes
+ * ensemble : on ne combat pas avec une arme qu'on n'a jamais eue, ni avec
+ * une épée longue ET un arc en même temps.
+ *
+ * Ici, changer d'arme est libre — on ajuste son équipement entre deux
+ * scènes. EN combat, le même choix passe par une carte « Équiper » dans
+ * l'écran de combat, qui coûte l'Action du tour.
  *
  * Avant cet écran, l'application ne savait montrer QUE des sorts en combat —
  * un guerrier, un rôdeur n'avaient jamais de bonus au toucher ni de dégâts
@@ -17,22 +22,23 @@ import type { DerivedCharacter } from '../model/derive';
 
 const sign = (value: number): string => (value >= 0 ? `+${value}` : `${value}`);
 
-export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
+export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
-  onAjouter: (weaponId: string) => void;
-  onRetirer: (weaponId: string) => void;
+  onEquiper: (weaponId: string) => void;
+  onDegainer: () => void;
 }) {
   const [choix, setChoix] = useState('');
   const attaques = attaquesDuPersonnage(sheet, derived);
   const parAction = attaquesParAction(sheet);
   const classIds = sheet.classLevels.map((entry) => entry.classId);
-  const disponibles = armesAAjouter(sheet);
+  const equipable = armesEquipables(sheet);
+  const arme = attaques.find((attaque) => attaque.id !== 'mains-nues');
 
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <div className="lbl" style={{ flexGrow: 1 }}>Armes en main</div>
+        <div className="lbl" style={{ flexGrow: 1 }}>Arme en main</div>
         {parAction > 1 && <div className="lbl" style={{ color: 'var(--accent)' }}>{parAction} attaques par Action</div>}
       </div>
 
@@ -50,13 +56,13 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
                   {!attaque.proficient && ' · non maîtrisée'}
                 </div>
               </div>
-              {attaque.id !== 'mains-nues' && (
+              {attaque.id === arme?.id && (
                 <button
-                  onClick={() => onRetirer(attaque.id.replace(/^arme-/, ''))}
+                  onClick={onDegainer}
                   className="lbl"
                   style={{ minHeight: 'var(--tap)', padding: '0 10px', borderRadius: 10, border: '1px solid var(--line)' }}
                 >
-                  Retirer
+                  Dégainer
                 </button>
               )}
             </div>
@@ -64,7 +70,7 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
         ))}
       </div>
 
-      {disponibles.length > 0 ? (
+      {equipable.length > 0 ? (
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <select
             value={choix}
@@ -74,15 +80,15 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
               border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 14,
             }}
           >
-            <option value="">Ajouter une arme…</option>
-            {disponibles.map((weapon) => (
+            <option value="">{arme ? 'Changer d’arme…' : 'Équiper une arme…'}</option>
+            {equipable.map((weapon) => (
               <option key={weapon.id} value={weapon.id}>
                 {weapon.name}{!isProficientWithWeapon(classIds, weapon) ? ' (non maîtrisée)' : ''}
               </option>
             ))}
           </select>
           <button
-            onClick={() => { if (choix) { onAjouter(choix); setChoix(''); } }}
+            onClick={() => { if (choix) { onEquiper(choix); setChoix(''); } }}
             disabled={!choix}
             className="lbl"
             style={{
@@ -91,14 +97,18 @@ export function WeaponsScreen({ sheet, derived, onAjouter, onRetirer }: {
               opacity: choix ? 1 : 0.5,
             }}
           >
-            Ajouter
+            {arme ? 'Changer' : 'Équiper'}
           </button>
         </div>
-      ) : (
+      ) : !arme && (
         <p style={{ fontSize: 13, color: 'var(--muted)', margin: '8px 0 0' }}>
-          Aucune arme reconnue dans ton sac pour l’instant — ajoute-la au Sac (équipement de départ ou trouvaille en jeu) pour pouvoir la mettre en main ici.
+          Aucune arme reconnue dans ton sac pour l’instant — ajoute-la au Sac (équipement de départ ou trouvaille en jeu) pour pouvoir l’équiper ici.
         </p>
       )}
+
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
+        Changer d’arme ici est libre. En combat, ça passe par une carte « Équiper » qui coûte l’Action du tour.
+      </p>
     </>
   );
 }
