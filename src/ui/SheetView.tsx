@@ -17,7 +17,7 @@ import { restoreResource, spendResource } from '../model/cast';
 import { choisirDeClasse } from '../model/choix-de-classe';
 import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
-import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux } from '../model/occultiste';
+import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux, RUSE_MAGIQUE_KEY, utiliserRuseMagique } from '../model/occultiste';
 import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
@@ -255,6 +255,15 @@ export function SheetView({
    * patron…) ou une correction manuelle d'un appui de trop.
    */
   const depenserRessource = (resourceKey: string) => {
+    // Ruse magique (Occultiste 2+) ne se contente pas de cocher une case :
+    // elle rend de vrais emplacements de pacte dépensés. La traiter comme une
+    // réserve générique la marquait « utilisée » sans jamais toucher
+    // `pactSlotsSpent` — la capacité de niveau 2 ne rendait rien du tout.
+    if (resourceKey === RUSE_MAGIQUE_KEY) {
+      const { sheet } = utiliserRuseMagique(fiche.data, derivee);
+      if (sheet !== fiche.data) void saveSheet(client, sync, fiche.id, sheet);
+      return;
+    }
     void saveSheet(client, sync, fiche.id, spendResource(fiche.data, resourceKey));
   };
   const restaurerRessource = (resourceKey: string) => {
