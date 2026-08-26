@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
@@ -95,14 +95,46 @@ export function SheetView({
   const [jetConcentration, setJetConcentration] = useState<{ dd: number; bonusSagesse: number } | null>(null);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
-  const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
+
+  /**
+   * Le brouillon local : la fiche telle qu'on vient de la modifier, avant que
+   * l'écho du serveur ne revienne la confirmer. Sans lui, chaque geste relit
+   * `fiche.data` — la DERNIÈRE ligne confirmée par la base, pas celle qu'on
+   * vient tout juste d'écrire par-dessus. Deux appuis rapprochés (le curseur
+   * de PV qu'on tape trois fois, un aller-retour réseau qui traîne) calculent
+   * alors chacun leur delta depuis le MÊME état de départ : le second écrase
+   * le premier au lieu de s'y ajouter, et l'un des deux gestes disparaît sans
+   * message d'erreur. C'est exactement le motif déjà résolu pour la rencontre
+   * du MJ (`App.tsx`, `changer`/`brouillon`) — la fiche du joueur n'avait pas
+   * son équivalent.
+   *
+   * Le brouillon s'efface dès que la ligne confirmée change de version : c'est
+   * elle qui fait foi, jamais une divergence silencieuse.
+   */
+  const [brouillon, setBrouillon] = useState<CharacterSheet | null>(null);
+  useEffect(() => { setBrouillon(null); }, [fiche.version]);
+  const donnees = brouillon ?? fiche.data;
+
+  /**
+   * Écrit un geste : le brouillon avance tout de suite (le prochain geste
+   * partira de lui, pas de la ligne pas encore confirmée), puis la fiche part
+   * en base. Un échec réseau efface le brouillon plutôt que de laisser
+   * l'écran mentir sur ce qui a réellement été enregistré.
+   */
+  const enregistrer = (suivante: CharacterSheet) => {
+    if (suivante === donnees) return;
+    setBrouillon(suivante);
+    void saveSheet(client, sync, fiche.id, suivante).catch(() => setBrouillon(null));
+  };
+
+  const derivee = useMemo(() => deriveCharacter(donnees), [donnees]);
   // La matière « Braise et fer » : posée ici, une fois, elle retombe sur
   // TOUS les écrans de cette fiche par héritage CSS — Combat, Fiche,
   // Grimoire, Sac, Journal — sans que chacun ait à la recalculer.
-  const theme = useMemo(() => themeDeClasse(fiche.data.classLevels), [fiche.data.classLevels]);
+  const theme = useMemo(() => themeDeClasse(donnees.classLevels), [donnees.classLevels]);
   const cartes = useMemo(
-    () => [...weaponCardsFromCharacter(fiche.data, derivee), ...cardsFromCharacter(fiche.data, derivee)],
-    [fiche.data, derivee],
+    () => [...weaponCardsFromCharacter(donnees, derivee), ...cardsFromCharacter(donnees, derivee)],
+    [donnees, derivee],
   );
 
   /**
@@ -112,9 +144,9 @@ export function SheetView({
    */
   const ciblesMarquables = useMemo<CibleMarquee[]>(
     () => (rencontre?.combatants ?? [])
-      .filter((combattant) => combattant.name !== fiche.data.name)
+      .filter((combattant) => combattant.name !== donnees.name)
       .map((combattant) => ({ id: combattant.id, name: combattant.name })),
-    [rencontre, fiche.data.name],
+    [rencontre, donnees.name],
   );
 
   /**
@@ -128,21 +160,21 @@ export function SheetView({
     // compter dans le budget des sorts préparés et disparaître de sa section.
     const estMineur = spellById(spellId)?.level === 0;
     if (estMineur) {
-      const present = fiche.data.cantrips.some((mineur) => mineur.id === spellId);
-      void saveSheet(client, sync, fiche.id, {
-        ...fiche.data,
+      const present = donnees.cantrips.some((mineur) => mineur.id === spellId);
+      enregistrer({
+        ...donnees,
         cantrips: present
-          ? fiche.data.cantrips.filter((mineur) => mineur.id !== spellId)
-          : [...fiche.data.cantrips, { id: spellId, sourceClass: classId }],
+          ? donnees.cantrips.filter((mineur) => mineur.id !== spellId)
+          : [...donnees.cantrips, { id: spellId, sourceClass: classId }],
       });
       return;
     }
-    const present = fiche.data.spells.some((sort) => sort.id === spellId);
-    void saveSheet(client, sync, fiche.id, {
-      ...fiche.data,
+    const present = donnees.spells.some((sort) => sort.id === spellId);
+    enregistrer({
+      ...donnees,
       spells: present
-        ? fiche.data.spells.filter((sort) => sort.id !== spellId)
-        : [...fiche.data.spells, { id: spellId, sourceClass: classId, prepared: true }],
+        ? donnees.spells.filter((sort) => sort.id !== spellId)
+        : [...donnees.spells, { id: spellId, sourceClass: classId, prepared: true }],
     });
   };
 
@@ -156,26 +188,26 @@ export function SheetView({
     // transition canonique, qui consomme d'abord les PV temporaires. L'écran
     // les affichait sans qu'ils n'absorbent quoi que ce soit.
     const suivante = delta < 0
-      ? takeDamage(fiche.data, derivee, -delta).sheet
-      : heal(fiche.data, delta);
-    if (suivante === fiche.data) return;
-    if (suivante.live.damageTaken === fiche.data.live.damageTaken
-      && suivante.live.temporaryHp === fiche.data.live.temporaryHp) return;
+      ? takeDamage(donnees, derivee, -delta).sheet
+      : heal(donnees, delta);
+    if (suivante === donnees) return;
+    if (suivante.live.damageTaken === donnees.live.damageTaken
+      && suivante.live.temporaryHp === donnees.live.temporaryHp) return;
     // Encaisser des dégâts en étant concentré appelle une sauvegarde — le jet
     // se fait à la table comme toujours, mais rien ne rappelait jusqu'ici
     // qu'il fallait le faire, ni son DD. `delta` est ce qui vient d'être tapé
     // (avant absorption par les PV temporaires) : c'est ce montant-là, pas ce
     // qui a atteint les PV, que la règle prend en compte.
-    if (delta < 0 && fiche.data.live.concentration) {
+    if (delta < 0 && donnees.live.concentration) {
       const degats = Math.max(0, Math.floor(-delta));
       setJetConcentration({
         dd: Math.min(30, Math.max(10, Math.floor(degats / 2))),
         // Éclat lunaire (Cercle de la Lune 6) ajoute la Sagesse à CE jet
         // précis, tant que la Forme sauvage dure — jamais affiché ailleurs.
-        bonusSagesse: bonusConcentrationEclatLunaire(fiche.data, derivee.modifiers.wis),
+        bonusSagesse: bonusConcentrationEclatLunaire(donnees, derivee.modifiers.wis),
       });
     }
-    void saveSheet(client, sync, fiche.id, suivante);
+    enregistrer(suivante);
   };
 
   /**
@@ -201,11 +233,11 @@ export function SheetView({
     // montant, une seule suffit à l'ouvrir. `spendResource` n'a rien à faire
     // ici : il n'y a pas de ressource, seulement des PV temporaires à écrire.
     if (card.id === BENEDICTION_TENEBREUX_CARD_ID) {
-      const suivante = benedictionDuTenebreux(fiche.data, { reduitParLOccultiste: true, aPortee: false });
-      if (suivante !== fiche.data) void saveSheet(client, sync, fiche.id, suivante);
+      const suivante = benedictionDuTenebreux(donnees, { reduitParLOccultiste: true, aPortee: false });
+      if (suivante !== donnees) enregistrer(suivante);
       return;
     }
-    let suivante = spendResource(fiche.data, resourceKey);
+    let suivante = spendResource(donnees, resourceKey);
     const sort = spellById(card.id);
     // Marque du chasseur ne se contente pas de coûter : elle pose un état —
     // cible, concentration, provenance, durée — dont dépendent trois
@@ -226,7 +258,7 @@ export function SheetView({
       // de chaque joueur (voir `GmCombatScreen`).
       suivante = { ...suivante, live: { ...suivante.live, concentration: { spellId: sort.id } } };
     }
-    void saveSheet(client, sync, fiche.id, suivante);
+    enregistrer(suivante);
   };
 
   /**
@@ -236,7 +268,7 @@ export function SheetView({
    * la trancher via la liste d'états, déjà fonctionnelle pour ça.
    */
   const rompreConcentration = () => {
-    void saveSheet(client, sync, fiche.id, { ...fiche.data, live: { ...fiche.data.live, concentration: null } });
+    enregistrer({ ...donnees, live: { ...donnees.live, concentration: null } });
   };
 
   /** Rang de l'emplacement dépensé, `null` pour un lancement gratuit. */
@@ -260,22 +292,22 @@ export function SheetView({
     // réserve générique la marquait « utilisée » sans jamais toucher
     // `pactSlotsSpent` — la capacité de niveau 2 ne rendait rien du tout.
     if (resourceKey === RUSE_MAGIQUE_KEY) {
-      const { sheet } = utiliserRuseMagique(fiche.data, derivee);
-      if (sheet !== fiche.data) void saveSheet(client, sync, fiche.id, sheet);
+      const { sheet } = utiliserRuseMagique(donnees, derivee);
+      if (sheet !== donnees) enregistrer(sheet);
       return;
     }
-    void saveSheet(client, sync, fiche.id, spendResource(fiche.data, resourceKey));
+    enregistrer(spendResource(donnees, resourceKey));
   };
   const restaurerRessource = (resourceKey: string) => {
-    void saveSheet(client, sync, fiche.id, restoreResource(fiche.data, resourceKey));
+    enregistrer(restoreResource(donnees, resourceKey));
   };
 
   const finDeMarque = () => {
-    void saveSheet(client, sync, fiche.id, finMarque(fiche.data));
+    enregistrer(finMarque(donnees));
   };
 
   const deplacerMarque = (cible: CibleMarquee) => {
-    void saveSheet(client, sync, fiche.id, transfererMarque(fiche.data, cible));
+    enregistrer(transfererMarque(donnees, cible));
   };
 
   /**
@@ -286,35 +318,35 @@ export function SheetView({
     // Un choix définitif ne se reprend que par le MJ : le modèle refuse le
     // reste. L'écran ne propose « Corriger » qu'à lui, mais c'est ici que la
     // règle s'applique — un joueur ne doit pas pouvoir la contourner.
-    const suivante = choisirDeClasse(fiche.data, classId, key, optionId, { parLeMj: Boolean(estMj) });
-    if (suivante === fiche.data) return;
-    void saveSheet(client, sync, fiche.id, suivante);
+    const suivante = choisirDeClasse(donnees, classId, key, optionId, { parLeMj: Boolean(estMj) });
+    if (suivante === donnees) return;
+    enregistrer(suivante);
   };
 
   const accorder = (grant: SpellGrant) => {
-    void saveSheet(client, sync, fiche.id, withGrant(fiche.data, grant));
+    enregistrer(withGrant(donnees, grant));
     setDonEnCours(false);
   };
 
   const revoquer = (grantId: string) => {
-    void saveSheet(client, sync, fiche.id, withoutGrant(fiche.data, grantId));
+    enregistrer(withoutGrant(donnees, grantId));
     setARevoquer(null);
   };
 
   const prendreRepos = (kind: RestKind, recuperation?: ChoixRecuperation) => {
-    const apresRepos = rest(fiche.data, derivee, kind).sheet;
+    const apresRepos = rest(donnees, derivee, kind).sheet;
     // Récupération naturelle se résout à la FIN du repos court : le repos
     // rend d'abord ce qu'il rend, la capacité récupère ensuite.
     const suivante = recuperation
       ? recuperationNaturelle(apresRepos, deriveCharacter(apresRepos), recuperation)
       : apresRepos;
-    void saveSheet(client, sync, fiche.id, suivante);
+    enregistrer(suivante);
   };
 
   const monterDeNiveau = (suivante: CharacterSheet) => {
     // La montée effectuée referme la porte que le MJ avait ouverte : sans ce
     // même geste, elle resterait proposée pour toujours.
-    void saveSheet(client, sync, fiche.id, { ...suivante, live: { ...suivante.live, levelUpUnlocked: false } });
+    enregistrer({ ...suivante, live: { ...suivante.live, levelUpUnlocked: false } });
     setNiveauEnCours(false);
   };
 
@@ -326,47 +358,54 @@ export function SheetView({
    * le voit apparaître en temps réel, sans qu'il ait à rafraîchir quoi que
    * ce soit.
    */
-  const niveauDisponible = Boolean(fiche.data.live.levelUpUnlocked);
+  const niveauDisponible = Boolean(donnees.live.levelUpUnlocked);
   const basculerNiveauDisponible = () => {
-    void saveSheet(client, sync, fiche.id, {
-      ...fiche.data,
-      live: { ...fiche.data.live, levelUpUnlocked: !niveauDisponible },
+    enregistrer({
+      ...donnees,
+      live: { ...donnees.live, levelUpUnlocked: !niveauDisponible },
     });
   };
 
   // L'onglet Fiche montre les formes/créature liée seulement si elles ont
   // quelque chose à afficher : la plupart des personnages n'ont ni Forme
   // sauvage ni créature liée.
-  const aDesFormesOuCompagnons = wildShapeAccess(fiche.data, derivee).knownLimit > 0
-    || availableCompanions(fiche.data).length > 0
-    || (fiche.data.companions?.length ?? 0) > 0;
+  const aDesFormesOuCompagnons = wildShapeAccess(donnees, derivee).knownLimit > 0
+    || availableCompanions(donnees).length > 0
+    || (donnees.companions?.length ?? 0) > 0;
 
   const transformerEnForme = (formId: string) =>
-    void saveSheet(client, sync, fiche.id, transform(fiche.data, derivee, formId));
+    enregistrer(transform(donnees, derivee, formId));
   const revenirDeLaForme = () =>
-    void saveSheet(client, sync, fiche.id, revenirDeForme(fiche.data));
+    enregistrer(revenirDeForme(donnees));
   const apprendreForme = (formId: string) =>
-    void saveSheet(client, sync, fiche.id, learnForm(fiche.data, derivee, formId));
+    enregistrer(learnForm(donnees, derivee, formId));
   const echangerForme = (fromId: string, toId: string) =>
-    void saveSheet(client, sync, fiche.id, swapForm(fiche.data, derivee, fromId, toId));
+    enregistrer(swapForm(donnees, derivee, fromId, toId));
   const lierCompagnon = (optionId: string, nom?: string) =>
-    void saveSheet(client, sync, fiche.id, bondCompanion(fiche.data, optionId, nom));
+    enregistrer(bondCompanion(donnees, optionId, nom));
   const degatsCompagnon = (companionId: string, delta: number) =>
-    void saveSheet(client, sync, fiche.id, applyCompanionDamage(fiche.data, companionId, delta));
+    enregistrer(applyCompanionDamage(donnees, companionId, delta));
   const detacherCompagnon = (companionId: string) =>
-    void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
+    enregistrer(dismissCompanion(donnees, companionId));
   const ramenerCompagnonLie = (companionId: string, rang: number) =>
-    void saveSheet(client, sync, fiche.id, ramenerCompagnon(fiche.data, companionId, rang));
+    enregistrer(ramenerCompagnon(donnees, companionId, rang));
   const equiperUneArme = (weaponId: string) =>
-    void saveSheet(client, sync, fiche.id, equiperArme(fiche.data, weaponId));
+    enregistrer(equiperArme(donnees, weaponId));
   const degainerUneArme = () =>
-    void saveSheet(client, sync, fiche.id, degainerArme(fiche.data));
+    enregistrer(degainerArme(donnees));
   // L'envoi peut échouer (réseau, format refusé côté bucket) : on laisse
-  // l'erreur remonter jusqu'au médaillon, qui l'affiche — saveSheet, elle,
-  // n'a plus de raison d'échouer une fois l'URL obtenue.
+  // l'erreur remonter jusqu'au médaillon, qui l'affiche — le brouillon
+  // s'efface au même titre qu'un échec de `saveSheet` ordinaire.
   const choisirPortrait = async (file: File) => {
     const url = await uploadPortrait(client, fiche.id, file);
-    await saveSheet(client, sync, fiche.id, { ...fiche.data, portraitUrl: url });
+    const suivante = { ...donnees, portraitUrl: url };
+    setBrouillon(suivante);
+    try {
+      await saveSheet(client, sync, fiche.id, suivante);
+    } catch (erreur) {
+      setBrouillon(null);
+      throw erreur;
+    }
   };
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
@@ -392,19 +431,19 @@ export function SheetView({
 
   // Le sac : ce que le joueur possède est une décision, jamais un calcul.
   const ajouterObjet = (item: { name: string; qty: number }) =>
-    void saveSheet(client, sync, fiche.id, addItem(fiche.data, item));
+    enregistrer(addItem(donnees, item));
   const quantiteObjet = (itemId: string, qty: number) =>
-    void saveSheet(client, sync, fiche.id, setItemQty(fiche.data, itemId, qty));
+    enregistrer(setItemQty(donnees, itemId, qty));
   const retirerObjet = (itemId: string) =>
-    void saveSheet(client, sync, fiche.id, removeItem(fiche.data, itemId));
+    enregistrer(removeItem(donnees, itemId));
   const fixerOr = (gold: number) =>
-    void saveSheet(client, sync, fiche.id, setGold(fiche.data, gold));
+    enregistrer(setGold(donnees, gold));
 
   const dialogues = (
     <>
       {niveauEnCours && (
         <LevelUpDialog
-          sheet={fiche.data}
+          sheet={donnees}
           onMonter={monterDeNiveau}
           onFermer={() => setNiveauEnCours(false)}
         />
@@ -417,8 +456,8 @@ export function SheetView({
         }}>
           <div className="lbl" style={{ color: 'var(--accent)' }}>Sauvegarde de concentration</div>
           <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.45 }}>
-            Dégâts reçus{spellById(fiche.data.live.concentration?.spellId ?? '')?.name
-              ? ` en te concentrant sur ${spellById(fiche.data.live.concentration?.spellId ?? '')?.name}` : ''}
+            Dégâts reçus{spellById(donnees.live.concentration?.spellId ?? '')?.name
+              ? ` en te concentrant sur ${spellById(donnees.live.concentration?.spellId ?? '')?.name}` : ''}
             {' '}— sauvegarde de Constitution <strong className="num">DD {jetConcentration.dd}</strong> à la table.
           </div>
           {jetConcentration.bonusSagesse > 0 && (
@@ -455,7 +494,7 @@ export function SheetView({
     if (onglet === 'fiche') {
       return (
         <FicheScreen
-          sheet={fiche.data}
+          sheet={donnees}
           derived={derivee}
           avecAllies={aDesFormesOuCompagnons}
           estMj={Boolean(estMj)}
@@ -488,7 +527,7 @@ export function SheetView({
           entries={journalEntries}
           notes={notes}
           estMj={Boolean(estMj)}
-          notesOwnerName={estMj ? fiche.data.name : undefined}
+          notesOwnerName={estMj ? donnees.name : undefined}
           moi={userId}
           correspondants={correspondants}
           messages={messages}
@@ -506,7 +545,7 @@ export function SheetView({
     if (onglet === 'grimoire') {
       return (
         <SpellbookScreen
-          sheet={fiche.data}
+          sheet={donnees}
           derived={derivee}
           onToggle={basculerSort}
           dons={estMj
@@ -519,7 +558,7 @@ export function SheetView({
     if (onglet === 'inventaire') {
       return (
         <InventoryScreen
-          sheet={fiche.data}
+          sheet={donnees}
           onAjouter={ajouterObjet}
           onQty={quantiteObjet}
           onRetirer={retirerObjet}
@@ -529,7 +568,7 @@ export function SheetView({
     }
 
     if (onglet === 'repos') {
-      return <RestScreen sheet={fiche.data} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} estMj={estMj} />;
+      return <RestScreen sheet={donnees} derived={derivee} onRepos={prendreRepos} onRetour={() => onOnglet('fiche')} estMj={estMj} />;
     }
 
     if (onglet === 'regles') {
@@ -551,10 +590,10 @@ export function SheetView({
     // Le combattant de CE personnage, pour lire les états que le MJ y a
     // posés. Même clé que `isYourTurn` : le nom, seul lien commun tant qu'un
     // combattant n'est pas rattaché à une fiche côté base.
-    const monCombattant = rencontre?.combatants.find((c) => c.name === fiche.data.name);
+    const monCombattant = rencontre?.combatants.find((c) => c.name === donnees.name);
     return (
       <CombatScreen
-        sheet={fiche.data}
+        sheet={donnees}
         cards={cartes}
         onSpendHp={soignerOuBlesser}
         onPlayCard={jouerCarte}
@@ -574,7 +613,7 @@ export function SheetView({
                 // Le lien fiche ↔ combattant se fait par le nom du personnage :
                 // c'est la seule clé commune tant qu'un combattant n'est pas
                 // rattaché à une fiche côté base.
-                isYourTurn: actif?.name === fiche.data.name,
+                isYourTurn: actif?.name === donnees.name,
                 holder: actif?.name,
               }
             : { mode: 'libre' }
@@ -583,7 +622,7 @@ export function SheetView({
     );
   };
 
-  const vise = onglet === 'grimoire' ? (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer) : undefined;
+  const vise = onglet === 'grimoire' ? (donnees.grants ?? []).find((grant) => grant.id === aRevoquer) : undefined;
 
   return (
     <div
@@ -609,7 +648,7 @@ export function SheetView({
       {dialogues}
       {donEnCours && (
         <GrantSpellDialog
-          sheet={fiche.data}
+          sheet={donnees}
           derived={derivee}
           onAccorder={accorder}
           onFermer={() => setDonEnCours(false)}
@@ -618,7 +657,7 @@ export function SheetView({
       {vise && (
         <Confirmation
           question={`Révoquer « ${spellById(vise.spellId)?.name ?? vise.spellId} » ?`}
-          detail={`Accordé à ${fiche.data.name} par ${vise.source}. `
+          detail={`Accordé à ${donnees.name} par ${vise.source}. `
             + 'Le sort et ses lancements disparaissent de la fiche.'}
           valider="Révoquer"
           onValider={() => revoquer(vise.id)}
