@@ -246,6 +246,15 @@ export interface CharacterSheet {
   shield: boolean;
   gold: number;
 
+  /**
+   * Armes en main — ids du catalogue (`content/weapons.ts`), indépendantes du
+   * sac : le sac est en texte libre, jamais relié au catalogue, alors qu'une
+   * attaque a besoin de connaître précisément l'arme pour calculer son bonus
+   * et ses dégâts. Absent ou vide : seule l'attaque à mains nues reste
+   * proposée, toujours disponible, elle.
+   */
+  weaponIds?: string[];
+
   // ── État vivant ──────────────────────────────────────────────────────
   live: LiveState;
 

@@ -10,6 +10,7 @@ import { RulesScreen } from './RulesScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { TabBar, type MainTab } from './TabBar';
 import { cardsFromCharacter, concentre } from './spell-cards';
+import { weaponCardsFromCharacter } from './weapon-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { restoreResource, spendResource } from '../model/cast';
@@ -30,6 +31,7 @@ import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
 import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
+import { ajouterArme, retirerArme } from '../model/weapons';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import { activeCombatant, type EncounterState } from '../domain/encounter';
@@ -89,7 +91,10 @@ export function SheetView({
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
-  const cartes = useMemo(() => cardsFromCharacter(fiche.data, derivee), [fiche.data, derivee]);
+  const cartes = useMemo(
+    () => [...weaponCardsFromCharacter(fiche.data, derivee), ...cardsFromCharacter(fiche.data, derivee)],
+    [fiche.data, derivee],
+  );
 
   /**
    * Les cibles marquables : les combattants de la rencontre, moins soi-même.
@@ -319,6 +324,10 @@ export function SheetView({
     void saveSheet(client, sync, fiche.id, dismissCompanion(fiche.data, companionId));
   const ramenerCompagnonLie = (companionId: string, rang: number) =>
     void saveSheet(client, sync, fiche.id, ramenerCompagnon(fiche.data, companionId, rang));
+  const ajouterUneArme = (weaponId: string) =>
+    void saveSheet(client, sync, fiche.id, ajouterArme(fiche.data, weaponId));
+  const retirerUneArme = (weaponId: string) =>
+    void saveSheet(client, sync, fiche.id, retirerArme(fiche.data, weaponId));
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
@@ -413,6 +422,8 @@ export function SheetView({
           onDegatsCompagnon={degatsCompagnon}
           onDetacherCompagnon={detacherCompagnon}
           onRamenerCompagnon={ramenerCompagnonLie}
+          onAjouterArme={ajouterUneArme}
+          onRetirerArme={retirerUneArme}
           niveauDisponible={niveauDisponible}
           onNiveauSuperieur={estMj
             ? basculerNiveauDisponible

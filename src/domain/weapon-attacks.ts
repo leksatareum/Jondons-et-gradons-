@@ -1,0 +1,92 @@
+import { weaponById, WEAPON_MASTERIES, type WeaponDef } from '../content/weapons';
+import { isProficientWithWeapon } from './weapon-proficiency';
+
+/**
+ * Une attaque prête à jouer : ce qu'une carte de combat affiche déjà pour un
+ * sort (bonus, dégâts) mais pour une arme — au corps à corps ou à distance.
+ *
+ * Le catalogue d'armes (`content/weapons.ts`), la maîtrise par classe et la
+ * progression d'Attaque supplémentaire (`domain/multiclassing.ts`) existaient
+ * déjà, chacun de son côté, sans jamais se rejoindre en une seule attaque
+ * jouable : c'était tout le trou signalé — l'écran de combat ne savait
+ * montrer QUE des sorts.
+ */
+export interface WeaponAttack {
+  id: string;
+  name: string;
+  melee: boolean;
+  /** Bonus au toucher, maîtrise comprise si le personnage l'a. */
+  toHit: number;
+  /** Formule affichée telle quelle : « 1d8+3 », ou un montant fixe comme la sarbacane. */
+  damage: string;
+  /** Propriétés telles qu'écrites au catalogue — « Finesse, légère »… */
+  properties: string;
+  /** Nom de la maîtrise PHB 2024 associée à cette arme, pour information. */
+  mastery: string;
+  masteryDesc: string;
+  proficient: boolean;
+}
+
+/** L'attaque à mains nues, toujours disponible — PHB 2024 : 1 + mod. Force, contondant. */
+export function unarmedStrikeAttack(strModifier: number, proficiencyBonus: number): WeaponAttack {
+  return {
+    id: 'mains-nues',
+    name: 'Attaque à mains nues',
+    melee: true,
+    toHit: strModifier + proficiencyBonus,
+    damage: `${Math.max(1, 1 + strModifier)}`,
+    properties: 'contondants',
+    mastery: '',
+    masteryDesc: '',
+    proficient: true,
+  };
+}
+
+const signe = (value: number): string => (value >= 0 ? `+${value}` : `${value}`);
+
+/**
+ * L'attaque pour une arme donnée du catalogue.
+ *
+ * Caractéristique : Force par défaut, Dextérité pour une arme à distance,
+ * la meilleure des deux pour une arme de Finesse — PHB 2024, glossaire
+ * « Finesse ». Les dégâts utilisent le même modificateur que le toucher :
+ * c'est la même caractéristique qui frappe et qui blesse.
+ */
+export function weaponAttackFor(
+  weapon: WeaponDef,
+  /** Modificateurs déjà calculés (`derived.modifiers`), pas des scores bruts. */
+  modifiers: { str: number; dex: number },
+  proficiencyBonus: number,
+  classIds: readonly string[],
+): WeaponAttack {
+  const mod = weapon.finesse
+    ? Math.max(modifiers.str, modifiers.dex)
+    : weapon.melee ? modifiers.str : modifiers.dex;
+  const proficient = isProficientWithWeapon(classIds, weapon);
+  const toHit = mod + (proficient ? proficiencyBonus : 0);
+  const base = weapon.fixed !== undefined ? `${weapon.fixed}` : `${weapon.diceCount ?? 1}d${weapon.die}`;
+  const damage = weapon.fixed !== undefined ? base : `${base}${mod !== 0 ? signe(mod) : ''}`;
+  const masterie = WEAPON_MASTERIES[weapon.mastery];
+  return {
+    id: `arme-${weapon.id}`,
+    name: weapon.name,
+    melee: weapon.melee,
+    toHit,
+    damage,
+    properties: weapon.props,
+    mastery: weapon.mastery,
+    masteryDesc: masterie?.desc ?? '',
+    proficient,
+  };
+}
+
+/** Résout un id de catalogue en `WeaponAttack`, ou `null` si l'id est inconnu — jamais d'attaque inventée. */
+export function weaponAttackForId(
+  weaponId: string,
+  modifiers: { str: number; dex: number },
+  proficiencyBonus: number,
+  classIds: readonly string[],
+): WeaponAttack | null {
+  const weapon = weaponById(weaponId);
+  return weapon ? weaponAttackFor(weapon, modifiers, proficiencyBonus, classIds) : null;
+}

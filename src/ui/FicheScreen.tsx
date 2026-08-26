@@ -3,6 +3,7 @@ import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 import { AbilityScoresStrip, SkillsGrid } from './CombatScreen';
 import { AlliesScreen } from './AlliesScreen';
+import { WeaponsScreen } from './WeaponsScreen';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { decisionsDeClasse } from '../model/choix-de-classe';
 import { speciesById } from '../content/species';
@@ -25,6 +26,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
+  onAjouterArme, onRetirerArme,
   onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse,
 }: {
   sheet: CharacterSheet;
@@ -39,6 +41,8 @@ export function FicheScreen({
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
   onRamenerCompagnon: (companionId: string, rang: number) => void;
+  onAjouterArme: (weaponId: string) => void;
+  onRetirerArme: (weaponId: string) => void;
   /**
    * Côté MJ : bascule la montée de niveau proposée (dé)/verrouillée.
    * Côté joueur : ouvre la fenêtre de choix, présente seulement quand le MJ
@@ -166,6 +170,11 @@ export function FicheScreen({
           <AbilityScoresStrip abilities={derived.abilities} modifiers={derived.modifiers} />
           <SkillsGrid skills={derived.skills} />
         </div>
+      </section>
+
+      <section>
+        <h2 className="ttl" style={{ fontSize: 17, marginBottom: 10 }}>Armes</h2>
+        <WeaponsScreen sheet={sheet} derived={derived} onAjouter={onAjouterArme} onRetirer={onRetirerArme} />
       </section>
 
       {/* ───── Décisions de classe ─────
