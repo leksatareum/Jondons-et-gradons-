@@ -557,6 +557,27 @@ describe('§20 — Bénédiction du Ténébreux : PV temporaires quand un ennemi
   });
 });
 
+describe('Pas des fées (Archifée 3+) : Pas brumeux sans emplacement', () => {
+  const avecPasBrumeux = (level: number, patron: 'celeste' | 'fielon' | 'archifee' | 'grand-ancien') => ({
+    ...occPatron(level, patron),
+    spells: [{ id: 'pas-brumeux', sourceClass: 'occultiste', prepared: true }],
+  });
+
+  it('se propose comme paiement, en tête, avec le bon nombre d’utilisations', () => {
+    const sheet = avecPasBrumeux(3, 'archifee');
+    const spell = spellById('pas-brumeux')!;
+    const paiements = paiementsPourSort(spell, deriveCharacter(sheet), sheet);
+    expect(paiements[0]).toMatchObject({ key: 'occultiste:pas-des-fees', max: 4, label: 'Pas des fées · sans emplacement' });
+  });
+
+  it('un autre patron ne le voit pas — Pas brumeux ne coûte alors qu’un emplacement', () => {
+    const sheet = avecPasBrumeux(3, 'fielon');
+    const spell = spellById('pas-brumeux')!;
+    const paiements = paiementsPourSort(spell, deriveCharacter(sheet), sheet);
+    expect(paiements.some((p) => p.key === 'occultiste:pas-des-fees')).toBe(false);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════
 // RÔDEUR — §10 à §15
 // ═══════════════════════════════════════════════════════════════════════
@@ -1283,6 +1304,27 @@ describe('p. 127 — Chasseur : deux décisions, rechoisies à chaque repos', ()
     const clefs = decisionsDeClasse(rodeurAvec(7, 'bestial')).map((d) => d.key);
     expect(clefs).not.toContain('hunterPrey');
     expect(clefs).not.toContain('hunterDefense');
+  });
+});
+
+describe('p. 123 — Charme d’outre-monde (Vagabond féerique 3) : une maîtrise de compétence liée au Charisme', () => {
+  it('propose seulement les compétences de Charisme', () => {
+    const decision = decisionsDeClasse(rodeurAvec(3, 'feerique')).find((d) => d.key === 'otherworldlyGlamourSkill')!;
+    expect(decision).toBeDefined();
+    expect(decision.options.map((o) => o.id).sort()).toEqual(['intimidation', 'persuasion', 'representation', 'tromperie']);
+  });
+
+  it('absente avant le niveau 3, et pour un autre archétype', () => {
+    expect(decisionsDeClasse(rodeurAvec(2, 'feerique')).some((d) => d.key === 'otherworldlyGlamourSkill')).toBe(false);
+    expect(decisionsDeClasse(rodeurAvec(3, 'chasseur')).some((d) => d.key === 'otherworldlyGlamourSkill')).toBe(false);
+  });
+
+  it('le choix ACCORDE vraiment la maîtrise — pas seulement enregistré dans les choix de classe', () => {
+    const avant = rodeurAvec(3, 'feerique');
+    expect(avant.skillProficiencies).not.toContain('persuasion');
+    const apres = choisirDeClasse(avant, 'rodeur', 'otherworldlyGlamourSkill', 'persuasion');
+    expect(apres.skillProficiencies).toContain('persuasion');
+    expect(decisionsDeClasse(apres).find((d) => d.key === 'otherworldlyGlamourSkill')?.choisi).toBe('persuasion');
   });
 });
 

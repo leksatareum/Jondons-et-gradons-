@@ -9,6 +9,7 @@ import { arcanumChoisis, arcanumResourceKey, invocationsChoisies } from '../mode
 import { SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
 import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
+import { PAS_DES_FEES_KEY } from '../domain/warlock-patron-resources';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -150,6 +151,24 @@ export function paiementsPourSort(
         remaining: gratuit.remaining,
         max: gratuit.max,
         label: 'Récupération naturelle · sans emplacement',
+      }, ...paiements];
+    }
+  }
+
+  // Pas des fées (Occultiste · Patron Archifée, niveau 3+) : Pas brumeux
+  // sans emplacement, modificateur de Charisme fois par repos long. La
+  // réserve était déjà comptée juste (`domain/warlock-patron-resources.ts`),
+  // affichée dans le pisteur — mais jamais proposée comme paiement du sort
+  // lui-même : le lancer coûtait un emplacement normal, et personne ne
+  // pouvait relier les deux gestes.
+  if (sheet && spell.id === 'pas-brumeux' && patronDe(sheet) === 'archifee') {
+    const gratuit = derived.resources.find((resource) => resource.key === PAS_DES_FEES_KEY);
+    if (gratuit) {
+      return [{
+        key: gratuit.key,
+        remaining: gratuit.remaining,
+        max: gratuit.max,
+        label: 'Pas des fées · sans emplacement',
       }, ...paiements];
     }
   }

@@ -61,3 +61,7 @@ export const GREAT_OLD_ONE_CLAIRVOYANT_RECHARGE = 'court' as const;
  */
 export const archfeyFeyStepUses = (level: number, charismaModifier: number): number =>
   clampLevel(level) >= 3 ? Math.max(1, charismaModifier) : 0;
+
+/** Clé de la réserve — partagée par `derive.ts` (qui la déclare) et
+ *  `ui/spell-cards.ts` (qui l'offre comme paiement de Pas brumeux). */
+export const PAS_DES_FEES_KEY = 'occultiste:pas-des-fees';

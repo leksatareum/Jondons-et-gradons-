@@ -28,7 +28,7 @@ import { hunterMarkFreeCastUses, natureVeilUses } from '../domain/ranger-resourc
 import { ruseMagiqueRecoverableSlots } from '../domain/warlock-resources';
 import {
   archfeyFeyStepUses, celestialHealingLightDice,
-  fiendDarkOnesLuckUses, greatOldOneClairvoyantCombatantUses,
+  fiendDarkOnesLuckUses, greatOldOneClairvoyantCombatantUses, PAS_DES_FEES_KEY,
 } from '../domain/warlock-patron-resources';
 
 /**
@@ -256,7 +256,7 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   if (patron === 'Patron Céleste') push('occultiste:lumiere-guerisseuse', 'Lumière guérisseuse (dés)', celestialHealingLightDice(occultiste), 'long', 'occultiste');
   if (patron === 'Patron Fiélon') push('occultiste:chance-tenebreux', 'Chance du Ténébreux', fiendDarkOnesLuckUses(occultiste, cha), 'long', 'occultiste');
   if (patron === 'Patron Grand Ancien') push('occultiste:combattant-clairvoyant', 'Combattant clairvoyant', greatOldOneClairvoyantCombatantUses(occultiste), 'court', 'occultiste');
-  if (patron === 'Patron Archifée') push('occultiste:pas-des-fees', 'Pas des fées', archfeyFeyStepUses(occultiste, cha), 'long', 'occultiste');
+  if (patron === 'Patron Archifée') push(PAS_DES_FEES_KEY, 'Pas des fées', archfeyFeyStepUses(occultiste, cha), 'long', 'occultiste');
 
   // Trois réactions ou frappes limitées à une fois par repos long, dont deux
   // se rachètent avec un emplacement de pacte. Aucune n'était déclarée.

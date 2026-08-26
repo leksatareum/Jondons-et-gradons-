@@ -209,6 +209,24 @@ export function decisionsDeClasse(
     });
   }
 
+  // Charme d'outre-monde (Vagabond féerique 3) : une maîtrise de compétence
+  // liée au Charisme, choisie au niveau 3, pour de bon — PHB 2024, p. 123.
+  // `estVagabondFeerique(sheet)` existait, la décision non : rien ne
+  // demandait jamais cette maîtrise, alors que la fiche avait un endroit
+  // pour la recevoir (`skillProficiencies`, comme n'importe quelle autre).
+  if (rodeur >= 3 && estVagabondFeerique(sheet)) {
+    const competencesCha = SKILLS.filter((skill) => skill.ability === 'cha');
+    decisions.push({
+      classId: 'rodeur', key: 'otherworldlyGlamourSkill',
+      label: 'Charme d\'outre-monde — maîtrise',
+      help: 'Choisie au niveau 3, pour de bon. Une compétence liée au Charisme, où tu deviens maîtrisé.',
+      options: competencesCha.map((skill) => ({
+        id: skill.id, name: skill.name, desc: 'Tu deviens maîtrisé de cette compétence.',
+      })),
+      choisi: choisiPour(sheet, 'rodeur', 'otherworldlyGlamourSkill'),
+    });
+  }
+
   // ── Occultiste ────────────────────────────────────────────────────
   // Résilience fiélonne (niveau 10) : un type de dégâts choisi à la fin de
   // chaque repos, autre que la force. Le choix tient jusqu'au suivant.
@@ -278,6 +296,13 @@ export const estChasseur = (sheet: CharacterSheet): boolean => {
   return /^chasseur$/i.test((subclassOf(sheet, 'rodeur') ?? '').trim());
 };
 
+/** Le Vagabond féerique, quelle que soit la façon dont la fiche le nomme. */
+export const estVagabondFeerique = (sheet: CharacterSheet): boolean => {
+  const entree = sheet.classLevels.find((e) => e.classId === 'rodeur');
+  if (entree?.subclassId === 'feerique') return true;
+  return /vagabond f[ée]erique/i.test((subclassOf(sheet, 'rodeur') ?? '').trim());
+};
+
 /** Décisions encore à prendre — celles qui manquent réellement à la fiche. */
 export const decisionsEnAttente = (sheet: CharacterSheet): DecisionDeClasse[] =>
   decisionsDeClasse(sheet).filter((decision) => !decision.choisi);
@@ -318,13 +343,25 @@ export function choisirDeClasse(
     };
   }
 
-  return {
+  const suivante: CharacterSheet = {
     ...sheet,
     classChoices: {
       ...sheet.classChoices,
       [classId]: { ...choicesFor(sheet, classId), [key]: optionId },
     },
   };
+
+  // Charme d'outre-monde (Vagabond féerique 3) : contrairement à
+  // Explorateur agile (qui DOUBLE une maîtrise déjà là), cette décision en
+  // ACCORDE une nouvelle — elle doit donc aussi rejoindre
+  // `skillProficiencies`, la même liste que n'importe quel autre choix de
+  // compétence. La classChoices seule ne changeait rien au calcul des
+  // compétences.
+  if (classId === 'rodeur' && key === 'otherworldlyGlamourSkill' && !suivante.skillProficiencies.includes(optionId)) {
+    return { ...suivante, skillProficiencies: [...suivante.skillProficiencies, optionId] };
+  }
+
+  return suivante;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
