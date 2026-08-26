@@ -29,7 +29,9 @@ import { LevelUpDialog } from './LevelUpDialog';
 import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
-import { learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess } from '../model/wild-shape';
+import {
+  bonusConcentrationEclatLunaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
+} from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
 import { degainerArme, equiperArme } from '../model/weapons';
 import type { CharacterSheet, SpellGrant } from '../model/character';
@@ -87,7 +89,7 @@ export function SheetView({
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
   /** Un jet de sauvegarde de concentration à faire à la table, DD déjà calculé. */
-  const [jetConcentration, setJetConcentration] = useState<{ dd: number } | null>(null);
+  const [jetConcentration, setJetConcentration] = useState<{ dd: number; bonusSagesse: number } | null>(null);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
@@ -159,7 +161,12 @@ export function SheetView({
     // qui a atteint les PV, que la règle prend en compte.
     if (delta < 0 && fiche.data.live.concentration) {
       const degats = Math.max(0, Math.floor(-delta));
-      setJetConcentration({ dd: Math.min(30, Math.max(10, Math.floor(degats / 2))) });
+      setJetConcentration({
+        dd: Math.min(30, Math.max(10, Math.floor(degats / 2))),
+        // Éclat lunaire (Cercle de la Lune 6) ajoute la Sagesse à CE jet
+        // précis, tant que la Forme sauvage dure — jamais affiché ailleurs.
+        bonusSagesse: bonusConcentrationEclatLunaire(fiche.data, derivee.modifiers.wis),
+      });
     }
     void saveSheet(client, sync, fiche.id, suivante);
   };
@@ -381,6 +388,11 @@ export function SheetView({
               ? ` en te concentrant sur ${spellById(fiche.data.live.concentration?.spellId ?? '')?.name}` : ''}
             {' '}— sauvegarde de Constitution <strong className="num">DD {jetConcentration.dd}</strong> à la table.
           </div>
+          {jetConcentration.bonusSagesse > 0 && (
+            <div style={{ fontSize: 13, marginTop: 4, color: 'var(--accent)', lineHeight: 1.4 }}>
+              Éclat lunaire : ajoute ta Sagesse (+{jetConcentration.bonusSagesse}) à ce jet, tant que tu es transformé.
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button
               onClick={() => repondreJetConcentration(true)}

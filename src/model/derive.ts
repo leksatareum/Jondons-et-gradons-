@@ -4,6 +4,7 @@ import {
   type AbilityScores, type CharacterSheet,
 } from './character';
 import { proficiencyBonus } from '../domain/proficiency';
+import { armorClassBonusFor, chosenFightingStyles } from '../domain/fighting-styles';
 import {
   cantripsKnown, fullCasterSlots, halfCasterSlots, pactMagicSlots,
   tabledPreparedSpellCount, wizardSpellbookSize,
@@ -16,7 +17,7 @@ import { spellcastingAbility, spellcastingNumbers, type SpellcastingNumbers } fr
 import { spellById } from '../content/spell-catalogue';
 import { grantResourceKey } from './spell-grants';
 import { arcanumChoisis, arcanumResourceKey } from './invocations';
-import { sortMineurSupplementaireDuDruide } from './choix-de-classe';
+import { competenceExplorateurAgile, sortMineurSupplementaireDuDruide } from './choix-de-classe';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
 import { armorById, SHIELD } from '../content/armor';
@@ -323,9 +324,13 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
 
   // ── Classe d'armure ────────────────────────────────────────────────
   const armor = armorById(sheet.armorId ?? 'none') ?? armorById('none')!;
+  // Défense (style de combat) : +1 tant qu'une armure est portée — le
+  // choix se sauvegardait sur la fiche sans jamais être relu nulle part.
+  const styleDeCombat = chosenFightingStyles(sheet.classChoices);
   const armorClass = armor.base
     + (armor.dexCap === null ? modifiers.dex : Math.min(modifiers.dex, armor.dexCap))
-    + (sheet.shield ? SHIELD.bonus : 0);
+    + (sheet.shield ? SHIELD.bonus : 0)
+    + armorClassBonusFor(styleDeCombat, armor.id !== 'none');
 
   // ── Maîtrises ──────────────────────────────────────────────────────
   const background = backgroundById(sheet.backgroundId);
@@ -347,9 +352,13 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
   const exhaustion = Math.max(0, sheet.live.exhaustion ?? 0);
   const penaliteEpuisement = exhaustion * 2;
 
+  // Explorateur agile (Rôdeur 2) choisit sa compétence d'expertise à part de
+  // `sheet.expertise` — la décision existait sans écran pour la prendre, donc
+  // sans jamais produire d'effet (voir `choix-de-classe.ts`).
+  const explorateurAgile = competenceExplorateurAgile(sheet);
   const skills: DerivedSkill[] = SKILLS.map((skill) => {
     const proficient = skillProficiencies.includes(skill.id);
-    const expertise = proficient && sheet.expertise.includes(skill.id);
+    const expertise = proficient && (sheet.expertise.includes(skill.id) || explorateurAgile === skill.id);
     const bonus = modifiers[skill.ability]
       + (expertise ? prof * 2 : proficient ? prof : 0)
       - penaliteEpuisement;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  activeWildShapeStatBlock, canCastWhileShaped, eligibleForms, hasRoomToLearn,
-  knownForms, learnForm, revert, swapForm, transform, wildShapeAccess,
+  activeWildShapeStatBlock, bonusConcentrationEclatLunaire, canCastWhileShaped, eclatLunaireActif,
+  eligibleForms, hasRoomToLearn, knownForms, learnForm, revert, swapForm, transform, wildShapeAccess,
 } from './wild-shape';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
@@ -168,5 +168,42 @@ describe('lancer un sort en forme de bête — restreint avant le niveau 18', ()
     const transforme = transform(sheet, derived, 'wolf');
     expect(canCastWhileShaped(transforme, deriveCharacter(transforme), 'Soins', null)).toBe(true);
     expect(canCastWhileShaped(transforme, deriveCharacter(transforme), 'Boule de feu', null)).toBe(false);
+  });
+});
+
+describe('Éclat lunaire (Cercle de la Lune, niveau 6) — actif seulement transformé', () => {
+  const lune = (level: number) => druide(level, {
+    classLevels: [{ classId: 'druide', level, subclass: 'Cercle de la Lune', subclassId: null }],
+    wildShapeKnownForms: ['wolf'],
+  });
+
+  it('inactif avant le niveau 6, même transformé', () => {
+    const sheet = lune(5);
+    const derived = deriveCharacter(sheet);
+    const transforme = transform(sheet, derived, 'wolf');
+    expect(eclatLunaireActif(transforme)).toBe(false);
+    expect(bonusConcentrationEclatLunaire(transforme, 3)).toBe(0);
+  });
+
+  it('inactif au niveau 6 sans être transformé', () => {
+    expect(eclatLunaireActif(lune(6))).toBe(false);
+  });
+
+  it('actif au niveau 6+, transformé : ajoute le modificateur de Sagesse', () => {
+    const sheet = lune(6);
+    const derived = deriveCharacter(sheet);
+    const transforme = transform(sheet, derived, 'wolf');
+    expect(eclatLunaireActif(transforme)).toBe(true);
+    expect(bonusConcentrationEclatLunaire(transforme, 3)).toBe(3);
+  });
+
+  it('un autre cercle n’y a jamais droit', () => {
+    const sheet = druide(10, {
+      classLevels: [{ classId: 'druide', level: 10, subclass: 'Cercle de la Terre', subclassId: null }],
+      wildShapeKnownForms: ['wolf'],
+    });
+    const derived = deriveCharacter(sheet);
+    const transforme = transform(sheet, derived, 'wolf');
+    expect(eclatLunaireActif(transforme)).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  activeWildShapeStatBlock, eligibleForms, hasRoomToLearn, knownForms, wildShapeAccess,
+  activeWildShapeStatBlock, eclatLunaireActif, eligibleForms, hasRoomToLearn, knownForms, wildShapeAccess,
 } from '../model/wild-shape';
 import { availableCompanions } from '../model/companions';
 import type { LinkedCreature, CharacterSheet } from '../model/character';
@@ -119,6 +119,12 @@ function SectionFormeSauvage({ sheet, derived, onTransformer, onRevenir, onAppre
           {actif.profile.traits?.map((trait) => (
             <div key={trait} style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.4 }}>{trait}</div>
           ))}
+          {eclatLunaireActif(sheet) && (
+            <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, lineHeight: 1.4 }}>
+              Éclat lunaire : chaque coup peut infliger des dégâts radiants à la place des dégâts habituels — à
+              choisir à chaque attaque. Ta Sagesse s’ajoute aussi à ta sauvegarde de concentration tant que tu es transformé.
+            </div>
+          )}
           <button
             onClick={onRevenir}
             style={{

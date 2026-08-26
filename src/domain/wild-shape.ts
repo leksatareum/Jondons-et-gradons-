@@ -237,6 +237,25 @@ export function isMoonDruid(character: WildShapeCharacter): boolean {
   return /cercle de la lune|circle of the moon|\blune\b/i.test(druidSubclassOf(character));
 }
 
+/**
+ * Éclat lunaire (Cercle de la Lune, niveau 6) : actif seulement transformé.
+ * Le choix qu'elle ouvre — dégâts habituels ou radiants, à chaque coup —
+ * n'est pas chiffrable ici : c'est un rappel à la table, pas un nombre.
+ */
+export function lunarRadianceActive(character: WildShapeCharacter): boolean {
+  return isMoonDruid(character) && druidLevelOf(character) >= 6 && Boolean(character.activeWildShape);
+}
+
+/**
+ * Le seul chiffre qu'Éclat lunaire ajoute vraiment : le modificateur de
+ * Sagesse sur les sauvegardes de Constitution pour maintenir la
+ * concentration, tant que la Forme sauvage dure. 0 en dehors de ces
+ * conditions — jamais un bonus qui traîne une fois la forme quittée.
+ */
+export function lunarRadianceConcentrationBonus(character: WildShapeCharacter, wisdomModifier: number): number {
+  return lunarRadianceActive(character) ? wisdomModifier : 0;
+}
+
 export function wildShapeKnownLimit(level: number): number {
   if (level >= 8) return 8;
   if (level >= 4) return 6;

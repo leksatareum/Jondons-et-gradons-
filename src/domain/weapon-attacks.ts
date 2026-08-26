@@ -1,5 +1,6 @@
 import { weaponById, WEAPON_MASTERIES, type WeaponDef } from '../content/weapons';
 import { isProficientWithWeapon } from './weapon-proficiency';
+import { damageBonusFor, greatWeaponFightingNote, toHitBonusFor, unarmedDamageDie } from './fighting-styles';
 
 /**
  * Une attaque prête à jouer : ce qu'une carte de combat affiche déjà pour un
@@ -27,14 +28,24 @@ export interface WeaponAttack {
   proficient: boolean;
 }
 
-/** L'attaque à mains nues, toujours disponible — PHB 2024 : 1 + mod. Force, contondant. */
-export function unarmedStrikeAttack(strModifier: number, proficiencyBonus: number): WeaponAttack {
+/**
+ * L'attaque à mains nues, toujours disponible — PHB 2024 : 1 + mod par
+ * défaut. Avec le style Combat à mains nues, un vrai dé remplace le
+ * forfait : 1d6, ou 1d8 si vraiment aucune arme ni bouclier n'est en main.
+ */
+export function unarmedStrikeAttack(
+  strModifier: number,
+  proficiencyBonus: number,
+  styles: ReadonlySet<string> = new Set(),
+  hasWeaponOrShield = true,
+): WeaponAttack {
+  const die = unarmedDamageDie(styles, hasWeaponOrShield);
   return {
     id: 'mains-nues',
     name: 'Attaque à mains nues',
     melee: true,
     toHit: strModifier + proficiencyBonus,
-    damage: `${Math.max(1, 1 + strModifier)}`,
+    damage: die ? `1d${die}${strModifier !== 0 ? (strModifier >= 0 ? `+${strModifier}` : strModifier) : ''}` : `${Math.max(1, 1 + strModifier)}`,
     properties: 'contondants',
     mastery: '',
     masteryDesc: '',
@@ -51,6 +62,9 @@ const signe = (value: number): string => (value >= 0 ? `+${value}` : `${value}`)
  * la meilleure des deux pour une arme de Finesse — PHB 2024, glossaire
  * « Finesse ». Les dégâts utilisent le même modificateur que le toucher :
  * c'est la même caractéristique qui frappe et qui blesse.
+ *
+ * `styles` : les styles de combat choisis (`fighting-styles.ts`) — vide par
+ * défaut, pour ne rien casser là où l'appelant ne les connaît pas encore.
  */
 export function weaponAttackFor(
   weapon: WeaponDef,
@@ -58,22 +72,25 @@ export function weaponAttackFor(
   modifiers: { str: number; dex: number },
   proficiencyBonus: number,
   classIds: readonly string[],
+  styles: ReadonlySet<string> = new Set(),
 ): WeaponAttack {
   const mod = weapon.finesse
     ? Math.max(modifiers.str, modifiers.dex)
     : weapon.melee ? modifiers.str : modifiers.dex;
   const proficient = isProficientWithWeapon(classIds, weapon);
-  const toHit = mod + (proficient ? proficiencyBonus : 0);
+  const toHit = mod + (proficient ? proficiencyBonus : 0) + toHitBonusFor(styles, weapon);
+  const modDegats = mod + damageBonusFor(styles, weapon);
   const base = weapon.fixed !== undefined ? `${weapon.fixed}` : `${weapon.diceCount ?? 1}d${weapon.die}`;
-  const damage = weapon.fixed !== undefined ? base : `${base}${mod !== 0 ? signe(mod) : ''}`;
+  const damage = weapon.fixed !== undefined ? base : `${base}${modDegats !== 0 ? signe(modDegats) : ''}`;
   const masterie = WEAPON_MASTERIES[weapon.mastery];
+  const note = greatWeaponFightingNote(styles, weapon);
   return {
     id: `arme-${weapon.id}`,
     name: weapon.name,
     melee: weapon.melee,
     toHit,
     damage,
-    properties: weapon.props,
+    properties: note ? `${weapon.props} · ${note}` : weapon.props,
     mastery: weapon.mastery,
     masteryDesc: masterie?.desc ?? '',
     proficient,
@@ -86,7 +103,8 @@ export function weaponAttackForId(
   modifiers: { str: number; dex: number },
   proficiencyBonus: number,
   classIds: readonly string[],
+  styles: ReadonlySet<string> = new Set(),
 ): WeaponAttack | null {
   const weapon = weaponById(weaponId);
-  return weapon ? weaponAttackFor(weapon, modifiers, proficiencyBonus, classIds) : null;
+  return weapon ? weaponAttackFor(weapon, modifiers, proficiencyBonus, classIds, styles) : null;
 }

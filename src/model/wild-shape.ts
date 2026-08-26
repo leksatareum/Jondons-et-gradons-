@@ -150,6 +150,26 @@ export function estCercleDeLaLune(sheet: CharacterSheet): boolean {
   ));
 }
 
+/**
+ * Éclat lunaire (Cercle de la Lune, niveau 6) : actif seulement transformé.
+ * Le choix qu'elle ouvre — dégâts habituels ou radiants, à chaque coup — ne
+ * se chiffre pas ; c'est un rappel affiché sur la forme active, pas un
+ * nombre recalculé.
+ */
+export function eclatLunaireActif(sheet: CharacterSheet): boolean {
+  return estCercleDeLaLune(sheet) && druidLevel(sheet) >= 6 && Boolean(sheet.live.activeWildShape);
+}
+
+/**
+ * Le seul chiffre qu'Éclat lunaire ajoute vraiment : le modificateur de
+ * Sagesse sur la sauvegarde de Constitution pour maintenir la concentration,
+ * tant que la Forme sauvage dure — jamais un bonus qui traîne une fois
+ * revenu à sa forme humanoïde.
+ */
+export function bonusConcentrationEclatLunaire(sheet: CharacterSheet, wisdomModifier: number): number {
+  return eclatLunaireActif(sheet) ? wisdomModifier : 0;
+}
+
 /** Reprend forme humanoïde. Ne rend pas la charge dépensée — sortir de forme est gratuit, pas la transformation elle-même. */
 export function revert(sheet: CharacterSheet): CharacterSheet {
   if (!sheet.live.activeWildShape) return sheet;

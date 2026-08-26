@@ -1244,7 +1244,10 @@ describe('p. 127 — Chasseur : deux décisions, rechoisies à chaque repos', ()
   });
 
   it('les deux se rechoisissent à chaque repos, court ou long', () => {
-    for (const decision of decisionsDeClasse(rodeurAvec(7, 'chasseur'))) {
+    const duChasseur = decisionsDeClasse(rodeurAvec(7, 'chasseur'))
+      .filter((d) => d.key === 'hunterPrey' || d.key === 'hunterDefense');
+    expect(duChasseur).toHaveLength(2);
+    for (const decision of duChasseur) {
       expect(decision.rechoisissable).toBe('repos');
     }
   });
@@ -1260,8 +1263,43 @@ describe('p. 127 — Chasseur : deux décisions, rechoisies à chaque repos', ()
     expect(decisionsDeClasse(apres).find((d) => d.key === 'hunterPrey')?.choisi).toBe('horde-breaker');
   });
 
-  it('un autre archétype n’a aucune de ces décisions', () => {
-    expect(decisionsDeClasse(rodeurAvec(7, 'bestial')).length).toBe(0);
+  it('un autre archétype n’a aucune de ces décisions propres au Chasseur', () => {
+    const clefs = decisionsDeClasse(rodeurAvec(7, 'bestial')).map((d) => d.key);
+    expect(clefs).not.toContain('hunterPrey');
+    expect(clefs).not.toContain('hunterDefense');
+  });
+});
+
+describe('p. 121 — Explorateur agile : expertise sur une compétence déjà maîtrisée', () => {
+  const rodeurMaitrise = (level: number, skills: string[]): CharacterSheet =>
+    fiche([{ classId: 'rodeur', level, subclass: 'Chasseur', subclassId: 'chasseur' }], { skillProficiencies: skills });
+
+  it('absente avant le niveau 2', () => {
+    const clefs = decisionsDeClasse(rodeurMaitrise(1, ['survie'])).map((d) => d.key);
+    expect(clefs).not.toContain('deftExplorerSkill');
+  });
+
+  it('ne propose que des compétences déjà maîtrisées — fond de personnage compris', () => {
+    // Le fond « Sage » de la fixture ajoute Arcanes et Histoire à ce que le
+    // joueur a choisi : l'expertise porte sur toute compétence maîtrisée,
+    // pas seulement celles cochées à la classe.
+    const decision = decisionsDeClasse(rodeurMaitrise(2, ['survie', 'discretion']))
+      .find((d) => d.key === 'deftExplorerSkill')!;
+    expect(decision.options.map((o) => o.id).sort()).toEqual(['arcanes', 'discretion', 'histoire', 'survie']);
+  });
+
+  it('le choix double le bonus de maîtrise sur cette compétence', () => {
+    const sheet = choisirDeClasse(rodeurMaitrise(2, ['survie']), 'rodeur', 'deftExplorerSkill', 'survie');
+    const derived = deriveCharacter(sheet);
+    const survie = derived.skills.find((s) => s.id === 'survie')!;
+    expect(survie.expertise).toBe(true);
+    expect(survie.bonus).toBe(derived.modifiers.wis + derived.proficiencyBonus * 2);
+  });
+
+  it('verrouillée une fois prise, comme l’Ordre primordial', () => {
+    const sheet = choisirDeClasse(rodeurMaitrise(2, ['survie']), 'rodeur', 'deftExplorerSkill', 'survie');
+    const decision = decisionsDeClasse(sheet).find((d) => d.key === 'deftExplorerSkill')!;
+    expect(decision.verrouillee).toBe(true);
   });
 });
 

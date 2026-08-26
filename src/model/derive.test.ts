@@ -121,3 +121,26 @@ describe('sorts préparables — lus dans la table, pas calculés', () => {
       .toBeGreaterThan(faible.spellcasting.numbers.druide.saveDc);
   });
 });
+
+describe('Défense (style de combat) — +1 CA en armure seulement', () => {
+  it('s’applique en armure', () => {
+    const derived = deriveCharacter(fiche({
+      armorId: 'cuir', // CA 11 + DEX
+      classChoices: { rodeur: { fightingStyle: 'defense' } },
+    }));
+    expect(derived.armorClass).toBe(12); // 11 + DEX(0) + 1
+  });
+
+  it('ne s’applique pas sans armure', () => {
+    const derived = deriveCharacter(fiche({
+      armorId: null,
+      classChoices: { rodeur: { fightingStyle: 'defense' } },
+    }));
+    expect(derived.armorClass).toBe(10); // sans armure, sans le bonus
+  });
+
+  it('sans le style, rien ne change', () => {
+    const derived = deriveCharacter(fiche({ armorId: 'cuir' }));
+    expect(derived.armorClass).toBe(11);
+  });
+});

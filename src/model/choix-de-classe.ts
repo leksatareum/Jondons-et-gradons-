@@ -5,6 +5,8 @@ import { HUNTER_DEFENSE, HUNTER_PREY } from '../content/ranger-hunter-options';
 import { DAMAGE_TYPES } from '../content/reference-lists';
 import { alwaysPreparedSpellsFor, DRUID_TERRAINS } from '../content/always-prepared-spells';
 import { cantripsKnown } from '../domain/spellcasting-progression';
+import { backgroundById } from '../content/backgrounds';
+import { SKILLS } from '../content/character-basics';
 
 /**
  * Les décisions de classe qu'un personnage doit prendre — et que rien ne lui
@@ -82,6 +84,12 @@ const enOption = (option: { id: string; name: string; desc: string }): ChoiceOpt
 const choisiPour = (sheet: CharacterSheet, classId: string, key: string): string | null =>
   choiceList(choicesFor(sheet, classId), key)[0] ?? null;
 
+/** Compétences maîtrisées, fond de personnage compris — même liste que `derive.ts`. */
+const competencesMaitrisees = (sheet: CharacterSheet): string[] => [...new Set([
+  ...(backgroundById(sheet.backgroundId)?.skills ?? []),
+  ...sheet.skillProficiencies,
+])];
+
 /**
  * Ce que l'Ordre primordial donne, dit en clair.
  *
@@ -155,6 +163,18 @@ export function decisionsDeClasse(
   // ── Rôdeur ────────────────────────────────────────────────────────
   const rodeur = levelInClass(sheet, 'rodeur');
   const chasseur = estChasseur(sheet);
+
+  if (rodeur >= 2) {
+    const maitrisees = competencesMaitrisees(sheet);
+    decisions.push({
+      classId: 'rodeur', key: 'deftExplorerSkill',
+      label: 'Explorateur agile — expertise',
+      help: 'Choisie au niveau 2, pour de bon. Une compétence où tu es déjà maîtrisé : son bonus de maîtrise double.',
+      options: SKILLS.filter((skill) => maitrisees.includes(skill.id))
+        .map((skill) => ({ id: skill.id, name: skill.name, desc: 'Le bonus de maîtrise y compte double.' })),
+      choisi: choisiPour(sheet, 'rodeur', 'deftExplorerSkill'),
+    });
+  }
 
   if (rodeur >= 3 && chasseur) {
     decisions.push({
@@ -282,6 +302,15 @@ export const terrainDuCercle = (sheet: CharacterSheet): string | null =>
   (estCercleDeLaTerre(sheet) ? choisiPour(sheet, 'druide', 'terrain') : null);
 
 export const TERRAINS_CONNUS = DRUID_TERRAINS;
+
+/**
+ * La compétence choisie via Explorateur agile (Rôdeur 2) — expertise
+ * permanente. `derive.ts` la lit pour doubler le bonus de maîtrise, au même
+ * titre qu'une entrée de `sheet.expertise` : la décision existait déjà sans
+ * jamais produire d'effet, faute d'écran pour la prendre.
+ */
+export const competenceExplorateurAgile = (sheet: CharacterSheet): string | null =>
+  (levelInClass(sheet, 'rodeur') >= 2 ? choisiPour(sheet, 'rodeur', 'deftExplorerSkill') : null);
 
 /**
  * Vrai si ce sort est un sort du terrain actuellement choisi.

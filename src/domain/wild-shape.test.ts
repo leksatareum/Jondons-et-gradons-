@@ -5,6 +5,8 @@ import {
   canCastSpellWhileWildShaped,
   eligibleWildShapeProfiles,
   endWildShape,
+  lunarRadianceActive,
+  lunarRadianceConcentrationBonus,
   normalizedKnownWildShapeForms,
   openWildShapeSwapAfterLongRest,
   swapWildShapeForm,
@@ -134,5 +136,31 @@ describe('Forme sauvage PHB 2024 · niveaux 2 à 5', () => {
 
     const moon9 = applyWildShape({ ...druid(9, 'Cercle de la Lune'), wildShapeKnownForms: ['wolf', 'rat', 'spider', 'riding-horse'] }, 'wolf');
     expect(canCastSpellWhileWildShaped(moon9, 'Soins de groupe')).toBe(true);
+  });
+});
+
+describe('Éclat lunaire (Cercle de la Lune, niveau 6) — actif seulement transformé', () => {
+  it('inactif avant le niveau 6', () => {
+    const forme = applyWildShape(druid(5, 'Cercle de la Lune'), 'wolf');
+    expect(forme.activeWildShape).toBeDefined(); // la forme s’applique bien : ce n’est pas ça qui manque
+    expect(lunarRadianceActive(forme)).toBe(false);
+    expect(lunarRadianceConcentrationBonus(forme, 4)).toBe(0);
+  });
+
+  it('inactif si pas transformé, même au niveau 6', () => {
+    expect(lunarRadianceActive(druid(6, 'Cercle de la Lune'))).toBe(false);
+  });
+
+  it('actif niveau 6+, transformé : ajoute le modificateur de Sagesse à la sauvegarde de concentration', () => {
+    const forme = applyWildShape(druid(6, 'Cercle de la Lune'), 'wolf');
+    expect(forme.activeWildShape).toBeDefined();
+    expect(lunarRadianceActive(forme)).toBe(true);
+    expect(lunarRadianceConcentrationBonus(forme, 4)).toBe(4);
+  });
+
+  it('un autre cercle n’y a jamais droit', () => {
+    const forme = applyWildShape(druid(10, 'Cercle de la Terre'), 'wolf');
+    expect(forme.activeWildShape).toBeDefined();
+    expect(lunarRadianceActive(forme)).toBe(false);
   });
 });

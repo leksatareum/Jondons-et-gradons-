@@ -1,6 +1,7 @@
 import { weaponById, type WeaponDef } from '../content/weapons';
 import { ownedWeapons } from '../domain/weapon-ownership';
 import { unarmedStrikeAttack, weaponAttackFor, type WeaponAttack } from '../domain/weapon-attacks';
+import { chosenFightingStyles } from '../domain/fighting-styles';
 import { multiclassAttacksPerAction } from '../domain/multiclassing';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
@@ -63,11 +64,14 @@ export function degainerArme(sheet: CharacterSheet): CharacterSheet {
 export function attaquesDuPersonnage(sheet: CharacterSheet, derived: DerivedCharacter): WeaponAttack[] {
   const classIds = sheet.classLevels.map((entry) => entry.classId);
   const modifiers = { str: derived.modifiers.str, dex: derived.modifiers.dex };
+  const styles = chosenFightingStyles(sheet.classChoices);
   const arme = armeEnMain(sheet);
-  const attaques = arme ? [weaponAttackFor(arme, modifiers, derived.proficiencyBonus, classIds)] : [];
+  const attaques = arme ? [weaponAttackFor(arme, modifiers, derived.proficiencyBonus, classIds, styles)] : [];
   return [
     ...attaques,
-    unarmedStrikeAttack(derived.modifiers.str, derived.proficiencyBonus),
+    // Combat à mains nues (mainsnues) monte le forfait à un vrai dé — 1d8 si
+    // vraiment aucune arme ni bouclier n'est en main, 1d6 sinon.
+    unarmedStrikeAttack(derived.modifiers.str, derived.proficiencyBonus, styles, Boolean(arme) || sheet.shield),
   ];
 }
 
