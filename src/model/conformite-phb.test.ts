@@ -22,6 +22,7 @@ import {
 import { spendResource } from './cast';
 import { hunterMarkFreeCastUses } from '../domain/ranger-resources';
 import { cardsFromCharacter, paiementsPourRang } from '../ui/spell-cards';
+import { weaponCardsFromCharacter } from '../ui/weapon-cards';
 import {
   arcanumChoisis, arcanumResourceKey, invocationsChoisies, invocationsDisponibles,
   invocationsDues, peutRetirerInvocation, remplacerArcanum, sortsArcanumPossibles,
@@ -538,6 +539,21 @@ describe('§20 — Bénédiction du Ténébreux : PV temporaires quand un ennemi
   it('un autre patron ne gagne rien', () => {
     const avant = occ(3, 'celeste');
     expect(benedictionDuTenebreux(avant, { reduitParLOccultiste: true, aPortee: true })).toBe(avant);
+  });
+
+  it('propose une carte « Libre » dès le niveau 3, avec le bon montant', () => {
+    const sheet = occ(3, 'fielon');
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'occultiste:benediction-tenebreux');
+    expect(carte).toBeDefined();
+    expect(carte?.economy).toBe('libre');
+    expect(carte?.detail).toContain('7 PV temporaires');
+  });
+
+  it('aucune carte avant le niveau 3, ni pour un autre patron', () => {
+    const sheet2 = occ(2, 'fielon');
+    expect(cardsFromCharacter(sheet2, deriveCharacter(sheet2)).some((c) => c.id === 'occultiste:benediction-tenebreux')).toBe(false);
+    const celeste = occ(3, 'celeste');
+    expect(cardsFromCharacter(celeste, deriveCharacter(celeste)).some((c) => c.id === 'occultiste:benediction-tenebreux')).toBe(false);
   });
 });
 
@@ -1267,6 +1283,56 @@ describe('p. 127 — Chasseur : deux décisions, rechoisies à chaque repos', ()
     const clefs = decisionsDeClasse(rodeurAvec(7, 'bestial')).map((d) => d.key);
     expect(clefs).not.toContain('hunterPrey');
     expect(clefs).not.toContain('hunterDefense');
+  });
+});
+
+describe('p. 120 — Maîtrise d’armes : deux armes possédées, rechoisies au repos long', () => {
+  const arme = (id: string, name: string) => ({ id, name, qty: 1, catalogId: id });
+  const rodeurArme = (armes: { id: string; name: string; qty: number; catalogId: string }[]) =>
+    fiche(rodeur(3), { inventory: armes });
+
+  it('propose seulement les armes possédées, jamais tout le catalogue', () => {
+    const sheet = rodeurArme([arme('arccourt', 'Arc court'), arme('epeecourte', 'Épée courte')]);
+    const decision = decisionsDeClasse(sheet).find((d) => d.key === 'weaponMasteries')!;
+    expect(decision).toBeDefined();
+    expect(decision.max).toBe(2);
+    expect(decision.options.map((o) => o.id).sort()).toEqual(['arccourt', 'epeecourte']);
+    expect(decision.rechoisissable).toBe('repos-long');
+  });
+
+  it('aucune arme possédée : pas de décision du tout', () => {
+    const sheet = rodeurArme([]);
+    expect(decisionsDeClasse(sheet).some((d) => d.key === 'weaponMasteries')).toBe(false);
+  });
+
+  it('le choix se pose, se relit, et se limite au nombre autorisé', () => {
+    let sheet = rodeurArme([arme('arccourt', 'Arc court'), arme('epeecourte', 'Épée courte'), arme('dague', 'Dague')]);
+    sheet = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'arccourt');
+    sheet = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'epeecourte');
+    expect(decisionsDeClasse(sheet).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['arccourt', 'epeecourte']);
+
+    // Une troisième arme, au-delà du plafond, est refusée sans écraser les deux déjà prises.
+    const troisieme = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'dague');
+    expect(decisionsDeClasse(troisieme).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['arccourt', 'epeecourte']);
+
+    // Reprendre une arme déjà choisie la retire — c'est un choix rechoisissable, pas verrouillé.
+    const retiree = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'arccourt');
+    expect(decisionsDeClasse(retiree).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['epeecourte']);
+  });
+
+  it('seule l’arme choisie applique sa maîtrise en combat — pas les autres armes possédées', () => {
+    let sheet = rodeurArme([arme('arccourt', 'Arc court'), arme('epeecourte', 'Épée courte')]);
+    sheet = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'epeecourte');
+    sheet = { ...sheet, equippedWeaponId: 'epeecourte' };
+    const derived = deriveCharacter(sheet);
+    const attaques = weaponCardsFromCharacter(sheet, derived);
+    const epee = attaques.find((c) => c.id === 'arme-epeecourte');
+    expect(epee?.detail).toContain('maîtrise');
+
+    sheet = { ...sheet, equippedWeaponId: 'arccourt' };
+    const derived2 = deriveCharacter(sheet);
+    const arc = weaponCardsFromCharacter(sheet, derived2).find((c) => c.id === 'arme-arccourt');
+    expect(arc?.detail).not.toContain('maîtrise');
   });
 });
 

@@ -3,6 +3,7 @@ import { ownedWeapons } from '../domain/weapon-ownership';
 import { unarmedStrikeAttack, weaponAttackFor, type WeaponAttack } from '../domain/weapon-attacks';
 import { chosenFightingStyles } from '../domain/fighting-styles';
 import { multiclassAttacksPerAction } from '../domain/multiclassing';
+import { armesAvecMaitriseActive } from './choix-de-classe';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
 
@@ -65,8 +66,11 @@ export function attaquesDuPersonnage(sheet: CharacterSheet, derived: DerivedChar
   const classIds = sheet.classLevels.map((entry) => entry.classId);
   const modifiers = { str: derived.modifiers.str, dex: derived.modifiers.dex };
   const styles = chosenFightingStyles(sheet.classChoices);
+  const maitrises = armesAvecMaitriseActive(sheet);
   const arme = armeEnMain(sheet);
-  const attaques = arme ? [weaponAttackFor(arme, modifiers, derived.proficiencyBonus, classIds, styles)] : [];
+  const attaques = arme
+    ? [weaponAttackFor(arme, modifiers, derived.proficiencyBonus, classIds, styles, maitrises)]
+    : [];
   return [
     ...attaques,
     // Combat à mains nues (mainsnues) monte le forfait à un vrai dé — 1d8 si

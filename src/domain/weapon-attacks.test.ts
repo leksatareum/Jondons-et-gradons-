@@ -98,6 +98,32 @@ describe('styles de combat — enfin appliqués à l’attaque', () => {
   });
 });
 
+describe('maîtrise d’armes — PHB 2024 : seulement sur les armes choisies', () => {
+  it('sans sélection, aucune arme n’affiche sa maîtrise — elle n’est jamais accordée d’office', () => {
+    const epee = weaponById('epeelongue')!;
+    const attaque = weaponAttackFor(epee, { str: 3, dex: 0 }, 2, ['guerrier']);
+    expect(attaque.mastery).toBe('');
+    expect(attaque.masteryDesc).toBe('');
+  });
+
+  it('une arme choisie affiche sa maîtrise ; une autre, possédée mais non choisie, ne l’affiche pas', () => {
+    const courte = weaponById('epeecourte')!;
+    const choisies = new Set(['epeecourte']);
+    const avecMaitrise = weaponAttackFor(courte, { str: 3, dex: 0 }, 2, ['rodeur'], new Set(), choisies);
+    expect(avecMaitrise.mastery).toBe('Harcèlement');
+    expect(avecMaitrise.masteryDesc.length).toBeGreaterThan(0);
+
+    const arc = weaponById('arccourt')!;
+    const sansMaitrise = weaponAttackFor(arc, { str: 0, dex: 3 }, 2, ['rodeur'], new Set(), choisies);
+    expect(sansMaitrise.mastery).toBe('');
+  });
+
+  it('weaponAttackForId relaie la sélection', () => {
+    const attaque = weaponAttackForId('epeecourte', { str: 3, dex: 0 }, 2, ['rodeur'], new Set(), new Set(['epeecourte']));
+    expect(attaque?.mastery).toBe('Harcèlement');
+  });
+});
+
 describe('résolution par id', () => {
   it('un id connu renvoie une attaque', () => {
     expect(weaponAttackForId('dague', { str: 0, dex: 2 }, 2, ['roublard'])).not.toBeNull();

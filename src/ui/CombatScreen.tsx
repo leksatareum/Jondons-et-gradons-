@@ -7,6 +7,7 @@ import {
   type CardCategory, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode,
 } from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
+import { BENEDICTION_TENEBREUX_CARD_ID } from '../model/occultiste';
 import { spellById } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { themeDeClasse } from '../content/class-themes';
@@ -645,7 +646,11 @@ export function CombatScreen({
   const confirmer = (card: PlayableCard, paiement?: PayableResource, cible?: CibleMarquee) => {
     setSpent((current) => ({ ...current, [card.economy]: true }));
     if (card.equipWeaponId) onEquiperArme?.(card.equipWeaponId);
-    else if (paiement) onPlayCard?.(card, paiement.key, cible);
+    // Bénédiction du Ténébreux ne paie rien (« Libre », sans `resources`) :
+    // sans ce cas, une carte sans paiement ne prévenait jamais l'écran
+    // parent, comme un sort mineur qu'on relance sans rien à retenir. Elle,
+    // en revanche, doit vraiment écrire les PV temporaires sur la fiche.
+    else if (paiement || card.id === BENEDICTION_TENEBREUX_CARD_ID) onPlayCard?.(card, paiement?.key ?? '', cible);
     setChoix(null);
   };
 

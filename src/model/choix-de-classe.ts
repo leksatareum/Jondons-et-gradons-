@@ -7,6 +7,9 @@ import { alwaysPreparedSpellsFor, DRUID_TERRAINS } from '../content/always-prepa
 import { cantripsKnown } from '../domain/spellcasting-progression';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
+import { ownedWeapons } from '../domain/weapon-ownership';
+import { isWeaponEligibleForMastery, weaponMasteryCount, type MasteryClassId } from '../domain/weapon-mastery';
+import { WEAPON_MASTERIES } from '../content/weapons';
 
 /**
  * Les décisions de classe qu'un personnage doit prendre — et que rien ne lui
@@ -32,6 +35,14 @@ export interface DecisionDeClasse {
   help: string;
   options: ChoiceOption[];
   choisi: string | null;
+  /**
+   * Choix MULTIPLE : jusqu'à `max` options à la fois, plutôt qu'une seule.
+   * La Maîtrise d'armes en est le seul cas — deux types d'armes ou plus,
+   * choisis parmi ce qu'on possède. `choisi` reste `null` pour ces
+   * décisions ; c'est `choisis` qui compte.
+   */
+  choisis?: string[];
+  max?: number;
   /**
    * Quand la décision se rechoisit, si elle se rechoisit. Le terrain du
    * Cercle de la Terre se reprend à chaque repos long, les options du
@@ -216,6 +227,42 @@ export function decisionsDeClasse(
     });
   }
 
+  // ── Maîtrise d'armes (Barbare, Guerrier, Paladin, Rôdeur, Roublard) ──
+  // PHB 2024, p. 120 pour le Rôdeur : deux types d'armes, rechoisis à la fin
+  // de chaque repos long. `weaponMasteryCount` et `isWeaponEligibleForMastery`
+  // existaient déjà, exacts et testés, sans qu'aucun écran ne les serve : la
+  // maîtrise s'appliquait donc à TOUTE arme en main, jamais restreinte aux
+  // armes réellement choisies.
+  for (const classId of ['barbare', 'guerrier', 'paladin', 'rodeur', 'roublard'] as MasteryClassId[]) {
+    const niveauClasse = levelInClass(sheet, classId);
+    // `weaponMasteryCount` ne teste le niveau QUE pour les paliers de sa
+    // propre classe (guerrier 4/10/16, barbare 4) : à niveau 0, hors de la
+    // classe, elle rend quand même 2 ou 3 par construction. Sans ce garde,
+    // un Rôdeur pur se voyait proposer la Maîtrise d'armes du Barbare, du
+    // Guerrier, du Paladin ET du Roublard — chacun avec son propre filtre
+    // d'armes éligibles, jamais le sien.
+    if (niveauClasse < 1) continue;
+    const nombre = weaponMasteryCount(classId, niveauClasse);
+    if (nombre <= 0) continue;
+    const possedees = ownedWeapons(sheet.inventory).filter((weapon) => isWeaponEligibleForMastery(classId, weapon));
+    if (possedees.length === 0) continue;
+    const choisisValides = choiceList(choicesFor(sheet, classId), 'weaponMasteries')
+      .filter((id) => possedees.some((weapon) => weapon.id === id));
+    decisions.push({
+      classId, key: 'weaponMasteries',
+      label: `Maîtrise d'armes (${nombre})`,
+      help: `Choisis jusqu'à ${nombre} arme${nombre > 1 ? 's' : ''} parmi celles que tu possèdes — leur maîtrise ne s'applique qu'à elles. Rechoisissable à la fin de chaque repos long.`,
+      options: possedees.map((weapon) => ({
+        id: weapon.id, name: weapon.name,
+        desc: `${weapon.mastery} — ${WEAPON_MASTERIES[weapon.mastery]?.desc ?? ''}`,
+      })),
+      choisi: null,
+      choisis: choisisValides,
+      max: nombre,
+      rechoisissable: 'repos-long',
+    });
+  }
+
   // Une décision qui ne se rechoisit pas et qui est prise est verrouillée.
   // La règle est la même pour toutes : c'est `rechoisissable` qui la porte,
   // pas une liste à tenir à jour ailleurs.
@@ -253,6 +300,24 @@ export function choisirDeClasse(
   if (!decision) return sheet;
   if (!decision.options.some((option) => option.id === optionId)) return sheet;
   if (decision.verrouillee && !options.parLeMj) return sheet;
+
+  // Choix multiple (Maîtrise d'armes…) : on bascule l'option plutôt que de
+  // remplacer une valeur unique, plafonné à `max` sélections à la fois.
+  if (decision.max && decision.max > 1) {
+    const actuels = decision.choisis ?? [];
+    const suivants = actuels.includes(optionId)
+      ? actuels.filter((id) => id !== optionId)
+      : actuels.length < decision.max ? [...actuels, optionId] : actuels;
+    if (suivants === actuels) return sheet;
+    return {
+      ...sheet,
+      classChoices: {
+        ...sheet.classChoices,
+        [classId]: { ...choicesFor(sheet, classId), [key]: suivants },
+      },
+    };
+  }
+
   return {
     ...sheet,
     classChoices: {
@@ -326,4 +391,22 @@ export function sortDuCercleDeLaTerre(sheet: CharacterSheet, spellId: string): b
     terrain,
     level: levelInClass(sheet, 'druide'),
   }).includes(spellId);
+}
+
+/**
+ * Les identifiants d'armes sur lesquelles la maîtrise s'applique VRAIMENT,
+ * toutes classes confondues — au plus `weaponMasteryCount` par classe, et
+ * seulement parmi celles choisies via la décision « Maîtrise d'armes ».
+ *
+ * `domain/weapon-attacks.ts` s'en sert pour n'afficher et n'appliquer la
+ * maîtrise que sur les armes retenues : avant, une arme en main portait sa
+ * maîtrise quelle que soit l'arme, choisie ou non.
+ */
+export function armesAvecMaitriseActive(sheet: CharacterSheet): ReadonlySet<string> {
+  const actives = new Set<string>();
+  for (const decision of decisionsDeClasse(sheet)) {
+    if (decision.key !== 'weaponMasteries') continue;
+    for (const id of decision.choisis ?? []) actives.add(id);
+  }
+  return actives;
 }

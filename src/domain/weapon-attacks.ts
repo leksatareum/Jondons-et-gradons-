@@ -73,6 +73,17 @@ export function weaponAttackFor(
   proficiencyBonus: number,
   classIds: readonly string[],
   styles: ReadonlySet<string> = new Set(),
+  /**
+   * Les armes sur lesquelles la maîtrise PHB 2024 s'applique vraiment —
+   * celles choisies via la décision « Maîtrise d'armes »
+   * (`model/choix-de-classe.ts`, `armesAvecMaitriseActive`).
+   *
+   * Vide par défaut pour ne rien casser côté appelants qui ne la
+   * connaissent pas encore ; dans ce cas aucune arme n'affiche de maîtrise,
+   * ce qui est le comportement correct tant que rien n'a été choisi — la
+   * maîtrise n'est jamais accordée d'office.
+   */
+  maitrisesActives: ReadonlySet<string> = new Set(),
 ): WeaponAttack {
   const mod = weapon.finesse
     ? Math.max(modifiers.str, modifiers.dex)
@@ -82,7 +93,8 @@ export function weaponAttackFor(
   const modDegats = mod + damageBonusFor(styles, weapon);
   const base = weapon.fixed !== undefined ? `${weapon.fixed}` : `${weapon.diceCount ?? 1}d${weapon.die}`;
   const damage = weapon.fixed !== undefined ? base : `${base}${modDegats !== 0 ? signe(modDegats) : ''}`;
-  const masterie = WEAPON_MASTERIES[weapon.mastery];
+  const maitriseActive = maitrisesActives.has(weapon.id);
+  const masterie = maitriseActive ? WEAPON_MASTERIES[weapon.mastery] : undefined;
   const note = greatWeaponFightingNote(styles, weapon);
   return {
     id: `arme-${weapon.id}`,
@@ -91,7 +103,7 @@ export function weaponAttackFor(
     toHit,
     damage,
     properties: note ? `${weapon.props} · ${note}` : weapon.props,
-    mastery: weapon.mastery,
+    mastery: maitriseActive ? weapon.mastery : '',
     masteryDesc: masterie?.desc ?? '',
     proficient,
   };
@@ -104,7 +116,8 @@ export function weaponAttackForId(
   proficiencyBonus: number,
   classIds: readonly string[],
   styles: ReadonlySet<string> = new Set(),
+  maitrisesActives: ReadonlySet<string> = new Set(),
 ): WeaponAttack | null {
   const weapon = weaponById(weaponId);
-  return weapon ? weaponAttackFor(weapon, modifiers, proficiencyBonus, classIds, styles) : null;
+  return weapon ? weaponAttackFor(weapon, modifiers, proficiencyBonus, classIds, styles, maitrisesActives) : null;
 }

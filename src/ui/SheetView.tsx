@@ -17,6 +17,7 @@ import { restoreResource, spendResource } from '../model/cast';
 import { choisirDeClasse } from '../model/choix-de-classe';
 import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
+import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux } from '../model/occultiste';
 import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
@@ -194,6 +195,16 @@ export function SheetView({
    * les repos restent justes.
    */
   const jouerCarte = (card: PlayableCard, resourceKey: string, cible?: CibleMarquee) => {
+    // Bénédiction du Ténébreux (Occultiste · Patron Fiélon) : un déclencheur,
+    // pas un sort payé sur emplacement — les deux circonstances possibles
+    // (l'Occultiste réduit l'ennemi, ou il est à portée) ne changent rien au
+    // montant, une seule suffit à l'ouvrir. `spendResource` n'a rien à faire
+    // ici : il n'y a pas de ressource, seulement des PV temporaires à écrire.
+    if (card.id === BENEDICTION_TENEBREUX_CARD_ID) {
+      const suivante = benedictionDuTenebreux(fiche.data, { reduitParLOccultiste: true, aPortee: false });
+      if (suivante !== fiche.data) void saveSheet(client, sync, fiche.id, suivante);
+      return;
+    }
     let suivante = spendResource(fiche.data, resourceKey);
     const sort = spellById(card.id);
     // Marque du chasseur ne se contente pas de coûter : elle pose un état —

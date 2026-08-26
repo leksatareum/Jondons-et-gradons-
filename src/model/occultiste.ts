@@ -162,6 +162,15 @@ export function resilienceCeleste(sheet: CharacterSheet): CharacterSheet {
 // §20 — BÉNÉDICTION DU TÉNÉBREUX (Fiélon 3)
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * Identifiant de la carte de combat qui déclenche ce gain — pas un sort, pas
+ * une ressource : `ui/spell-cards.ts` la propose, `ui/SheetView.tsx` la
+ * reconnaît par cet id pour appeler `benedictionDuTenebreux` plutôt que
+ * `spendResource`, exactement comme Marque du chasseur est reconnue par le
+ * sien.
+ */
+export const BENEDICTION_TENEBREUX_CARD_ID = 'occultiste:benediction-tenebreux';
+
 /** PV temporaires gagnés : niveau d'Occultiste + mod. de Charisme, minimum 1. */
 export const benedictionDuTenebreuxMontant = (sheet: CharacterSheet): number =>
   Math.max(1, niveauOccultiste(sheet) + modCharisme(sheet));

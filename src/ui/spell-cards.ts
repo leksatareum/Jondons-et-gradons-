@@ -1,13 +1,14 @@
 import { spellById, type Spell } from '../content/spell-catalogue';
 import { spellbookOf } from '../model/spellbook';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
-import type { CharacterSheet } from '../model/character';
+import { levelInClass, type CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PayableResource, PlayableCard } from './combat-layout';
 import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
 import { arcanumChoisis, arcanumResourceKey } from '../model/invocations';
 import { SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
 import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
+import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -203,6 +204,24 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
           label: `Arcanum de rang ${arcanum.rank} · repos long`,
         }],
       } : {}),
+    });
+  }
+
+  // Bénédiction du Ténébreux (Occultiste · Patron Fiélon, niveau 3+) : un
+  // déclencheur, pas un sort — quand un ennemi tombe à 0, réduit par
+  // l'Occultiste ou à 3 m ou moins de lui. `model/occultiste.ts` le calculait
+  // déjà, exact et testé ; rien ne le proposait à la table, donc rien ne
+  // l'appliquait jamais. Il ne coûte ni Action ni ressource : « Libre »,
+  // comme un rituel, pour ne pas laisser croire qu'il consomme la réaction.
+  if (levelInClass(sheet, 'occultiste') >= 3 && patronDe(sheet) === 'fielon') {
+    cartes.push({
+      id: BENEDICTION_TENEBREUX_CARD_ID,
+      name: 'Bénédiction du Ténébreux',
+      economy: 'libre',
+      category: 'magie',
+      detail: `+${benedictionDuTenebreuxMontant(sheet)} PV temporaires · un ennemi vient de tomber à 0`,
+      granted: true,
+      grantedBy: 'ton Patron Fiélon',
     });
   }
 
