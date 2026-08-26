@@ -111,8 +111,9 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
   });
 
   it('n’invente ni dégâts ni bonus d’attaque', () => {
-    // Quatre sorts seulement ont un effet structuré : deviner les autres
-    // donnerait des nombres faux avec l'aplomb des nombres justes.
+    // Aucun sort du catalogue ne porte de champ structuré pour ça : deviner
+    // à partir du texte donnerait des nombres faux avec l'aplomb des nombres
+    // justes.
     const sheet = fiche({ spells: [{ id: 'soins', sourceClass: 'druide', prepared: true }] });
     const carte = cardsFromCharacter(sheet, deriveCharacter(sheet))
       .find((c) => c.id === 'soins');
@@ -128,5 +129,32 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
     const cartes = cardsFromCharacter(sheet, deriveCharacter(sheet));
     expect(cartes.length).toBeGreaterThan(0);
     expect(cartes.every((carte) => carte.category === 'magie')).toBe(true);
+  });
+});
+
+describe('Décharge agonisante — un fait de fiche, pas un chiffre deviné', () => {
+  const occultiste = (invocations: string[]) => fiche({
+    classLevels: [{ classId: 'occultiste', level: 2, subclass: null, subclassId: null }],
+    abilities: { str: 10, dex: 10, con: 14, int: 10, wis: 10, cha: 16 },
+    cantrips: [{ id: 'explosion-occulte', sourceClass: 'occultiste' }],
+    classChoices: { occultiste: { invocations } },
+  });
+
+  it('rappelle le bonus de Charisme sur le sort mineur visé', () => {
+    const sheet = occultiste(['agonizing-blast@explosion-occulte']);
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'explosion-occulte');
+    expect(carte?.detail).toContain('+3 aux dégâts par rayon (Décharge agonisante)');
+  });
+
+  it('rien sur un autre sort mineur, même occultiste', () => {
+    const sheet = occultiste(['agonizing-blast@lame-des-rasoirs']);
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'explosion-occulte');
+    expect(carte?.detail).not.toContain('Décharge agonisante');
+  });
+
+  it('rien sans l’invocation', () => {
+    const sheet = occultiste([]);
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'explosion-occulte');
+    expect(carte?.detail).not.toContain('Décharge agonisante');
   });
 });

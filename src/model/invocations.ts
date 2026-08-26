@@ -45,10 +45,11 @@ export const invocationsAChoisir = (sheet: CharacterSheet): number =>
  * l'un d'eux (Décharge agonisante, Lance occulte, Décharge répulsive).
  *
  * Toutes les listes reçoivent les mêmes sorts mineurs : l'application n'a pas
- * de donnée structurée qui dise lequel inflige des dégâts ou porte une attaque
- * — seuls six sorts du catalogue ont un effet structuré. Deviner à partir du
- * texte écarterait des sorts légitimes sans le dire. La condition est donc
- * rappelée dans le libellé de l'invocation, et le joueur tranche.
+ * de donnée structurée qui dise lequel inflige des dégâts ou porte une
+ * attaque — le catalogue ne porte ce champ pour AUCUN sort (`spell-cards.ts`).
+ * Deviner à partir du texte écarterait des sorts légitimes sans le dire. La
+ * condition est donc rappelée dans le libellé de l'invocation, et le joueur
+ * tranche.
  */
 const sortsMineursDe = (sheet: CharacterSheet) =>
   sheet.cantrips

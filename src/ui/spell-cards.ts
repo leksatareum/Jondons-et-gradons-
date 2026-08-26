@@ -1,11 +1,11 @@
 import { spellById, type Spell } from '../content/spell-catalogue';
 import { spellbookOf } from '../model/spellbook';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
-import { levelInClass, type CharacterSheet } from '../model/character';
+import { abilityModifier, effectiveAbilities, levelInClass, type CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { Economy, PayableResource, PlayableCard } from './combat-layout';
 import { MARQUE_CHASSEUR_SPELL_ID, MARQUE_LIBRE_KEY } from '../model/rodeur';
-import { arcanumChoisis, arcanumResourceKey } from '../model/invocations';
+import { arcanumChoisis, arcanumResourceKey, invocationsChoisies } from '../model/invocations';
 import { SORT_DE_CERCLE_GRATUIT_KEY } from '../model/druide';
 import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
@@ -19,11 +19,19 @@ import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe 
  * partie.
  *
  * Ce qui est dérivable l'est ; ce qui ne l'est pas reste vide plutôt que
- * d'être inventé. En particulier, les dégâts et le bonus d'attaque : seuls
- * quatre sorts du catalogue ont un effet structuré, les autres décrivent
- * leurs dégâts en toutes lettres. Les extraire par expression régulière
- * donnerait des nombres faux avec l'aplomb des nombres justes — le joueur lit
- * le texte du sort, et le DD est affiché une fois pour toutes en en-tête.
+ * d'être inventé. En particulier, les dégâts et le bonus d'attaque : le
+ * catalogue (`content/spells.js`, 389 entrées vérifiées) ne porte AUCUN champ
+ * structuré pour eux, seulement le texte de règle tel qu'imprimé. Une carte
+ * de sort n'affiche donc jamais de `damage` ni de `toHit` — à la différence
+ * d'une attaque à l'arme (`weapon-cards.ts`), qui se calcule entièrement.
+ * Extraire un chiffre du texte par expression régulière donnerait des
+ * nombres faux avec l'aplomb des nombres justes — le joueur lit le texte du
+ * sort, et le DD est affiché une fois pour toutes en en-tête.
+ *
+ * Seule exception, volontairement étroite : un bonus qui vient d'un FAIT de
+ * fiche déjà exact ailleurs (Décharge agonisante ajoute le modificateur de
+ * Charisme, une valeur que l'appli connaît déjà) peut apparaître en note sur
+ * la carte — jamais un chiffre extrait du texte du sort lui-même.
  */
 
 /**
@@ -149,6 +157,20 @@ export function paiementsPourSort(
   return paiements;
 }
 
+/**
+ * Décharge agonisante (Occultiste, niveau 2+) ajoute le modificateur de
+ * Charisme aux dégâts de CHAQUE rayon du sort mineur choisi — un fait de
+ * règle simple et exact, pas une extraction de texte : rien à voir avec les
+ * dégâts d'un sort qu'on se refuse à deviner (cf. l'en-tête du fichier). Un
+ * joueur qui l'a prise n'avait sinon aucun rappel sur sa propre carte.
+ */
+function noteDechargeAgonisante(sheet: CharacterSheet, cantripId: string): string | null {
+  const cible = invocationsChoisies(sheet).find((id) => id === `agonizing-blast@${cantripId}`);
+  if (!cible) return null;
+  const cha = abilityModifier(effectiveAbilities(sheet).cha);
+  return `+${cha} aux dégâts par rayon (Décharge agonisante)`;
+}
+
 export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharacter): PlayableCard[] {
   const cartes: PlayableCard[] = [];
 
@@ -157,12 +179,13 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
   for (const chosen of sheet.cantrips) {
     const spell = spellById(chosen.id);
     if (!spell) continue;
+    const noteInvocation = noteDechargeAgonisante(sheet, spell.id);
     cartes.push({
       id: spell.id,
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
-      detail: detailOf(spell),
+      detail: noteInvocation ? `${detailOf(spell)} · ${noteInvocation}` : detailOf(spell),
     });
   }
 
