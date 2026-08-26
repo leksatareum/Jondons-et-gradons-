@@ -95,7 +95,7 @@ function Fiche({ spell, onFermer }: { spell: Spell; onFermer: () => void }) {
         {spell.upcast && (
           <div style={{
             marginTop: 14, padding: '11px 13px', borderRadius: 'var(--radius-sm)',
-            background: 'var(--accent-wash)', border: '1px solid var(--line)',
+            background: 'var(--accent-wash)', border: '1px solid var(--gold-dim)',
           }}>
             <div className="lbl" style={{ color: 'var(--accent)' }}>Aux rangs supérieurs</div>
             <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.5 }}>{spell.upcast}</p>
@@ -117,12 +117,13 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
   const attenue = etat.kind === 'budget-plein';
   return (
     <div
-      className="card"
+      className="card jg-tile"
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '10px 12px', borderRadius: 'var(--radius)',
-        border: `1px solid ${etat.kind === 'prepare' ? 'var(--accent)' : 'var(--line)'}`,
-        background: 'var(--surface)', opacity: attenue ? 0.45 : 1,
+        borderColor: etat.kind === 'prepare' ? 'var(--accent)' : 'var(--gold-dim)',
+        borderWidth: etat.kind === 'prepare' ? 1.5 : 1,
+        opacity: attenue ? 0.45 : 1,
       }}
     >
       <button
@@ -245,7 +246,7 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
               key={`${slot.level}-${slot.pact ? 'p' : 'n'}`}
               className="lbl num"
               style={{
-                padding: '3px 8px', borderRadius: 999, border: '1px solid var(--line)',
+                padding: '3px 8px', borderRadius: 999, border: '1px solid var(--gold-dim)',
                 textTransform: 'none', color: slot.remaining > 0 ? 'var(--ink)' : 'var(--muted)',
               }}
             >
@@ -253,7 +254,7 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
             </span>
           ))}
           <span className="lbl num" style={{
-            padding: '3px 8px', borderRadius: 999, border: '1px solid var(--line)', textTransform: 'none',
+            padding: '3px 8px', borderRadius: 999, border: '1px solid var(--gold-dim)', textTransform: 'none',
           }}>
             DD {derived.spellcasting.numbers[classId]?.saveDc ?? '—'} · att. +{derived.spellcasting.numbers[classId]?.attackBonus ?? '—'}
           </span>

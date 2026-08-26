@@ -36,7 +36,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Règles</h2>
@@ -45,7 +45,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
           aria-label="Retour"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -61,7 +61,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
           style={{
             width: '100%', minHeight: 'var(--tap)',
             padding: '0 12px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--line)', background: 'var(--bg)',
+            border: '1px solid var(--gold-dim)', background: 'var(--bg)',
             color: 'var(--ink)', fontSize: 16,
           }}
         />
@@ -76,7 +76,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
               flexShrink: 0, minHeight: 32, padding: '0 12px', borderRadius: 999,
               background: categorie === null ? 'var(--accent)' : 'transparent',
               color: categorie === null ? 'var(--accent-ink)' : 'var(--muted)',
-              border: categorie === null ? 'none' : '1px solid var(--line)', fontWeight: 700,
+              border: categorie === null ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700,
             }}
           >
             Tout
@@ -90,7 +90,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
                 flexShrink: 0, minHeight: 32, padding: '0 12px', borderRadius: 999,
                 background: categorie === cat ? 'var(--accent)' : 'transparent',
                 color: categorie === cat ? 'var(--accent-ink)' : 'var(--muted)',
-                border: categorie === cat ? 'none' : '1px solid var(--line)', fontWeight: 700,
+                border: categorie === cat ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700,
                 whiteSpace: 'nowrap',
               }}
             >
@@ -113,7 +113,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
             {resultats.map((regle) => (
               <div key={regle.id} className="card" style={{
                 padding: '12px 14px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--line)', background: 'var(--surface)',
+                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div className="ttl" style={{ fontSize: 15, flexGrow: 1 }}>{regle.title}</div>

@@ -83,7 +83,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
   return (
     <div style={{
       marginTop: 14, padding: '11px 12px', borderRadius: 'var(--radius)',
-      border: '1px dashed var(--line)',
+      border: '1px dashed var(--gold-dim)',
     }}>
       <div className="lbl" style={{ marginBottom: 8 }}>Suggestion automatique (facultatif)</div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -94,7 +94,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
             value={niveau} onChange={(event) => setNiveau(event.target.value)}
             style={{
               width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
-              borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)',
               // 16px ou plus : en dessous, iOS zoome sur le champ à la mise
               // au point, et l'écran reste zoomé après.
               background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
@@ -108,7 +108,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
             value={taille} onChange={(event) => setTaille(event.target.value)}
             style={{
               width: '100%', minHeight: 'var(--tap)', marginTop: 4, padding: '0 10px',
-              borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)',
               // 16px ou plus : en dessous, iOS zoome sur le champ à la mise
               // au point, et l'écran reste zoomé après.
               background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
@@ -126,7 +126,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
               flex: 1, minHeight: 32, borderRadius: 999,
               background: difficulte === clef ? 'var(--accent)' : 'transparent',
               color: difficulte === clef ? 'var(--accent-ink)' : 'var(--muted)',
-              border: difficulte === clef ? 'none' : '1px solid var(--line)', fontWeight: 700,
+              border: difficulte === clef ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700,
             }}
           >
             {libelle}
@@ -145,7 +145,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
               minHeight: 30, padding: '0 10px', borderRadius: 999,
               background: theme === clef ? 'var(--accent)' : 'transparent',
               color: theme === clef ? 'var(--accent-ink)' : 'var(--muted)',
-              border: theme === clef ? 'none' : '1px solid var(--line)', fontWeight: 700,
+              border: theme === clef ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700,
             }}
           >
             {libelle}
@@ -210,7 +210,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>
@@ -221,7 +221,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -239,7 +239,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
           style={{
             width: '100%', minHeight: 'var(--tap)', marginTop: 6,
             padding: '0 12px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--line)', background: 'var(--surface)',
+            border: '1px solid var(--gold-dim)', background: 'var(--surface)',
             color: 'var(--ink)', fontSize: 16,
           }}
         />
@@ -270,7 +270,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
               <div key={combatant.id} className="card" style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 12px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--line)', background: 'var(--surface)',
+                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
               }}>
                 <div style={{ flexGrow: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{combatant.name}</div>
@@ -284,7 +284,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
                   title="Dupliquer"
                   style={{
                     flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                    border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 16,
                   }}
                 >
                   ⧉
@@ -294,7 +294,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
                   aria-label={`Retirer ${combatant.name}`}
                   style={{
                     flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                    border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 16,
                   }}
                 >
                   ✕
@@ -311,7 +311,7 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
             width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
             background: pret ? 'var(--accent)' : 'var(--surface)',
             color: pret ? 'var(--accent-ink)' : 'var(--muted)',
-            border: pret ? 'none' : '1px solid var(--line)',
+            border: pret ? 'none' : '1px solid var(--gold-dim)',
             fontSize: 15, fontWeight: 700, cursor: pret ? 'pointer' : 'not-allowed',
           }}
         >
@@ -359,7 +359,7 @@ export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSup
           {templates.map((template) => (
             <div key={template.id} className="card" style={{
               padding: '12px 14px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--line)', background: 'var(--surface)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
             }}>
               <div className="ttl" style={{ fontSize: 15 }}>{template.name}</div>
               <ResumeCombattants combatants={template.combatants} />
@@ -380,7 +380,7 @@ export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSup
                   aria-label={`Modifier la rencontre ${template.name}`}
                   style={{
                     flexShrink: 0, minHeight: 'var(--tap)', padding: '0 14px',
-                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 13,
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 13,
                   }}
                 >
                   Modifier
@@ -390,7 +390,7 @@ export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSup
                   aria-label={`Supprimer la rencontre ${template.name}`}
                   style={{
                     flexShrink: 0, minHeight: 'var(--tap)', padding: '0 14px',
-                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 13,
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 13,
                   }}
                 >
                   Supprimer

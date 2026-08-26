@@ -102,7 +102,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -116,7 +116,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -138,7 +138,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                   className="lbl"
                   style={{
                     minHeight: 40, padding: '0 12px', borderRadius: 999,
-                    border: `1px solid ${niveau.classId === classId ? 'var(--accent)' : 'var(--line)'}`,
+                    border: `1px solid ${niveau.classId === classId ? 'var(--accent)' : 'var(--gold-dim)'}`,
                     color: niveau.classId === classId ? 'var(--accent)' : 'var(--muted)',
                   }}
                 >
@@ -165,7 +165,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                   className="num"
                   style={{
                     width: 42, minHeight: 44, borderRadius: 10,
-                    border: `1px solid ${jet === valeur ? 'var(--accent)' : 'var(--line)'}`,
+                    border: `1px solid ${jet === valeur ? 'var(--accent)' : 'var(--gold-dim)'}`,
                     background: jet === valeur ? 'var(--accent)' : 'transparent',
                     color: jet === valeur ? 'var(--accent-ink)' : 'var(--ink)',
                     fontWeight: 700,
@@ -180,7 +180,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
               className="lbl"
               style={{
                 marginTop: 8, minHeight: 38, padding: '0 12px', borderRadius: 999,
-                border: '1px solid var(--line)', color: 'var(--muted)',
+                border: '1px solid var(--gold-dim)', color: 'var(--muted)',
               }}
             >
               Prendre la moyenne ({plan.average})
@@ -189,7 +189,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
             {plan.usesOverride && (
               <div style={{
                 marginTop: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
+                border: '1px solid var(--gold-dim)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
               }}>
                 Les points de vie de cette fiche viennent de l’ancienne app, sans
                 le détail des jets. Ce jet s’ajoute au total plutôt que de le
@@ -212,7 +212,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         className="card"
                         style={{
                           textAlign: 'left', padding: '11px 13px', borderRadius: 'var(--radius)',
-                          border: `1px solid ${sousClasse === option.name ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${sousClasse === option.name ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: sousClasse === option.name ? 'var(--accent-wash)' : 'var(--surface)',
                         }}
                       >
@@ -248,7 +248,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         onClick={() => basculerCarac(ability)}
                         style={{
                           minHeight: 52, padding: '0 12px', borderRadius: 10,
-                          border: `1px solid ${gain ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${gain ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: gain ? 'var(--accent-wash)' : 'transparent',
                         }}
                       >
@@ -272,7 +272,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                           className="card"
                           style={{
                             textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
-                            border: `1px solid ${don === feat.id ? 'var(--accent)' : 'var(--line)'}`,
+                            border: `1px solid ${don === feat.id ? 'var(--accent)' : 'var(--gold-dim)'}`,
                             background: don === feat.id ? 'var(--accent-wash)' : 'var(--surface)',
                           }}
                         >
@@ -317,7 +317,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                           className="lbl"
                           style={{
                             minHeight: 40, padding: '0 12px', borderRadius: 999,
-                            border: `1px solid ${choisie ? 'var(--accent)' : 'var(--line)'}`,
+                            border: `1px solid ${choisie ? 'var(--accent)' : 'var(--gold-dim)'}`,
                             color: !retirable ? 'var(--muted)' : choisie ? 'var(--accent)' : 'var(--ink)',
                             opacity: retirable ? 1 : 0.45,
                             textTransform: 'none',
@@ -353,7 +353,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         className="card"
                         style={{
                           textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
-                          border: `1px solid ${prise || entrante ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${prise || entrante ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: prise || entrante ? 'var(--accent-wash)' : 'var(--surface)',
                         }}
                       >
@@ -390,7 +390,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         className="lbl"
                         style={{
                           minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
-                          border: `1px solid ${choisi ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${choisi ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           color: choisi ? 'var(--accent)' : 'var(--ink)',
                         }}
                       >
@@ -418,7 +418,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         className="lbl"
                         style={{
                           minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
-                          border: `1px solid ${vise ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${vise ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           color: vise ? 'var(--accent)' : 'var(--ink)',
                         }}
                       >
@@ -439,7 +439,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         className="lbl"
                         style={{
                           minHeight: 40, padding: '0 12px', borderRadius: 999, textTransform: 'none',
-                          border: `1px solid ${echangeArcanum.in === spell.id ? 'var(--accent)' : 'var(--line)'}`,
+                          border: `1px solid ${echangeArcanum.in === spell.id ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           color: echangeArcanum.in === spell.id ? 'var(--accent)' : 'var(--ink)',
                         }}
                       >
@@ -500,7 +500,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                     role="alert"
                     style={{
                       padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--line)', background: 'var(--surface)',
+                      border: '1px solid var(--gold-dim)', background: 'var(--surface)',
                       fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
                     }}
                   >
@@ -517,7 +517,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                 width: '100%', minHeight: 52, marginTop: 18, borderRadius: 'var(--radius-sm)',
                 background: blocages.length > 0 ? 'var(--surface)' : 'var(--accent)',
                 color: blocages.length > 0 ? 'var(--muted)' : 'var(--accent-ink)',
-                border: blocages.length > 0 ? '1px solid var(--line)' : 'none',
+                border: blocages.length > 0 ? '1px solid var(--gold-dim)' : 'none',
                 fontSize: 15, fontWeight: 700,
                 cursor: blocages.length > 0 ? 'not-allowed' : 'pointer',
               }}

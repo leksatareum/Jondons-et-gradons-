@@ -46,7 +46,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
         {attaques.map((attaque) => (
           <div key={attaque.id} className="card" style={{
             padding: '10px 12px', borderRadius: 'var(--radius)',
-            border: '1px solid var(--line)', background: 'var(--surface)',
+            border: '1px solid var(--gold-dim)', background: 'var(--surface)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -60,7 +60,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
                 <button
                   onClick={onDegainer}
                   className="lbl"
-                  style={{ minHeight: 'var(--tap)', padding: '0 10px', borderRadius: 10, border: '1px solid var(--line)' }}
+                  style={{ minHeight: 'var(--tap)', padding: '0 10px', borderRadius: 10, border: '1px solid var(--gold-dim)' }}
                 >
                   Dégainer
                 </button>
@@ -77,7 +77,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
             onChange={(e) => setChoix(e.target.value)}
             style={{
               flexGrow: 1, minHeight: 'var(--tap)', padding: '0 10px', borderRadius: 10,
-              border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 14,
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)', fontSize: 14,
             }}
           >
             <option value="">{arme ? 'Changer d’arme…' : 'Équiper une arme…'}</option>

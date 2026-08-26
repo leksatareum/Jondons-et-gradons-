@@ -60,7 +60,7 @@ type LigneCompetence = { id: string; label: string; bonus: string };
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 6,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--line)', background: 'var(--surface)',
+  border: '1px solid var(--gold-dim)', background: 'var(--surface)',
   color: 'var(--ink)', fontSize: 16,
 };
 
@@ -182,7 +182,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Ajouter un adversaire</h2>
@@ -191,7 +191,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -220,7 +220,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
                 className="card"
                 style={{
                   textAlign: 'left', padding: '9px 12px', minHeight: 'var(--tap)',
-                  borderRadius: 'var(--radius)', border: '1px solid var(--line)', background: 'var(--surface)',
+                  borderRadius: 'var(--radius)', border: '1px solid var(--gold-dim)', background: 'var(--surface)',
                 }}
               >
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{template.name}</div>
@@ -339,7 +339,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
                 aria-label="Retirer cette sauvegarde"
                 style={{
                   flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                  border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 16,
                 }}
               >
                 ✕
@@ -383,7 +383,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
                 aria-label={`Retirer la compétence ${ligne.label || 'sans nom'}`}
                 style={{
                   flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                  border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 16,
                 }}
               >
                 ✕
@@ -414,7 +414,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
           {attaques.map((attaque) => (
             <div key={attaque.id} className="card" style={{
               padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--line)', background: 'var(--surface)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
             }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
@@ -429,7 +429,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
                   aria-label={`Retirer l’attaque ${attaque.name || 'sans nom'}`}
                   style={{
                     flexShrink: 0, width: 'var(--tap)', height: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 16,
+                    border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 16,
                   }}
                 >
                   ✕
@@ -478,7 +478,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
             width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
             background: pret ? 'var(--accent)' : 'var(--surface)',
             color: pret ? 'var(--accent-ink)' : 'var(--muted)',
-            border: pret ? 'none' : '1px solid var(--line)',
+            border: pret ? 'none' : '1px solid var(--gold-dim)',
             fontSize: 15, fontWeight: 700, cursor: pret ? 'pointer' : 'not-allowed',
           }}
         >

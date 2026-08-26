@@ -74,7 +74,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
         className="lbl"
         style={{
           display: 'block', width: 'fit-content', minHeight: 34, padding: '0 12px', marginBottom: 12,
-          borderRadius: 999, border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+          borderRadius: 999, border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontWeight: 700,
         }}
       >
         ← Fiche
@@ -88,7 +88,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
             onClick={() => setKind(valeur)}
             style={{
               flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-              border: `1px solid ${kind === valeur ? 'var(--accent)' : 'var(--line)'}`,
+              border: `1px solid ${kind === valeur ? 'var(--accent)' : 'var(--gold-dim)'}`,
               background: kind === valeur ? 'var(--accent-wash)' : 'transparent',
               color: kind === valeur ? 'var(--accent)' : 'var(--muted)',
               fontSize: 14, fontWeight: 700,
@@ -113,7 +113,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
       {kind === 'long' && (
         <div style={{
           marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
+          border: '1px solid var(--gold-dim)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
         }}>
           {/* Ce texte affirmait « ne rend que la moitié des dés de vie » :
               c'était la règle de 2014, corrigée dans le moteur mais restée
@@ -127,7 +127,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
       {kind === 'court' && (
         <div style={{
           marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
+          border: '1px solid var(--gold-dim)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
         }}>
           Un repos court ne soigne pas tout seul : il te reste{' '}
           <strong style={{ color: 'var(--ink)' }}>{desRestants}/{desTotal}</strong>{' '}
@@ -142,7 +142,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
       {kind === 'court' && budget > 0 && (
         <div style={{
           marginTop: 12, padding: '12px 13px', borderRadius: 'var(--radius-sm)',
-          border: `1px solid ${dejaUtilisee ? 'var(--line)' : 'var(--accent)'}`,
+          border: `1px solid ${dejaUtilisee ? 'var(--gold-dim)' : 'var(--accent)'}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <div className="lbl" style={{ flexGrow: 1, color: dejaUtilisee ? 'var(--muted)' : 'var(--accent)' }}>
@@ -181,7 +181,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
                       aria-label={`${libelle} rang ${rang}`}
                       style={{
                         width: 36, height: 36, borderRadius: 9,
-                        border: '1px solid var(--line)',
+                        border: '1px solid var(--gold-dim)',
                         color: actif ? 'var(--ink)' : 'var(--muted)',
                         opacity: actif ? 1 : 0.4, fontSize: 17, fontWeight: 700,
                       }}
@@ -222,7 +222,7 @@ export function RestScreen({ sheet, derived, onRepos, onRetour, estMj }: {
           width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
           background: estMj ? 'var(--accent)' : 'var(--surface)',
           color: estMj ? 'var(--accent-ink)' : 'var(--muted)',
-          border: estMj ? 'none' : '1px solid var(--line)',
+          border: estMj ? 'none' : '1px solid var(--gold-dim)',
           fontSize: 15, fontWeight: 700, cursor: estMj ? 'pointer' : 'not-allowed',
         }}
       >

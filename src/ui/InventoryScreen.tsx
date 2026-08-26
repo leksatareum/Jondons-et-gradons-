@@ -14,12 +14,11 @@ const champ: React.CSSProperties = {
   minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 'var(--radius-sm)',
   // 16px ou plus : en dessous, iOS zoome sur le champ à la mise au point,
   // et l'écran reste zoomé après — il faut alors pincer pour dézoomer.
-  border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
+  border: '1px solid var(--gold-dim)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 16,
 };
 
 const carte: React.CSSProperties = {
   padding: '10px 12px', borderRadius: 'var(--radius)',
-  border: '1px solid var(--line)', background: 'var(--surface)',
   display: 'flex', alignItems: 'center', gap: 10,
 };
 
@@ -30,7 +29,7 @@ function Pas({ onClick, children, label }: { onClick: () => void; children: Reac
       aria-label={label}
       style={{
         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-        border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 16, fontWeight: 700,
+        border: '1px solid var(--gold-dim)', color: 'var(--gold)', fontSize: 16, fontWeight: 700,
       }}
     >
       {children}
@@ -44,7 +43,7 @@ function LigneObjet({ item, onQty, onRetirer }: {
   onRetirer: () => void;
 }) {
   return (
-    <div style={carte}>
+    <div className="jg-tile" style={carte}>
       <div style={{ flexGrow: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 600 }}>{item.name}</div>
         {item.note && <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{item.note}</div>}
@@ -89,7 +88,7 @@ export function InventoryScreen({ sheet, onAjouter, onQty, onRetirer, onOr }: {
     }}>
       <h2 className="ttl" style={{ fontSize: 17 }}>Sac</h2>
 
-      <div style={{ ...carte, justifyContent: 'space-between' }}>
+      <div className="jg-tile" style={{ ...carte, justifyContent: 'space-between' }}>
         <div className="lbl">Bourse</div>
         {orEnEdition === null ? (
           <button
@@ -125,11 +124,12 @@ export function InventoryScreen({ sheet, onAjouter, onQty, onRetirer, onOr }: {
         <button
           onClick={ajouter}
           disabled={!nom.trim()}
+          className={nom.trim() ? 'jg-btn-hot' : undefined}
           style={{
             minHeight: 'var(--tap)', padding: '0 16px', borderRadius: 'var(--radius-sm)',
-            background: nom.trim() ? 'var(--accent)' : 'var(--surface)',
-            color: nom.trim() ? 'var(--accent-ink)' : 'var(--muted)',
-            border: nom.trim() ? 'none' : '1px solid var(--line)', fontWeight: 700, fontSize: 14,
+            background: nom.trim() ? undefined : 'var(--surface)',
+            color: nom.trim() ? undefined : 'var(--muted)',
+            border: nom.trim() ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700, fontSize: 14,
           }}
         >
           Ajouter

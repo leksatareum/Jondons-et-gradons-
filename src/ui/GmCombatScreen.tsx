@@ -47,7 +47,7 @@ function HpBar({ combatant }: { combatant: Combatant }) {
   // Le rouge n'apparaît qu'en dessous de la moitié : il garde son sens d'alerte.
   const color = ratio > 0.5 ? 'var(--ok)' : ratio > 0 ? 'var(--accent)' : 'var(--vital)';
   return (
-    <div style={{ height: 4, borderRadius: 3, background: 'var(--line)', overflow: 'hidden', display: 'flex' }}>
+    <div style={{ height: 4, borderRadius: 3, background: 'var(--gold-dim)', overflow: 'hidden', display: 'flex' }}>
       <div style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: color }} />
       {tempRatio > 0 && (
         <div style={{ width: `${tempRatio * 100}%`, background: 'var(--ok)', opacity: 0.55 }} />
@@ -80,7 +80,7 @@ function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenShee
       className="card"
       style={{
         background: active ? 'var(--surface-raised)' : 'var(--surface)',
-        border: active ? '1.5px solid var(--accent)' : '1px solid var(--line)',
+        border: active ? '1.5px solid var(--accent)' : '1px solid var(--gold-dim)',
         borderRadius: 'var(--radius)',
         padding: active ? '13px 14px' : '10px 12px',
         opacity: down ? 0.45 : 1,
@@ -155,7 +155,7 @@ function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenShee
             className="lbl"
             style={{
               flexShrink: 0, minHeight: 32, padding: '0 10px', borderRadius: 999,
-              border: '1px solid var(--line)', color: 'var(--muted)',
+              border: '1px solid var(--gold-dim)', color: 'var(--muted)',
             }}
           >
             Fiche →
@@ -278,7 +278,7 @@ function SupprimerCombattant({ nom, onConfirmer }: { nom: string; onConfirmer: (
         onClick={() => setArme(false)}
         style={{
           minHeight: 'var(--tap)', padding: '0 14px',
-          borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 14,
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 14,
         }}
       >
         Annuler
@@ -366,7 +366,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
     }}>
       <button onClick={onClose} aria-label="Fermer" style={{ flexGrow: 1 }} />
       <div style={{
-        background: 'var(--surface)', borderTop: '1px solid var(--line)',
+        background: 'var(--surface)', borderTop: '1px solid var(--gold-dim)',
         borderRadius: '16px 16px 0 0', padding: '14px 14px 0',
         paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
       }}>
@@ -419,7 +419,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
               className="lbl"
               style={{
                 minHeight: 32, padding: '0 10px', borderRadius: 999, textTransform: 'none',
-                border: `1px solid ${etat.actif ? 'var(--accent)' : 'var(--line)'}`,
+                border: `1px solid ${etat.actif ? 'var(--accent)' : 'var(--gold-dim)'}`,
                 background: etat.actif ? 'var(--accent-wash)' : 'transparent',
                 color: etat.actif ? 'var(--accent)' : 'var(--muted)',
                 fontWeight: etat.actif ? 700 : 600,
@@ -446,7 +446,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
                   onClick={() => press(key)}
                   style={{
                     minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
-                    border: '1px solid var(--line)', fontSize: 18, fontWeight: 600,
+                    border: '1px solid var(--gold-dim)', fontSize: 18, fontWeight: 600,
                   }}
                 >
                   {key}
@@ -588,7 +588,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <header style={{
-        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--gold-dim)',
         boxShadow: 'var(--raise)', padding: '11px 14px 12px',
         paddingTop: 'calc(11px + env(safe-area-inset-top))',
       }}>
@@ -614,7 +614,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
               onClick={() => setState(previousTurn)}
               aria-label="Tour précédent"
               style={{
-                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
                 display: 'grid', placeItems: 'center',
               }}
             >
@@ -629,7 +629,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
               onClick={() => setRetraitToutEnCours(true)}
               aria-label="Retirer tous les adversaires"
               style={{
-                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
                 display: 'grid', placeItems: 'center', color: 'var(--muted)',
               }}
             >
@@ -643,7 +643,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
             onClick={() => setAjoutEnCours(true)}
             aria-label="Ajouter un adversaire"
             style={{
-              width: 44, height: 44, borderRadius: 10, border: '1px solid var(--line)',
+              width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
               display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 700,
               color: 'var(--muted)',
             }}
@@ -661,7 +661,7 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
               minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
               background: running ? 'transparent' : 'var(--accent)',
               color: running ? 'var(--muted)' : 'var(--accent-ink)',
-              border: running ? '1px solid var(--line)' : 'none',
+              border: running ? '1px solid var(--gold-dim)' : 'none',
             }}
           >
             {running ? 'Terminer' : 'Lancer'}

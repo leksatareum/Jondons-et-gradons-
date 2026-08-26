@@ -164,18 +164,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   color: var(--gold-bright); text-shadow: 0 2px 5px rgba(0, 0, 0, .9), 0 0 16px var(--accent-wash);
 }
 
+/* Plein, sans reflet qui balaie — un aplat de l'accent, pas du plastique brillant. */
 .jg-btn-hot {
   color: #2a0f03; text-shadow: 0 1px 0 rgba(255, 220, 170, .5);
-  background-image: linear-gradient(112deg, var(--gold-dim) 0%, var(--accent) 34%, #ffd79a 48%, var(--accent) 62%, var(--gold-dim) 100%);
-  background-size: 220% 100%;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -3px 3px rgba(0, 0, 0, .4), 0 5px 16px -5px var(--accent-wash), 0 0 0 1px #2a1707;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .jg-btn-hot { animation: jg-sheen 3.4s ease-in-out infinite; }
-}
-@keyframes jg-sheen {
-  from { background-position: -180% 0; }
-  to   { background-position: 280% 0; }
+  background: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -2px 2px rgba(0, 0, 0, .3), 0 5px 16px -5px var(--accent-wash), 0 0 0 1px #2a1707;
 }
 .jg-btn-cold {
   color: var(--gold-bright);

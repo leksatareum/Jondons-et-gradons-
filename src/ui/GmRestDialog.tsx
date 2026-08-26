@@ -48,7 +48,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Repos</h2>
@@ -57,7 +57,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -75,7 +75,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
               onClick={() => setKind(valeur)}
               style={{
                 flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                border: `1px solid ${kind === valeur ? 'var(--accent)' : 'var(--line)'}`,
+                border: `1px solid ${kind === valeur ? 'var(--accent)' : 'var(--gold-dim)'}`,
                 background: kind === valeur ? 'var(--accent-wash)' : 'transparent',
                 color: kind === valeur ? 'var(--accent)' : 'var(--muted)',
                 fontSize: 14, fontWeight: 700,
@@ -117,13 +117,13 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
                     padding: '10px 12px', borderRadius: 'var(--radius)',
-                    border: `1px solid ${coche ? 'var(--accent)' : 'var(--line)'}`,
+                    border: `1px solid ${coche ? 'var(--accent)' : 'var(--gold-dim)'}`,
                     background: coche ? 'var(--accent-wash)' : 'var(--surface)',
                   }}
                 >
                   <div style={{
                     flexShrink: 0, width: 20, height: 20, borderRadius: 5,
-                    border: `1.5px solid ${coche ? 'var(--accent)' : 'var(--line)'}`,
+                    border: `1.5px solid ${coche ? 'var(--accent)' : 'var(--gold-dim)'}`,
                     background: coche ? 'var(--accent)' : 'transparent',
                     display: 'grid', placeItems: 'center', color: 'var(--accent-ink)', fontSize: 13, fontWeight: 700,
                   }}>
@@ -138,7 +138,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
 
         <div style={{
           marginTop: 14, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
+          border: '1px solid var(--gold-dim)', fontSize: 13, lineHeight: 1.45, color: 'var(--muted)',
         }}>
           {kind === 'long'
             ? 'Rend tous les points de vie, emplacements et dés de vie ; ne descend l’épuisement que d’un cran.'
@@ -153,7 +153,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
             width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
             background: pret ? 'var(--accent)' : 'var(--surface)',
             color: pret ? 'var(--accent-ink)' : 'var(--muted)',
-            border: pret ? 'none' : '1px solid var(--line)',
+            border: pret ? 'none' : '1px solid var(--gold-dim)',
             fontSize: 15, fontWeight: 700, cursor: pret ? 'pointer' : 'not-allowed',
           }}
         >

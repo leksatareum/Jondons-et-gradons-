@@ -79,7 +79,7 @@ export function secretsEnvoyesA(
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 8,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--line)', background: 'var(--surface)',
+  border: '1px solid var(--gold-dim)', background: 'var(--surface)',
   // 16px ou plus : en dessous, iOS zoome sur le champ à la mise au point,
   // et l'écran reste zoomé après — il faut alors pincer pour dézoomer.
   color: 'var(--ink)', fontSize: 16,
@@ -91,14 +91,15 @@ const zone: React.CSSProperties = {
 
 const carte: React.CSSProperties = {
   padding: '11px 13px', borderRadius: 'var(--radius)',
-  border: '1px solid var(--line)', background: 'var(--surface)',
+  border: '1px solid var(--gold-dim)',
+  background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
 };
 
 const bouton = (actif: boolean): React.CSSProperties => ({
   minHeight: 'var(--tap)', padding: '0 16px', borderRadius: 'var(--radius-sm)',
   background: actif ? 'var(--accent)' : 'var(--surface)',
   color: actif ? 'var(--accent-ink)' : 'var(--muted)',
-  border: actif ? 'none' : '1px solid var(--line)', fontWeight: 700, fontSize: 14,
+  border: actif ? 'none' : '1px solid var(--gold-dim)', fontWeight: 700, fontSize: 14,
 });
 
 const dateCourte = (iso: string): string => {
@@ -132,7 +133,7 @@ function SousOnglets({ actif, onChanger }: {
             flex: 1, minHeight: 34, borderRadius: 999,
             background: actif === clef ? 'var(--accent)' : 'transparent',
             color: actif === clef ? 'var(--accent-ink)' : 'var(--muted)',
-            border: actif === clef ? 'none' : '1px solid var(--line)',
+            border: actif === clef ? 'none' : '1px solid var(--gold-dim)',
             fontWeight: 700, fontSize: 10.5,
           }}
         >
@@ -151,7 +152,7 @@ function Bulle({ message, deMoi, onSupprimer }: {
       alignSelf: deMoi ? 'flex-end' : 'flex-start',
       maxWidth: '85%', padding: '9px 12px', borderRadius: 'var(--radius)',
       background: deMoi ? 'var(--accent-wash)' : 'var(--surface)',
-      border: `1px solid ${deMoi ? 'var(--accent)' : 'var(--line)'}`,
+      border: `1px solid ${deMoi ? 'var(--accent)' : 'var(--gold-dim)'}`,
     }}>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{message.body}</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>

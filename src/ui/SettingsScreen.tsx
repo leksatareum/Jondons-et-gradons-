@@ -25,7 +25,7 @@ export function SettingsScreen({ email, onDeconnexion, onRetour }: {
         className="lbl"
         style={{
           display: 'block', width: 'fit-content', minHeight: 34, padding: '0 12px', marginBottom: 12,
-          borderRadius: 999, border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+          borderRadius: 999, border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontWeight: 700,
         }}
       >
         ← Fiche
@@ -34,7 +34,7 @@ export function SettingsScreen({ email, onDeconnexion, onRetour }: {
 
       <div style={{
         marginTop: 16, padding: '12px 14px', borderRadius: 'var(--radius)',
-        border: '1px solid var(--line)', background: 'var(--surface)',
+        border: '1px solid var(--gold-dim)', background: 'var(--surface)',
       }}>
         <div className="lbl">Compte</div>
         <div style={{ marginTop: 4, fontSize: 15 }}>{email}</div>

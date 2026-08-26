@@ -50,7 +50,7 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -66,7 +66,7 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -86,7 +86,7 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '9px 12px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--line)', background: 'var(--surface)',
+                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
               }}
             >
               <div className="num lbl" style={{ width: 20, textAlign: 'right', color: 'var(--muted)' }}>
@@ -117,7 +117,7 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
                 }))}
                 style={{
                   width: 68, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--line)', background: 'var(--bg)',
+                  border: '1px solid var(--gold-dim)', background: 'var(--bg)',
                   color: 'var(--ink)', fontSize: 17, fontWeight: 700, textAlign: 'center',
                   fontVariantNumeric: 'tabular-nums',
                 }}

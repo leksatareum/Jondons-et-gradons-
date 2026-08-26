@@ -59,7 +59,8 @@ export function TabBar({ actif, onChanger }: { actif: MainTab; onChanger: (ongle
       style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
         display: 'flex',
-        background: 'var(--surface-raised)', borderTop: '1px solid var(--line)',
+        background: 'linear-gradient(180deg, var(--surface-raised), var(--bg))',
+        borderTop: '1.5px solid var(--gold-dim, var(--line))',
         boxShadow: 'var(--raise)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
@@ -70,11 +71,17 @@ export function TabBar({ actif, onChanger }: { actif: MainTab; onChanger: (ongle
           onClick={() => onChanger(clef)}
           aria-current={surligne === clef ? 'page' : undefined}
           style={{
-            flex: 1, minHeight: 58, display: 'flex', flexDirection: 'column',
+            position: 'relative', flex: 1, minHeight: 58, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: 3,
             color: surligne === clef ? 'var(--accent)' : 'var(--muted)',
           }}
         >
+          {surligne === clef && (
+            <span aria-hidden style={{
+              position: 'absolute', top: 4, width: 4, height: 4, borderRadius: '50%',
+              background: 'var(--accent)', boxShadow: '0 0 6px var(--accent)',
+            }} />
+          )}
           {ICONES[clef]}
           <span
             className="lbl"

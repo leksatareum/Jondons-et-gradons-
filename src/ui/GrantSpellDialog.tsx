@@ -70,7 +70,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -84,7 +84,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
           aria-label="Annuler"
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-            border: '1px solid var(--line)', color: 'var(--muted)', fontSize: 18,
+            border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontSize: 18,
           }}
         >
           ✕
@@ -120,7 +120,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
                   className="card"
                   style={{
                     textAlign: 'left', padding: '10px 12px', minHeight: 'var(--tap)',
-                    borderRadius: 'var(--radius)', border: '1px solid var(--line)',
+                    borderRadius: 'var(--radius)', border: '1px solid var(--gold-dim)',
                     background: 'var(--surface)',
                   }}
                 >
@@ -165,7 +165,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
               onChange={(event) => setSource(event.target.value)}
               placeholder="Génie du désert, parchemin de la crypte…"
               autoComplete="off"
-              style={{ ...champ, borderColor: sourceManquante ? 'var(--vital)' : 'var(--line)' }}
+              style={{ ...champ, borderColor: sourceManquante ? 'var(--vital)' : 'var(--gold-dim)' }}
             />
 
             <div style={{ display: 'flex', gap: 12, marginTop: 14, alignItems: 'flex-end' }}>
@@ -191,7 +191,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
                       className="lbl"
                       style={{
                         minHeight: 44, padding: '0 12px', borderRadius: 10,
-                        border: `1px solid ${recharge === option.valeur ? 'var(--accent)' : 'var(--line)'}`,
+                        border: `1px solid ${recharge === option.valeur ? 'var(--accent)' : 'var(--gold-dim)'}`,
                         color: recharge === option.valeur ? 'var(--accent)' : 'var(--muted)',
                       }}
                     >
@@ -210,7 +210,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
                     role="alert"
                     style={{
                       padding: '10px 12px', borderRadius: 'var(--radius-sm)',
-                      border: `1px solid ${avertissement.kind === 'source-vide' ? 'var(--vital)' : 'var(--line)'}`,
+                      border: `1px solid ${avertissement.kind === 'source-vide' ? 'var(--vital)' : 'var(--gold-dim)'}`,
                       background: avertissement.kind === 'source-vide' ? 'var(--vital-wash)' : 'var(--surface)',
                       fontSize: 13, lineHeight: 1.45,
                     }}
@@ -228,7 +228,7 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
                 width: '100%', minHeight: 52, marginTop: 18, borderRadius: 'var(--radius-sm)',
                 background: sourceManquante ? 'var(--surface)' : 'var(--accent)',
                 color: sourceManquante ? 'var(--muted)' : 'var(--accent-ink)',
-                border: sourceManquante ? '1px solid var(--line)' : 'none',
+                border: sourceManquante ? '1px solid var(--gold-dim)' : 'none',
                 fontSize: 15, fontWeight: 700,
                 cursor: sourceManquante ? 'not-allowed' : 'pointer',
               }}
@@ -247,6 +247,6 @@ export function GrantSpellDialog({ sheet, derived, onAccorder, onFermer }: {
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 6,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--line)', background: 'var(--surface)',
+  border: '1px solid var(--gold-dim)', background: 'var(--surface)',
   color: 'var(--ink)', fontSize: 16,
 };

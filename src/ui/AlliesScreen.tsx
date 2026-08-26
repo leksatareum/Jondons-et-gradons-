@@ -29,7 +29,7 @@ function ProfilCard({ profile, action }: { profile: WildShapeProfile; action: Re
   return (
     <div className="card" style={{
       padding: '10px 12px', borderRadius: 'var(--radius)',
-      border: '1px solid var(--line)', background: 'var(--surface)',
+      border: '1px solid var(--gold-dim)', background: 'var(--surface)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -54,7 +54,7 @@ function BoutonAction({ label, onClick, accent, disabled }: {
       className="lbl"
       style={{
         flexShrink: 0, minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 10,
-        border: `1px solid ${accent ? 'var(--accent)' : 'var(--line)'}`,
+        border: `1px solid ${accent ? 'var(--accent)' : 'var(--gold-dim)'}`,
         color: disabled ? 'var(--muted)' : accent ? 'var(--accent)' : 'var(--ink)',
         opacity: disabled ? 0.5 : 1,
       }}
@@ -274,12 +274,12 @@ function CarteCompagnon({ companion, slots, onDegats, onDetacher, onRamener }: {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
         <button onClick={() => onDegats(1)} aria-label={`Retirer un point de vie à ${companion.name}`}
-          style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--line)' }}>−</button>
+          style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--gold-dim)' }}>−</button>
         <div className="num" style={{ fontSize: 16, fontWeight: 700, minWidth: 56, textAlign: 'center' }}>
           {companion.hp}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/{companion.hpMax}</span>
         </div>
         <button onClick={() => onDegats(-1)} aria-label={`Rendre un point de vie à ${companion.name}`}
-          style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--line)' }}>+</button>
+          style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--gold-dim)' }}>+</button>
         <div style={{ flexGrow: 1 }} />
         <BoutonAction label="Détacher" onClick={onDetacher} />
       </div>
@@ -337,13 +337,13 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
             placeholder="Un nom pour le RP — Loup, Fenrir…"
             style={{
               minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 10,
-              border: '1px solid var(--line)', background: 'var(--surface)', fontSize: 14,
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)', fontSize: 14,
             }}
           />
           {options.map((option: LinkedCreatureOption) => (
             <div key={option.id} className="card" style={{
               padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--line)', background: 'var(--surface)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>

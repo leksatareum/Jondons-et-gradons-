@@ -30,6 +30,7 @@ import { LevelUpDialog } from './LevelUpDialog';
 import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
+import { themeDeClasse } from '../content/class-themes';
 import {
   bonusConcentrationEclatLunaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
 } from '../model/wild-shape';
@@ -94,6 +95,10 @@ export function SheetView({
   const [niveauEnCours, setNiveauEnCours] = useState(false);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
   const derivee = useMemo(() => deriveCharacter(fiche.data), [fiche.data]);
+  // La matière « Braise et fer » : posée ici, une fois, elle retombe sur
+  // TOUS les écrans de cette fiche par héritage CSS — Combat, Fiche,
+  // Grimoire, Sac, Journal — sans que chacun ait à la recalculer.
+  const theme = useMemo(() => themeDeClasse(fiche.data.classLevels), [fiche.data.classLevels]);
   const cartes = useMemo(
     () => [...weaponCardsFromCharacter(fiche.data, derivee), ...cardsFromCharacter(fiche.data, derivee)],
     [fiche.data, derivee],
@@ -561,7 +566,18 @@ export function SheetView({
   const vise = onglet === 'grimoire' ? (fiche.data.grants ?? []).find((grant) => grant.id === aRevoquer) : undefined;
 
   return (
-    <>
+    <div
+      style={{
+        display: 'contents',
+        ...({
+          '--accent': theme.accent,
+          '--accent-wash': theme.accentGlow,
+          '--gold': theme.gold,
+          '--gold-bright': theme.goldBright,
+          '--gold-dim': theme.goldDim,
+        } as React.CSSProperties),
+      }}
+    >
       {entete}
       {corps()}
       <TabBar actif={onglet} onChanger={onOnglet} />
@@ -584,7 +600,7 @@ export function SheetView({
           onAnnuler={() => setARevoquer(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 

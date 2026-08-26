@@ -97,8 +97,8 @@ export function FicheScreen({
             aria-label="Règles"
             style={{
               flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-              border: '1px solid var(--line)', color: 'var(--muted)',
-              display: 'grid', placeItems: 'center',
+              border: '1px solid var(--gold-dim)', background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
+              color: 'var(--gold)', display: 'grid', placeItems: 'center',
             }}
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -111,8 +111,8 @@ export function FicheScreen({
             aria-label="Réglages"
             style={{
               flexShrink: 0, width: 40, height: 40, borderRadius: 10,
-              border: '1px solid var(--line)', color: 'var(--muted)',
-              display: 'grid', placeItems: 'center',
+              border: '1px solid var(--gold-dim)', background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
+              color: 'var(--gold)', display: 'grid', placeItems: 'center',
             }}
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -127,7 +127,7 @@ export function FicheScreen({
             onClick={onRepos}
             style={{
               flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--line)', background: 'var(--surface)',
+              border: '1px solid var(--gold-dim)', background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
               color: 'var(--ink)', fontSize: 14, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
@@ -246,8 +246,10 @@ export function FicheScreen({
                         aria-disabled={fige || undefined}
                         style={{
                           textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
-                          border: `1px solid ${actif ? 'var(--accent)' : 'var(--line)'}`,
-                          background: actif ? 'var(--accent-wash)' : 'var(--surface)',
+                          border: `1px solid ${actif ? 'var(--accent)' : 'var(--gold-dim)'}`,
+                          background: actif
+                            ? 'linear-gradient(180deg, var(--accent-wash), var(--surface))'
+                            : 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
                           cursor: fige ? 'default' : 'pointer',
                         }}
                       >
@@ -264,7 +266,7 @@ export function FicheScreen({
                 {decision.effet && (
                   <div style={{
                     marginTop: 8, padding: '8px 11px', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--line)', fontSize: 13, lineHeight: 1.45,
+                    border: '1px solid var(--gold-dim)', fontSize: 13, lineHeight: 1.45,
                     color: 'var(--muted)',
                   }}>
                     {decision.effet}

@@ -302,7 +302,7 @@ export function AbilityScoresStrip({ abilities, modifiers }: {
         <div
           key={ability}
           title={ABILITY_NAMES[ability]}
-          style={{ textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}
+          style={{ textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)' }}
         >
           <div className="lbl" style={{ fontSize: 9 }}>{ABILITY_ABBREVIATIONS[ability]}</div>
           <div className="num" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{abilities[ability]}</div>
