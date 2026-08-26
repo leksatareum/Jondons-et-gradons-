@@ -30,9 +30,14 @@ export async function chargerAppartenances(
 ): Promise<Appartenance[]> {
   // La RLS ne renvoie que les campagnes dont on est membre ou MJ : pas de
   // filtre à écrire ici, et surtout pas de filtre à oublier.
+  //
+  // Une campagne « archivée » (cf. migration 0011) reste entière en base —
+  // fiches, journal, rencontres — mais ne doit plus apparaître ici : c'est le
+  // seul geste réversible entre « visible » et « supprimée pour de bon ».
   const { data, error } = await client
     .from('jg_campaigns')
     .select('id, name, gm_id')
+    .eq('archived', false)
     .order('created_at', { ascending: true });
   if (error) throw new ErreurAppartenance(error.message);
 

@@ -3,7 +3,7 @@ import { chargerAppartenances, choisirCampagne, ErreurAppartenance } from './mem
 
 function fakeClient(resultat: { data: unknown; error: { message: string } | null }) {
   return {
-    from: () => ({ select: () => ({ order: async () => resultat }) }),
+    from: () => ({ select: () => ({ eq: () => ({ order: async () => resultat }) }) }),
   } as never;
 }
 
@@ -29,6 +29,25 @@ describe('appartenances', () => {
   it('une erreur de lecture remonte', async () => {
     const client = fakeClient({ data: null, error: { message: 'JWT expired' } });
     await expect(chargerAppartenances(client, 'u1')).rejects.toThrow(ErreurAppartenance);
+  });
+
+  it('ne demande que les campagnes non archivées', async () => {
+    let vueColonne: string | undefined;
+    let vueValeur: unknown;
+    const client = {
+      from: () => ({
+        select: () => ({
+          eq: (colonne: string, valeur: unknown) => {
+            vueColonne = colonne;
+            vueValeur = valeur;
+            return { order: async () => ({ data: [], error: null }) };
+          },
+        }),
+      }),
+    } as never;
+    await chargerAppartenances(client, 'u1');
+    expect(vueColonne).toBe('archived');
+    expect(vueValeur).toBe(false);
   });
 });
 
