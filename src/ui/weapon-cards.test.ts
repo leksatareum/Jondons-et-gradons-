@@ -50,3 +50,29 @@ describe('cartes d’arme — attaquer et équiper', () => {
     expect(carte.toHit).toBeDefined();
   });
 });
+
+describe('catégorie des cartes — pour trier le rouleau en onglets', () => {
+  it('une arme de corps à corps équipée : catégorie « melee »', () => {
+    const sheet = equiperArme(fiche(), 'epeelongue');
+    const carte = weaponCardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'arme-epeelongue')!;
+    expect(carte.category).toBe('melee');
+  });
+
+  it('une arme à distance équipée : catégorie « distance »', () => {
+    const sheet = equiperArme(fiche(), 'arclong');
+    const carte = weaponCardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'arme-arclong')!;
+    expect(carte.category).toBe('distance');
+  });
+
+  it('les mains nues sont toujours « melee »', () => {
+    const sheet = fiche({ inventory: [] });
+    const carte = weaponCardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'mains-nues')!;
+    expect(carte.category).toBe('melee');
+  });
+
+  it('« Équiper » suit l’arme visée, pas l’arme actuelle', () => {
+    const sheet = equiperArme(fiche(), 'epeelongue'); // corps à corps en main
+    const carte = weaponCardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'equiper-arclong')!;
+    expect(carte.category).toBe('distance'); // vise l’Arc long, à distance
+  });
+});

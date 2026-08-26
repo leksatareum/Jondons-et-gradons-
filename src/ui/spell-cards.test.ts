@@ -119,4 +119,14 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
     expect(carte?.damage).toBeUndefined();
     expect(carte?.toHit).toBeUndefined();
   });
+
+  it('toute carte de sort porte la catégorie « magie » — sorts mineurs compris', () => {
+    const sheet = fiche({
+      cantrips: [{ id: 'gel', sourceClass: 'druide' }],
+      spells: [{ id: 'soins', sourceClass: 'druide', prepared: true }],
+    });
+    const cartes = cardsFromCharacter(sheet, deriveCharacter(sheet));
+    expect(cartes.length).toBeGreaterThan(0);
+    expect(cartes.every((carte) => carte.category === 'magie')).toBe(true);
+  });
 });

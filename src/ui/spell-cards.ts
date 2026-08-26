@@ -160,6 +160,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       id: spell.id,
       name: spell.name,
       economy: economyOf(spell),
+      category: 'magie',
       detail: detailOf(spell),
     });
   }
@@ -172,6 +173,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       id: spell.id,
       name: spell.name,
       economy: economyOf(spell),
+      category: 'magie',
       detail: detailOf(spell),
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(paiements.length ? { resources: paiements } : {}),
@@ -189,6 +191,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       id: `arcanum-${arcanum.rank}`,
       name: spell.name,
       economy: economyOf(spell),
+      category: 'magie',
       detail: detailOf(spell),
       granted: true,
       grantedBy: `ton Arcanum de rang ${arcanum.rank}`,
@@ -212,6 +215,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       id: `don-${grant.id}`,
       name: spell.name,
       economy: economyOf(spell),
+      category: 'magie',
       detail: detailOf(spell),
       granted: true,
       grantedBy: grant.source,

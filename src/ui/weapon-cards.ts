@@ -24,6 +24,7 @@ export function weaponCardsFromCharacter(sheet: CharacterSheet, derived: Derived
     id: attaque.id,
     name: attaque.name,
     economy: 'action',
+    category: attaque.melee ? 'melee' : 'distance',
     detail: [
       attaque.melee ? 'corps à corps' : 'à distance',
       attaque.properties !== '—' ? attaque.properties.toLocaleLowerCase('fr') : null,
@@ -39,6 +40,7 @@ export function weaponCardsFromCharacter(sheet: CharacterSheet, derived: Derived
     id: `equiper-${weapon.id}`,
     name: `Équiper ${weapon.name}`,
     economy: 'action',
+    category: weapon.melee ? 'melee' : 'distance',
     detail: `${weapon.melee ? 'corps à corps' : 'à distance'} · ${weapon.props !== '—' ? weapon.props.toLocaleLowerCase('fr') : ''}`.trim(),
     equipWeaponId: weapon.id,
   }));

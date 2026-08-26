@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 import type { AbilityScores, CharacterSheet } from '../model/character';
 import { deriveCharacter, type DerivedResource, type DerivedSkill } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
-import { layoutCombatCards, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode } from './combat-layout';
+import {
+  CARD_CATEGORIES, layoutCombatCards,
+  type CardCategory, type Economy, type PayableResource, type PlayableCard, type TurnContext, type TurnMode,
+} from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
 import { spellById } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
@@ -81,20 +84,20 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
   if (resources.length === 0) return null;
   return (
     <div style={{
-      marginBottom: 10, border: '1px solid var(--line)',
-      borderRadius: 'var(--radius-sm)', padding: '7px 10px',
+      marginBottom: 7, border: '1px solid var(--line)',
+      borderRadius: 'var(--radius-sm)', padding: '6px 9px',
     }}>
-      <div className="lbl" style={{ marginBottom: 6 }}>Ressources</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="lbl" style={{ marginBottom: 4, fontSize: 10 }}>Ressources</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {resources.map((res) => (
-          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <button
               onClick={() => onDepenser?.(res.key)}
               disabled={res.remaining <= 0}
               style={{
-                flexGrow: 1, minWidth: 0, minHeight: 'var(--tap)', padding: '0 12px',
+                flexGrow: 1, minWidth: 0, minHeight: 32, padding: '0 10px',
                 borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)',
-                textAlign: 'left', fontSize: 14, fontWeight: 700,
+                textAlign: 'left', fontSize: 13, fontWeight: 700,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 opacity: res.remaining <= 0 ? 0.4 : 1,
               }}
@@ -103,7 +106,7 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
             </button>
             {/* Le compteur, juste en face du bouton : ce qu'il reste, sans avoir à compter des pastilles. */}
             <div className="num" style={{
-              minWidth: 44, textAlign: 'center', fontSize: 17, fontWeight: 700,
+              minWidth: 38, textAlign: 'center', fontSize: 15, fontWeight: 700,
               color: res.remaining > 0 ? 'var(--ink)' : 'var(--muted)',
             }}>
               {res.remaining}/{res.max}
@@ -113,8 +116,8 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
                 onClick={() => onRestaurer?.(res.key)}
                 aria-label={`Rendre une utilisation de ${res.name}`}
                 style={{
-                  flexShrink: 0, minHeight: 'var(--tap)', minWidth: 36,
-                  borderRadius: 'var(--radius-sm)', color: 'var(--muted)', fontSize: 15, fontWeight: 700,
+                  flexShrink: 0, minHeight: 32, minWidth: 32,
+                  borderRadius: 'var(--radius-sm)', color: 'var(--muted)', fontSize: 14, fontWeight: 700,
                 }}
               >
                 ↺
@@ -184,16 +187,16 @@ function SaveStrip({ modifiers, proficient, bonus, malusD20 = 0 }: {
             key={ability}
             title={`Sauvegarde de ${ABILITY_NAMES[ability]}`}
             style={{
-              textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)',
+              textAlign: 'center', padding: '3px 0', borderRadius: 'var(--radius-sm)',
               border: isProficient ? '1.5px solid var(--accent)' : '1px solid var(--line)',
               background: isProficient ? 'var(--accent-wash)' : 'transparent',
             }}
           >
-            <div className="lbl" style={{ fontSize: 9, color: isProficient ? 'var(--accent)' : undefined }}>
+            <div className="lbl" style={{ fontSize: 8, color: isProficient ? 'var(--accent)' : undefined }}>
               {ABILITY_ABBREVIATIONS[ability]}
             </div>
             <div className="num" style={{
-              fontSize: 14, fontWeight: isProficient ? 700 : 600,
+              fontSize: 12, fontWeight: isProficient ? 700 : 600,
               color: isProficient ? 'var(--accent)' : undefined,
             }}>
               {sign(total)}
@@ -515,6 +518,24 @@ export function CombatScreen({
   const isYourTurn = turn.mode === 'combat' && turn.isYourTurn;
 
   /**
+   * Magie / à distance / mêlée : trois onglets plutôt qu'un seul tas — un
+   * personnage qui porte une arme ET des sorts voyait tout mélangé dans le
+   * même rouleau, vite illisible. L'économie d'action, elle, reste PARTAGÉE
+   * entre les trois : `layout` se calcule sur `cards` en entier, l'onglet ne
+   * fait que filtrer ce qui s'affiche, jamais ce qui est jouable.
+   */
+  const comptesParCategorie = useMemo(() => {
+    const comptes: Record<CardCategory, number> = { magie: 0, distance: 0, melee: 0 };
+    for (const card of cards) comptes[card.category] += 1;
+    return comptes;
+  }, [cards]);
+  const [onglet, setOnglet] = useState<CardCategory>(
+    () => CARD_CATEGORIES.find((categorie) => comptesParCategorie[categorie.id] > 0)?.id ?? 'magie',
+  );
+  const featured = layout.featured.filter((card) => card.category === onglet);
+  const muted = layout.muted.filter((card) => card.category === onglet);
+
+  /**
    * Jouer une carte, en deux temps quand il y a une décision à prendre :
    * quelle ressource paie, puis — pour Marque du chasseur — qui est marqué.
    * L'économie d'action n'est cochée qu'une fois le choix confirmé : ouvrir
@@ -592,8 +613,8 @@ export function CombatScreen({
           </div>
         </div>
 
-        <div style={{ marginBottom: 10 }}>
-          <div className="lbl" style={{ marginBottom: 4 }}>Jets de sauvegarde</div>
+        <div style={{ marginBottom: 7 }}>
+          <div className="lbl" style={{ marginBottom: 3, fontSize: 10 }}>Jets de sauvegarde</div>
           <SaveStrip
             modifiers={derived.modifiers}
             proficient={derived.saveProficiencies}
@@ -767,11 +788,32 @@ export function CombatScreen({
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11,
       }}>
-        {layout.featured.map((card, index) => (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)',
+          display: 'flex', gap: 6, paddingBottom: 2, marginBottom: 2,
+        }}>
+          {CARD_CATEGORIES.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setOnglet(id)}
+              style={{
+                flexGrow: 1, minHeight: 36, borderRadius: 999,
+                border: `1px solid ${onglet === id ? 'var(--accent)' : 'var(--line)'}`,
+                background: onglet === id ? 'var(--accent-wash)' : 'transparent',
+                color: onglet === id ? 'var(--accent)' : 'var(--muted)',
+                fontSize: 13, fontWeight: 700,
+              }}
+            >
+              {label}{comptesParCategorie[id] > 0 ? ` · ${comptesParCategorie[id]}` : ''}
+            </button>
+          ))}
+        </div>
+
+        {featured.map((card, index) => (
           <ActionCard key={card.id} card={card} playable hero={index === 0} onPlay={play} />
         ))}
 
-        {layout.muted.length > 0 && (
+        {muted.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '2px 2px 0' }}>
             <div className="lbl">
               {!inCombat ? 'indisponible' : isYourTurn ? 'plus tard dans le tour' : 'rangé pour l’instant'}
@@ -779,9 +821,15 @@ export function CombatScreen({
             <div style={{ flexGrow: 1, height: 1, background: 'var(--line)' }} />
           </div>
         )}
-        {layout.muted.map((card) => (
+        {muted.map((card) => (
           <ActionCard key={card.id} card={card} playable={false} hero={false} onPlay={play} />
         ))}
+
+        {featured.length === 0 && muted.length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: '6px 2px' }}>
+            Rien dans « {CARD_CATEGORIES.find((categorie) => categorie.id === onglet)?.label} » pour l’instant.
+          </p>
+        )}
       </main>
 
       {/*

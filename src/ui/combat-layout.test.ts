@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isPlayableNow, layoutCombatCards, type PlayableCard } from './combat-layout';
 
 const carte = (id: string, economy: PlayableCard['economy'], extra: Partial<PlayableCard> = {}): PlayableCard =>
-  ({ id, name: id, economy, ...extra });
+  ({ id, name: id, economy, category: 'magie', ...extra });
 
 const combat = (isYourTurn: boolean) => ({ mode: 'combat' as const, isYourTurn });
 const libre = { mode: 'libre' as const };

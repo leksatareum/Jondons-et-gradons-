@@ -54,7 +54,21 @@ export interface PlayableCard {
    * combat, où l'économie d'action ne s'applique pas, l'équiper reste libre.
    */
   equipWeaponId?: string;
+  /**
+   * Magie, à distance ou corps à corps — pour trier le rouleau en trois
+   * onglets plutôt qu'un seul tas. Une carte de sort la porte toujours ;
+   * une carte d'arme ou d'« Équiper » la déduit de l'arme visée.
+   */
+  category: CardCategory;
 }
+
+export type CardCategory = 'magie' | 'distance' | 'melee';
+
+export const CARD_CATEGORIES: { id: CardCategory; label: string }[] = [
+  { id: 'magie', label: 'Magie' },
+  { id: 'distance', label: 'À distance' },
+  { id: 'melee', label: 'Mêlée' },
+];
 
 /**
  * Le tour par tour n'existe QUE lorsque le MJ l'a lancé.
