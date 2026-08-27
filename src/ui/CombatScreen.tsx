@@ -436,7 +436,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
         opacity: playable ? 1 : 0.42,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div
           className="ttl"
           style={{
@@ -446,6 +446,26 @@ function ActionCard({ card, playable, hero, onPlay }: {
         >
           {card.name}
         </div>
+        {playable && paiementAffiche && (
+          // Le rappel d'emplacement rejoint la ligne du nom — à côté du
+          // bouton, plutôt qu'en dessous : c'est ce qui gardait ces cartes
+          // larges quand toutes les autres avaient déjà rétréci.
+          <div style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3,
+            padding: '4px 6px', borderRadius: 999,
+            border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
+          }}>
+            {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
+            {paiementAffiche.max > 6 ? (
+              <span className="num" style={{ fontSize: 12, fontWeight: 700 }}>
+                {paiementAffiche.remaining}/{paiementAffiche.max}
+              </span>
+            ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
+              <Pip key={index} filled={index < paiementAffiche.remaining} />
+            ))}
+          </div>
+        )}
         {playable && (
           // Le bouton vit sur la ligne du nom, en petit — « Clair de lune
           // (Utiliser) » — plutôt qu'en pleine largeur tout en bas de la
@@ -467,6 +487,12 @@ function ActionCard({ card, playable, hero, onPlay }: {
         <span style={{ color: hero ? 'var(--accent)' : undefined }}>{ECONOMY_LABEL[card.economy]}</span>
         {card.detail && (
           <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
+        )}
+        {playable && (card.resources?.length ?? 0) > 1 && (
+          // Plusieurs ressources peuvent payer ce sort (multiclasse,
+          // lancements gratuits d'un Rôdeur…) : le choix se fait à l'appui
+          // sur « Utiliser », cette mention rappelle juste qu'il existe.
+          <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
         )}
       </div>
 
@@ -498,34 +524,6 @@ function ActionCard({ card, playable, hero, onPlay }: {
         </div>
       )}
 
-      {playable && paiementAffiche && (
-        // Le bouton est monté sur la ligne du nom (ci-dessus) — il ne reste
-        // ici que le rappel de l'emplacement que ce sort consommerait, aligné
-        // à droite comme une note en bas de carte plutôt qu'une seconde barre
-        // pleine largeur.
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: hero && hasNumbers ? 0 : 8 }}>
-          <div style={{
-            minWidth: 74, borderRadius: 9,
-            border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
-            boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
-            display: 'grid', placeItems: 'center', gap: 3, padding: '5px 8px',
-          }}>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
-              {paiementAffiche.max > 6 ? (
-                <span className="num" style={{ fontSize: 13, fontWeight: 700 }}>
-                  {paiementAffiche.remaining}/{paiementAffiche.max}
-                </span>
-              ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
-                <Pip key={index} filled={index < paiementAffiche.remaining} />
-              ))}
-            </div>
-            {(card.resources?.length ?? 0) > 1 && (
-              <div className="lbl" style={{ fontSize: 8.5 }}>au choix</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
