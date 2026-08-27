@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { SyncStatus } from '../sync/connection';
 
 /**
@@ -19,14 +20,44 @@ const libelle: Partial<Record<SyncStatus, string>> = {
   idle: 'Déconnecté',
 };
 
+/**
+ * Un petit retard avant d'AFFICHER « connecting »/« syncing ».
+ *
+ * Sur téléphone, le canal meurt à chaque passage en arrière-plan (l'OS coupe
+ * le websocket) — revenir au premier plan rouvre le canal et resynchronise en
+ * une fraction de seconde la plupart du temps. Montrer « Reconnexion… »
+ * immédiatement faisait clignoter le bandeau à chaque verrouillage d'écran ou
+ * changement d'appli, lu comme une instabilité alors que rien n'était perdu.
+ *
+ * « offline » et « idle » restent immédiats : ce sont de vraies coupures
+ * détectées comme telles, pas des reconnexions qui vont se résoudre seules.
+ * « live » aussi : dès que tout va bien, on l'affiche sans délai, jamais la
+ * peine de laisser le bandeau traîner après coup.
+ */
+const RETARD_AFFICHAGE_MS = 600;
+
+function useStatutAffiche(status: SyncStatus): SyncStatus {
+  const [affiche, setAffiche] = useState(status);
+  useEffect(() => {
+    if (status !== 'connecting' && status !== 'syncing') {
+      setAffiche(status);
+      return;
+    }
+    const handle = window.setTimeout(() => setAffiche(status), RETARD_AFFICHAGE_MS);
+    return () => window.clearTimeout(handle);
+  }, [status]);
+  return affiche;
+}
+
 export function SyncBanner({ status, onRefresh }: {
   status: SyncStatus;
   onRefresh: () => void;
 }) {
-  const texte = libelle[status];
+  const affiche = useStatutAffiche(status);
+  const texte = libelle[affiche];
   if (!texte) return null;
 
-  const rompu = status === 'offline' || status === 'idle';
+  const rompu = affiche === 'offline' || affiche === 'idle';
 
   return (
     <div role="status" style={{ ...barre, background: rompu ? 'var(--vital-wash)' : 'var(--surface-raised)' }}>
