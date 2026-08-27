@@ -229,7 +229,11 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         {step(-1, 'Retirer un point de vie', 'left')}
         {step(+1, 'Rendre un point de vie', 'right')}
 
-        <div style={{ position: 'absolute', right: -13, bottom: -6, width: 40, height: 45 }}>
+        {/* Le blason de CA doit rester à gauche du bouton « + », qui commence
+            pile au bord droit de l'orbe (right: -34, largeur 34) : un blason
+            qui déborde à droite comme avant (right: -13) mordait dessus,
+            visible et cliquable au même endroit. */}
+        <div style={{ position: 'absolute', right: 3, bottom: -6, width: 40, height: 45 }}>
           <div style={{
             position: 'absolute', inset: 0,
             clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
