@@ -47,15 +47,44 @@ describe('withParty', () => {
     expect(state.turnIndex).toBe(-1);
   });
 
-  it('n’écrase pas les dégâts donnés pendant le combat', () => {
+  it('suit les dégâts écrits sur la fiche pendant le combat — pas figé au round où le joueur a rejoint', () => {
     const depart = withParty(vide, [stored('f1', fiche('Veya'))]);
-    const frappe = {
-      ...depart,
-      combatants: [{ ...depart.combatants[0], damageTaken: 7 }],
-    };
-    const apres = withParty(frappe, [stored('f1', fiche('Veya'))]);
+    expect(depart.combatants[0].damageTaken).toBe(0);
+
+    // Le MJ inflige des dégâts via `onDegatsJoueur` : ça écrit sur la fiche,
+    // jamais sur le combattant local — exactement ce que `withParty` doit
+    // relire à chaque fois.
+    const blessee = fiche('Veya');
+    blessee.live.damageTaken = 7;
+    const apres = withParty(depart, [stored('f1', blessee)]);
     expect(apres.combatants[0].damageTaken).toBe(7);
-    expect(apres).toBe(frappe);
+  });
+
+  it('ne touche pas aux PV/CA d’une créature — elles n’ont pas de fiche', () => {
+    const avecCreature: EncounterState = {
+      ...vide,
+      combatants: [{
+        id: 'gobelin-1', name: 'Gobelin', side: 'creature', initiative: 0,
+        dexterity: 2, maxHp: 7, damageTaken: 3, temporaryHp: 0, armorClass: 15, conditions: [],
+      }],
+    };
+    const apres = withParty(avecCreature, [stored('f1', fiche('Veya'))]);
+    const gobelin = apres.combatants.find((c) => c.id === 'gobelin-1');
+    expect(gobelin?.damageTaken).toBe(3);
+    expect(gobelin?.maxHp).toBe(7);
+  });
+
+  it('garde les conditions posées par le MJ pendant le combat, même en rafraîchissant les PV', () => {
+    const depart = withParty(vide, [stored('f1', fiche('Veya'))]);
+    const marquee = {
+      ...depart,
+      combatants: [{ ...depart.combatants[0], conditions: ['prone'] }],
+    };
+    const blessee = fiche('Veya');
+    blessee.live.damageTaken = 5;
+    const apres = withParty(marquee, [stored('f1', blessee)]);
+    expect(apres.combatants[0].conditions).toEqual(['prone']);
+    expect(apres.combatants[0].damageTaken).toBe(5);
   });
 
   it('ajoute un joueur arrivé en cours de route sans toucher aux autres', () => {

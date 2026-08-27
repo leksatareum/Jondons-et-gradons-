@@ -32,18 +32,33 @@ export function combatantFromSheet(sheet: CharacterSheet, id: string): Combatant
 }
 
 /**
- * Complète la rencontre avec les joueurs qui n'y sont pas encore.
+ * Complète la rencontre avec les joueurs qui n'y sont pas encore, et
+ * rafraîchit les PV/CA de ceux qui y sont déjà.
  *
- * Ajoute, ne remplace jamais : un combattant déjà présent porte les dégâts que
- * le MJ lui a donnés pendant le combat, et les réécrire depuis la fiche les
- * effacerait au premier rendu. C'est aussi ce qui permet à l'écran du MJ de
- * montrer le groupe avant même qu'une rencontre existe en base.
+ * Un joueur n'a pas de PV « de rencontre » distincts des siens : sa fiche
+ * fait foi, à chaque lecture, jamais figée au moment où il a rejoint le
+ * combat — même principe que l'arme en main (`model/weapons.ts`). Les
+ * dégâts que le MJ inflige d'ici (`onDegatsJoueur`) écrivent directement sur
+ * cette fiche ; sans ce rafraîchissement, la carte du combattant restait sur
+ * les PV du round où il a rejoint la rencontre, pendant que la Fiche, elle,
+ * suivait — un joueur qui voyait ses dégâts nulle part sur son propre écran
+ * de combat.
+ *
+ * Les conditions, en revanche, restent celles que le MJ pose ici pendant le
+ * combat (`basculerEtatDeLaCible`) : la fiche ne les écrase jamais.
  */
 export function withParty(state: EncounterState, sheets: StoredSheet[]): EncounterState {
-  const present = new Set(state.combatants.map((combatant) => combatant.id));
+  const parId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+  const combatants = state.combatants.map((combatant) => {
+    if (combatant.side !== 'joueur') return combatant;
+    const sheet = parId.get(combatant.id);
+    if (!sheet) return combatant;
+    const { maxHp, damageTaken, temporaryHp, armorClass, dexterity } = combatantFromSheet(sheet.data, sheet.id);
+    return { ...combatant, maxHp, damageTaken, temporaryHp, armorClass, dexterity };
+  });
+  const present = new Set(combatants.map((combatant) => combatant.id));
   const manquants = sheets
     .filter((sheet) => !present.has(sheet.id))
     .map((sheet) => combatantFromSheet(sheet.data, sheet.id));
-  if (manquants.length === 0) return state;
-  return { ...state, combatants: [...state.combatants, ...manquants] };
+  return { ...state, combatants: [...combatants, ...manquants] };
 }
