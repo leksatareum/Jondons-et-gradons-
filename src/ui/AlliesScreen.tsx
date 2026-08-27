@@ -2,9 +2,9 @@ import { useState } from 'react';
 import {
   activeWildShapeStatBlock, CONSTELLATIONS, type Constellation, courrouxDeLaMerDes,
   eclatLunaireActif, eligibleForms, estCercleDeLaMer, estCercleDesEtoiles, formeStellaireDes,
-  hasRoomToLearn, knownForms, wildShapeAccess,
+  hasRoomToLearn, knownForms, WILD_SHAPE_RESOURCE_KEY, wildShapeAccess,
 } from '../model/wild-shape';
-import { availableCompanions } from '../model/companions';
+import { availableCompanions, type CompanionPayment } from '../model/companions';
 import type { LinkedCreature, CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { WildShapeProfile } from '../domain/wild-shape';
@@ -375,6 +375,58 @@ function RamenerALaVie({ nom, slots, onRamener }: {
   );
 }
 
+/**
+ * Ce qui paie l'invocation d'un Compagnon sauvage — PHB 2024 : une
+ * utilisation de Forme sauvage OU un emplacement de sort, jamais gratuit
+ * (à la différence des trois autres sources de créature liée). N'affiche
+ * que ce qui est vraiment disponible, comme `RamenerALaVie`.
+ */
+function PaiementCompagnonSauvage({ charge, slots, onPayer }: {
+  charge?: { remaining: number; max: number };
+  slots: DerivedSlot[];
+  onPayer: (payment: CompanionPayment) => void;
+}) {
+  const rangsDisponibles = slots.filter((slot) => !slot.pact && slot.remaining > 0);
+  return (
+    <div style={{
+      marginTop: 8, padding: '9px 10px', borderRadius: 'var(--radius-sm)',
+      border: '1px solid var(--accent)',
+    }}>
+      <div className="lbl" style={{ textTransform: 'none', color: 'var(--accent)' }}>
+        Une utilisation de Forme sauvage ou un emplacement de sort paie l'invocation.
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
+        <button
+          onClick={() => onPayer({ type: 'forme-sauvage' })}
+          disabled={!charge || charge.remaining <= 0}
+          className="lbl"
+          style={{
+            minHeight: 32, padding: '0 10px', borderRadius: 999,
+            border: '1px solid var(--accent)',
+            color: charge && charge.remaining > 0 ? 'var(--accent)' : 'var(--muted)',
+            opacity: charge && charge.remaining > 0 ? 1 : 0.5, fontWeight: 700,
+          }}
+        >
+          Forme sauvage {charge ? `(${charge.remaining})` : ''}
+        </button>
+        {rangsDisponibles.map((slot) => (
+          <button
+            key={slot.level}
+            onClick={() => onPayer({ type: 'emplacement', rang: slot.level })}
+            className="lbl"
+            style={{
+              minHeight: 32, padding: '0 10px', borderRadius: 999,
+              border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 700,
+            }}
+          >
+            Rang {slot.level} ({slot.remaining})
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CarteCompagnon({ companion, slots, onDegats, onDetacher, onRamener }: {
   companion: LinkedCreature;
   slots: DerivedSlot[];
@@ -427,15 +479,20 @@ function CarteCompagnon({ companion, slots, onDegats, onDetacher, onRamener }: {
 function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRamener }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
-  onLier: (optionId: string, nom?: string) => void;
+  onLier: (optionId: string, nom?: string, paiement?: CompanionPayment) => void;
   onDegats: (companionId: string, delta: number) => void;
   onDetacher: (companionId: string) => void;
   onRamener: (companionId: string, rang: number) => void;
 }) {
   const [nom, setNom] = useState('');
+  // Le Compagnon sauvage n'est pas gratuit : cliquer « Lier » ouvre le choix
+  // du paiement au lieu de lier tout de suite. Les autres sources n'ont pas
+  // ce détour — elles n'ont rien à payer.
+  const [paiementOuvertPour, setPaiementOuvertPour] = useState<string | null>(null);
   const options = availableCompanions(sheet);
   const lies = sheet.companions ?? [];
   if (options.length === 0 && lies.length === 0) return null;
+  const chargeFormeSauvage = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
 
   return (
     <>
@@ -467,24 +524,42 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
               border: '1px solid var(--gold-dim)', background: 'var(--surface)', fontSize: 14,
             }}
           />
-          {options.map((option: LinkedCreatureOption) => (
-            <div key={option.id} className="card" style={{
-              padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <div style={{ flexGrow: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{option.name}</div>
-                <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
-                  {option.sourceLabel} · CA {option.ac} · {option.hp} PV
+          {options.map((option: LinkedCreatureOption) => {
+            const payant = option.source === 'wild-companion';
+            return (
+              <div key={option.id} className="card" style={{
+                padding: '10px 12px', borderRadius: 'var(--radius)',
+                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{option.name}</div>
+                    <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
+                      {option.sourceLabel} · CA {option.ac} · {option.hp} PV
+                    </div>
+                  </div>
+                  <BoutonAction
+                    label="Lier" accent
+                    onClick={() => {
+                      if (!payant) { onLier(option.id, nom.trim() || undefined); setNom(''); return; }
+                      setPaiementOuvertPour(paiementOuvertPour === option.id ? null : option.id);
+                    }}
+                  />
                 </div>
+                {payant && paiementOuvertPour === option.id && (
+                  <PaiementCompagnonSauvage
+                    charge={chargeFormeSauvage}
+                    slots={derived.spellcasting.slots}
+                    onPayer={(paiement) => {
+                      onLier(option.id, nom.trim() || undefined, paiement);
+                      setNom('');
+                      setPaiementOuvertPour(null);
+                    }}
+                  />
+                )}
               </div>
-              <BoutonAction
-                label="Lier" accent
-                onClick={() => { onLier(option.id, nom.trim() || undefined); setNom(''); }}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>
@@ -506,7 +581,7 @@ export function AlliesScreen({
   onFinFormeStellaire: () => void;
   onApprendre: (formId: string) => void;
   onEchanger: (fromId: string, toId: string) => void;
-  onLier: (optionId: string, nom?: string) => void;
+  onLier: (optionId: string, nom?: string, paiement?: CompanionPayment) => void;
   onDegatsCompagnon: (companionId: string, delta: number) => void;
   onDetacherCompagnon: (companionId: string) => void;
   onRamenerCompagnon: (companionId: string, rang: number) => void;

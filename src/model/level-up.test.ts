@@ -197,7 +197,7 @@ describe('montée de niveau — les créatures liées ne sont pas oubliées', ()
     const sheet = fiche({
       classLevels: [{ classId: 'rodeur', level: 3, subclass: 'Maître des bêtes', subclassId: null }],
     });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const lie = bondCompanion(sheet, deriveCharacter(sheet), availableCompanions(sheet)[0].id);
     const hpAvant = lie.companions![0].hpMax;
     const apres = applyLevelUp(lie, levelUpPlan(lie, 'rodeur')!, { classId: 'rodeur', hitPointRoll: 6 });
     expect(apres.companions?.[0].hpMax).toBeGreaterThan(hpAvant);
@@ -207,7 +207,7 @@ describe('montée de niveau — les créatures liées ne sont pas oubliées', ()
     const sheet = fiche({
       classLevels: [{ classId: 'druide', level: 2, subclass: null, subclassId: null }],
     });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const lie = bondCompanion(sheet, deriveCharacter(sheet), availableCompanions(sheet)[0].id, undefined, { type: 'forme-sauvage' });
     const apres = applyLevelUp(lie, levelUpPlan(lie, 'druide')!, { classId: 'druide', hitPointRoll: 6, subclass: 'Cercle de la Lune' });
     expect(apres.companions).toHaveLength(1);
   });

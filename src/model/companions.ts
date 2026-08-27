@@ -3,7 +3,9 @@ import {
   linkedCreaturesAfterLongRest, refreshLinkedCreatures, type LinkedCreatureOption,
 } from '../domain/linked-creatures';
 import { spendResource } from './cast';
+import { WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
 import type { CharacterSheet, LinkedCreature } from './character';
+import type { DerivedCharacter } from './derive';
 
 /**
  * Créatures liées, greffées sur `CharacterSheet`.
@@ -36,16 +38,51 @@ export const availableCompanions = (sheet: CharacterSheet): LinkedCreatureOption
 const asLinkedCreature = (raw: Record<string, unknown>): LinkedCreature => raw as unknown as LinkedCreature;
 
 /**
+ * Ce qui paie l'invocation d'un Compagnon sauvage (Druide) — la seule des
+ * quatre sources de créature liée qui ne soit pas gratuite. PHB 2024 :
+ * une utilisation de Forme sauvage OU un emplacement de sort, au choix du
+ * joueur. Trouver un familier (Occultiste, Pacte de la Chaîne) est à
+ * volonté et sans coût d'emplacement ; le Compagnon primordial (Rôdeur,
+ * Maître des bêtes) s'obtient sans dépense à chaque repos long.
+ */
+export type CompanionPayment = { type: 'forme-sauvage' } | { type: 'emplacement'; rang: number };
+
+/**
  * Lie une créature. En remplace une de la même famille si le personnage en
  * avait déjà une — un compagnon primordial ne s'empile pas avec le précédent,
  * il le remplace, comme le prévoit la règle.
+ *
+ * Un Compagnon sauvage exige `payment` et refuse en silence si la ressource
+ * annoncée n'est en fait plus disponible — jamais de familier gratuit, jamais
+ * de ressource qui descend sous zéro.
  */
-export function bondCompanion(sheet: CharacterSheet, optionId: string, customName = ''): CharacterSheet {
+export function bondCompanion(
+  sheet: CharacterSheet,
+  derived: DerivedCharacter,
+  optionId: string,
+  customName = '',
+  payment?: CompanionPayment,
+): CharacterSheet {
   const option = linkedCreatureOptionFor(adapter(sheet), optionId);
   if (!option) return sheet;
-  const existantes = (sheet.companions ?? []) as unknown as Array<Record<string, unknown>>;
+
+  let payee = sheet;
+  if (option.source === 'wild-companion') {
+    if (!payment) return sheet;
+    if (payment.type === 'forme-sauvage') {
+      const ressource = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
+      if (!ressource || ressource.remaining <= 0) return sheet;
+      payee = spendResource(sheet, WILD_SHAPE_RESOURCE_KEY);
+    } else {
+      const slot = derived.spellcasting.slots.find((entry) => entry.level === payment.rang && !entry.pact);
+      if (!slot || slot.remaining <= 0) return sheet;
+      payee = spendResource(sheet, `emplacement-${payment.rang}`);
+    }
+  }
+
+  const existantes = (payee.companions ?? []) as unknown as Array<Record<string, unknown>>;
   const suivants = addLinkedCreature(existantes, option, customName).map(asLinkedCreature);
-  return { ...sheet, companions: suivants };
+  return { ...payee, companions: suivants };
 }
 
 /** Détache une créature liée — le joueur s'en sépare, ou elle est tombée hors du champ de la règle. */

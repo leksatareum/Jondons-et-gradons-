@@ -145,7 +145,7 @@ describe('repos long — forme sauvage et créatures liées', () => {
 
   it('un Compagnon sauvage disparaît, et le repos le dit', () => {
     const sheet = fiche('druide', 2);
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id, 'Grisounet');
+    const lie = bondCompanion(sheet, deriveCharacter(sheet), availableCompanions(sheet)[0].id, 'Grisounet', { type: 'forme-sauvage' });
     const { sheet: apres, recovered } = longRest(lie, deriveCharacter(lie));
     expect(apres.companions).toEqual([]);
     expect(recovered.join(' ')).toContain('Grisounet disparaît');

@@ -3,6 +3,7 @@ import {
   applyCompanionDamage, availableCompanions, bondCompanion, companionsAfterLongRest, dismissCompanion,
   ramenerCompagnon,
 } from './companions';
+import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -17,6 +18,9 @@ const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
   live: { ...EMPTY_LIVE_STATE, hitDiceSpent: {}, spellSlotsSpent: {}, resourcesSpent: {}, conditions: [] },
   ...over,
 });
+
+const lierPacte = (sheet: CharacterSheet, id?: string, nom?: string) =>
+  bondCompanion(sheet, deriveCharacter(sheet), id ?? availableCompanions(sheet)[0].id, nom);
 
 describe('ce qu’on peut lier — dépend de la classe, du sort, du pacte', () => {
   it('rien sans Trouver un familier, sans Pacte de la Chaîne, sans Druide de niveau 2', () => {
@@ -51,7 +55,7 @@ describe('lier une créature — remplace, jamais n’empile', () => {
   it('ajoute la créature choisie', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
     const [option] = availableCompanions(sheet);
-    const lie = bondCompanion(sheet, option.id, 'Grisounet');
+    const lie = lierPacte(sheet, option.id, 'Grisounet');
     expect(lie.companions).toHaveLength(1);
     expect(lie.companions?.[0].name).toBe('Grisounet');
     expect(lie.companions?.[0].hp).toBe(lie.companions?.[0].hpMax);
@@ -60,30 +64,98 @@ describe('lier une créature — remplace, jamais n’empile', () => {
   it('un second familier remplace le premier, ne s’empile pas', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
     const options = availableCompanions(sheet);
-    const premier = bondCompanion(sheet, options[0].id, 'Un');
-    const second = bondCompanion(premier, options[1].id, 'Deux');
+    const premier = lierPacte(sheet, options[0].id, 'Un');
+    const second = lierPacte(premier, options[1].id, 'Deux');
     expect(second.companions).toHaveLength(1);
     expect(second.companions?.[0].name).toBe('Deux');
   });
 
   it('un id inconnu ne change rien', () => {
     const sheet = fiche();
-    expect(bondCompanion(sheet, 'rien-du-tout')).toBe(sheet);
+    expect(lierPacte(sheet, 'rien-du-tout')).toBe(sheet);
   });
 
   it('se détache proprement', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
     const [option] = availableCompanions(sheet);
-    const lie = bondCompanion(sheet, option.id);
+    const lie = lierPacte(sheet, option.id);
     const detache = dismissCompanion(lie, lie.companions![0].id);
     expect(detache.companions).toEqual([]);
+  });
+});
+
+/**
+ * PHB 2024 : le Compagnon sauvage du Druide n'est pas gratuit — une
+ * utilisation de Forme sauvage OU un emplacement de sort le paie, au choix
+ * du joueur. Les trois autres sources (Trouver un familier via le Pacte de
+ * la Chaîne, compagnon primordial du Maître des bêtes) restent sans coût
+ * d'invocation — ce bloc ne concerne qu'elles par contraste.
+ */
+describe('Compagnon sauvage — l’invocation coûte une Forme sauvage OU un emplacement', () => {
+  const druide2 = fiche({
+    classLevels: [{ classId: 'druide', level: 2, subclass: null, subclassId: null }],
+  });
+
+  it('sans paiement précisé : rien ne se lie', () => {
+    const option = availableCompanions(druide2)[0];
+    const derived = deriveCharacter(druide2);
+    expect(bondCompanion(druide2, derived, option.id)).toBe(druide2);
+  });
+
+  it('payé par une utilisation de Forme sauvage : lié, et la charge est dépensée', () => {
+    const option = availableCompanions(druide2)[0];
+    const derived = deriveCharacter(druide2);
+    const lie = bondCompanion(druide2, derived, option.id, 'Grisounet', { type: 'forme-sauvage' });
+    expect(lie.companions).toHaveLength(1);
+    expect(lie.live.resourcesSpent['druide:forme-sauvage']).toBe(1);
+    expect(lie.live.spellSlotsSpent[1] ?? 0).toBe(0);
+  });
+
+  it('payé par un emplacement de sort : lié, et l’emplacement est dépensé', () => {
+    const option = availableCompanions(druide2)[0];
+    const derived = deriveCharacter(druide2);
+    const lie = bondCompanion(druide2, derived, option.id, 'Grisounet', { type: 'emplacement', rang: 1 });
+    expect(lie.companions).toHaveLength(1);
+    expect(lie.live.spellSlotsSpent[1]).toBe(1);
+    expect(lie.live.resourcesSpent['druide:forme-sauvage'] ?? 0).toBe(0);
+  });
+
+  it('refuse une Forme sauvage épuisée — rien ne se lie, rien ne se dépense en trop', () => {
+    const epuise = {
+      ...druide2,
+      live: { ...druide2.live, resourcesSpent: { 'druide:forme-sauvage': 2 } }, // 2 utilisations au niveau 2, déjà toutes prises
+    };
+    const option = availableCompanions(epuise)[0];
+    const derived = deriveCharacter(epuise);
+    const resultat = bondCompanion(epuise, derived, option.id, 'Grisounet', { type: 'forme-sauvage' });
+    expect(resultat).toBe(epuise);
+  });
+
+  it('refuse un rang d’emplacement épuisé', () => {
+    const epuise = {
+      ...druide2,
+      live: { ...druide2.live, spellSlotsSpent: { 1: 3 } }, // 3 emplacements de rang 1 au niveau 2, déjà tous pris
+    };
+    const option = availableCompanions(epuise)[0];
+    const derived = deriveCharacter(epuise);
+    const resultat = bondCompanion(epuise, derived, option.id, 'Grisounet', { type: 'emplacement', rang: 1 });
+    expect(resultat).toBe(epuise);
+  });
+
+  it('les autres sources restent gratuites : Pacte de la Chaîne n’a pas besoin de payment', () => {
+    const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
+    const option = availableCompanions(sheet)[0];
+    const lie = bondCompanion(sheet, deriveCharacter(sheet), option.id, 'Grisounet');
+    expect(lie.companions).toHaveLength(1);
+    expect(lie.live.resourcesSpent['druide:forme-sauvage'] ?? 0).toBe(0);
+    expect(Object.keys(lie.live.spellSlotsSpent).length).toBe(0);
   });
 });
 
 describe('dégâts et soins — plafonnés entre 0 et le maximum', () => {
   it('encaisse des dégâts sans passer sous zéro', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const lie = lierPacte(sheet);
     const id = lie.companions![0].id;
     const blesse = applyCompanionDamage(lie, id, 999);
     expect(blesse.companions?.[0].hp).toBe(0);
@@ -91,7 +163,7 @@ describe('dégâts et soins — plafonnés entre 0 et le maximum', () => {
 
   it('ne dépasse pas son maximum en soignant', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const lie = lierPacte(sheet);
     const id = lie.companions![0].id;
     const soigne = applyCompanionDamage(lie, id, -999);
     expect(soigne.companions?.[0].hp).toBe(soigne.companions?.[0].hpMax);
@@ -107,7 +179,7 @@ describe('ramener un compagnon primordial mort — dépense un vrai emplacement'
   });
 
   it('rend tous ses PV et dépense l’emplacement du rang choisi', () => {
-    const lie = bondCompanion(maitreDesBetes, availableCompanions(maitreDesBetes)[0].id);
+    const lie = lierPacte(maitreDesBetes);
     const id = lie.companions![0].id;
     const morte = applyCompanionDamage(lie, id, 999);
     expect(morte.companions?.[0].hp).toBe(0);
@@ -118,7 +190,7 @@ describe('ramener un compagnon primordial mort — dépense un vrai emplacement'
   });
 
   it('ne fait rien — et ne dépense rien — si le compagnon n’est pas mort', () => {
-    const lie = bondCompanion(maitreDesBetes, availableCompanions(maitreDesBetes)[0].id);
+    const lie = lierPacte(maitreDesBetes);
     const id = lie.companions![0].id;
     const resultat = ramenerCompagnon(lie, id, 1);
     expect(resultat).toBe(lie);
@@ -135,7 +207,8 @@ describe('repos long — expire, ouvre le changement, recalcule', () => {
     const sheet = fiche({
       classLevels: [{ classId: 'druide', level: 2, subclass: null, subclassId: null }],
     });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const option = availableCompanions(sheet)[0];
+    const lie = bondCompanion(sheet, deriveCharacter(sheet), option.id, undefined, { type: 'forme-sauvage' });
     expect(lie.companions).toHaveLength(1);
     const apres = companionsAfterLongRest(lie);
     expect(apres.companions).toEqual([]);
@@ -143,7 +216,7 @@ describe('repos long — expire, ouvre le changement, recalcule', () => {
 
   it('un familier de Pacte de la Chaîne survit au repos long', () => {
     const sheet = fiche({ classChoices: { occultiste: { invocations: ['pact-chain'] } } });
-    const lie = bondCompanion(sheet, availableCompanions(sheet)[0].id);
+    const lie = lierPacte(sheet);
     const apres = companionsAfterLongRest(lie);
     expect(apres.companions).toHaveLength(1);
   });
@@ -152,7 +225,7 @@ describe('repos long — expire, ouvre le changement, recalcule', () => {
     const niveau3 = fiche({
       classLevels: [{ classId: 'rodeur', level: 3, subclass: 'Maître des bêtes', subclassId: null }],
     });
-    const lie = bondCompanion(niveau3, availableCompanions(niveau3)[0].id);
+    const lie = lierPacte(niveau3);
     const hpAvant = lie.companions![0].hpMax;
 
     const niveau6 = { ...lie, classLevels: [{ classId: 'rodeur', level: 6, subclass: 'Maître des bêtes', subclassId: null }] };

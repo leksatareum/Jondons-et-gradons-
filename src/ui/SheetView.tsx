@@ -36,7 +36,10 @@ import {
   activerCourrouxDeLaMer, activerFormeStellaire, bonusConcentrationEclatLunaire, type Constellation,
   finCourrouxDeLaMer, finFormeStellaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
 } from '../model/wild-shape';
-import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
+import {
+  applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon,
+  type CompanionPayment,
+} from '../model/companions';
 import { degainerArme, equiperArme, equiperBouclier, retirerBouclier } from '../model/weapons';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
@@ -390,8 +393,8 @@ export function SheetView({
     enregistrer(learnForm(donnees, derivee, formId));
   const echangerForme = (fromId: string, toId: string) =>
     enregistrer(swapForm(donnees, derivee, fromId, toId));
-  const lierCompagnon = (optionId: string, nom?: string) =>
-    enregistrer(bondCompanion(donnees, optionId, nom));
+  const lierCompagnon = (optionId: string, nom?: string, paiement?: CompanionPayment) =>
+    enregistrer(bondCompanion(donnees, derivee, optionId, nom, paiement));
   const degatsCompagnon = (companionId: string, delta: number) =>
     enregistrer(applyCompanionDamage(donnees, companionId, delta));
   const detacherCompagnon = (companionId: string) =>
