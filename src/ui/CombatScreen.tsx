@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AbilityScores, CharacterSheet } from '../model/character';
-import { deriveCharacter, type DerivedResource, type DerivedSkill } from '../model/derive';
+import { deriveCharacter, type DerivedResource, type DerivedSkill, type DerivedSlot } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
 import {
   CARD_CATEGORIES, layoutCombatCards,
@@ -157,6 +157,49 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
                 ↺
               </button>
             )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Le récapitulatif des emplacements de sorts restants, tous rangs confondus.
+ *
+ * Chaque carte de sort rappelle déjà CE QU'ELLE coûterait (`ActionCard`,
+ * les pastilles en bas de carte) — mais recompter ce qui reste au rang 2
+ * demandait de rouvrir chaque sort de rang 2 un par un. Une ligne de pastilles
+ * compactes, dans la zone figée, répond à « il me reste quoi ? » d'un coup
+ * d'œil, sans dupliquer la logique de paiement (elle reste sur la carte).
+ *
+ * Rien à afficher pour un personnage sans magie : `slots` est vide, ou ne
+ * contient que des rangs à `max: 0` (progression de multiclassé pas encore
+ * arrivée à ce rang) — les deux sont filtrés.
+ */
+function SpellSlotsSummary({ slots }: { slots: DerivedSlot[] }) {
+  const visibles = slots.filter((slot) => slot.max > 0);
+  if (visibles.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 5 }}>
+      <div className="lbl" style={{ marginBottom: 2, fontSize: 10 }}>Emplacements de sorts</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {visibles.map((slot) => (
+          <div
+            key={`${slot.pact ? 'pacte' : 'rang'}-${slot.level}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+              borderRadius: 999, border: '1px solid var(--gold-dim)',
+              background: 'rgba(0,0,0,.25)', opacity: slot.remaining > 0 ? 1 : 0.55,
+            }}
+          >
+            <span className="lbl" style={{ fontSize: 9 }}>{slot.pact ? 'Pacte' : `Rang ${slot.level}`}</span>
+            <span className="num" style={{
+              fontSize: 12, fontWeight: 700,
+              color: slot.remaining > 0 ? 'var(--gold-bright)' : 'var(--muted)',
+            }}>
+              {slot.remaining}/{slot.max}
+            </span>
           </div>
         ))}
       </div>
@@ -374,6 +417,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
   // Les pastilles montrent le paiement PROPOSÉ — le premier qui reste
   // disponible. Quand il y en a plusieurs, le joueur tranchera.
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
+  const boutonLabel = card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser';
   return (
     <div
       className="card jg-tile"
@@ -392,16 +436,40 @@ function ActionCard({ card, playable, hero, onPlay }: {
         opacity: playable ? 1 : 0.42,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <div className="ttl" style={{ fontSize: hero ? 17 : 15, flexGrow: 1 }}>{card.name}</div>
-        <div className="lbl" style={{ color: hero ? 'var(--accent)' : undefined }}>
-          {ECONOMY_LABEL[card.economy]}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          className="ttl"
+          style={{
+            fontSize: hero ? 17 : 15, flexGrow: 1, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}
+        >
+          {card.name}
         </div>
+        {playable && (
+          // Le bouton vit sur la ligne du nom, en petit — « Clair de lune
+          // (Utiliser) » — plutôt qu'en pleine largeur tout en bas de la
+          // carte : c'est ce qui la faisait paraître si haute.
+          <button
+            onClick={() => onPlay(card)}
+            className="jg-btn-cold"
+            style={{
+              flexShrink: 0, minHeight: 30, padding: '0 12px', borderRadius: 999,
+              border: '1.5px solid var(--accent)', fontSize: 11, fontWeight: 700,
+            }}
+          >
+            {boutonLabel}
+          </button>
+        )}
       </div>
 
-      {card.detail && (
-        <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{card.detail}</div>
-      )}
+      <div className="lbl" style={{ marginTop: 3 }}>
+        <span style={{ color: hero ? 'var(--accent)' : undefined }}>{ECONOMY_LABEL[card.economy]}</span>
+        {card.detail && (
+          <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
+        )}
+      </div>
+
       {card.granted && (
         <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--accent)' }}>
           {/* La provenance vient de la carte quand elle en a une : « accordé
@@ -430,49 +498,32 @@ function ActionCard({ card, playable, hero, onPlay }: {
         </div>
       )}
 
-      {playable && (
-        <div style={{ display: 'flex', gap: 8, marginTop: hero && hasNumbers ? 0 : 12 }}>
-          {/*
-            Bouton cerné, pas plein : l'accent plein signifie « l'action de
-            cet écran », et un rouleau de sorts n'en a pas une seule — quatre
-            barres pleines côte à côte se disputaient l'œil sans que rien ne
-            prime. Cerné, il reste évidemment cliquable (c'est la plainte
-            qu'on ne veut pas rejouer) sans crier plus fort que son voisin.
-            La mise en avant de la première carte passe par sa bordure et ses
-            grands chiffres — jamais par une recommandation déguisée.
-          */}
-          <button
-            onClick={() => onPlay(card)}
-            className="jg-btn-cold"
-            style={{
-              flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 9,
-              border: '1.5px solid var(--accent)', fontSize: 13, fontWeight: 700,
-            }}
-          >
-            {card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser'}
-          </button>
-          {paiementAffiche && (
-            <div style={{
-              minWidth: 74, minHeight: 'var(--tap)', borderRadius: 9,
-              border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
-              boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
-              display: 'grid', placeItems: 'center', gap: 3, padding: '0 8px',
-            }}>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
-                {paiementAffiche.max > 6 ? (
-                  <span className="num" style={{ fontSize: 13, fontWeight: 700 }}>
-                    {paiementAffiche.remaining}/{paiementAffiche.max}
-                  </span>
-                ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
-                  <Pip key={index} filled={index < paiementAffiche.remaining} />
-                ))}
-              </div>
-              {(card.resources?.length ?? 0) > 1 && (
-                <div className="lbl" style={{ fontSize: 8.5 }}>au choix</div>
-              )}
+      {playable && paiementAffiche && (
+        // Le bouton est monté sur la ligne du nom (ci-dessus) — il ne reste
+        // ici que le rappel de l'emplacement que ce sort consommerait, aligné
+        // à droite comme une note en bas de carte plutôt qu'une seconde barre
+        // pleine largeur.
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: hero && hasNumbers ? 0 : 8 }}>
+          <div style={{
+            minWidth: 74, borderRadius: 9,
+            border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
+            display: 'grid', placeItems: 'center', gap: 3, padding: '5px 8px',
+          }}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
+              {paiementAffiche.max > 6 ? (
+                <span className="num" style={{ fontSize: 13, fontWeight: 700 }}>
+                  {paiementAffiche.remaining}/{paiementAffiche.max}
+                </span>
+              ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
+                <Pip key={index} filled={index < paiementAffiche.remaining} />
+              ))}
             </div>
-          )}
+            {(card.resources?.length ?? 0) > 1 && (
+              <div className="lbl" style={{ fontSize: 8.5 }}>au choix</div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -733,6 +784,15 @@ export function CombatScreen({
             malusD20={derived.exhaustion.d20Penalty}
           />
         </div>
+
+        {/*
+          Le rappel par carte dit ce QU'UN sort précis coûterait ; celui-ci dit
+          ce qu'il RESTE, tous rangs confondus, sans avoir à ouvrir chaque
+          carte pour le recompter. Une seule ligne de pastilles compactes —
+          l'en-tête est déjà tendu au maximum, pas question de lui reprendre
+          la hauteur qu'on vient de lui rendre.
+        */}
+        <SpellSlotsSummary slots={derived.spellcasting.slots} />
 
         {/* ───── États ─────
             Posés par le MJ, lus ici. Ce qu'ils imposent est rappelé sous
