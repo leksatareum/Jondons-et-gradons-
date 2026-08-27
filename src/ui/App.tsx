@@ -19,6 +19,8 @@ import { addCombatants, replaceCombatant, type Combatant, type EncounterState } 
 import { spellById } from '../content/spell-catalogue';
 import { poserEtat } from '../model/etats';
 import { ETAT_AUTO_AU_LANCER } from '../model/spell-self-etat';
+import { heal, takeDamage } from '../model/damage';
+import { deriveCharacter } from '../model/derive';
 import { GmRestDialog, reposDeGroupe } from './GmRestDialog';
 
 /**
@@ -453,6 +455,26 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
     onDeclencher?.();
   };
 
+  /**
+   * Le pavé de dégâts/soins du MJ, pour un JOUEUR : écrit directement sa
+   * vraie fiche, jamais la copie de la rencontre — celle-là n'est relue
+   * nulle part. `combatantId` est l'id de la fiche pour un membre du groupe
+   * (`roster.ts`, `combatantFromSheet`), le même lien qu'`onOuvrirFiche`.
+   *
+   * Une première version fermait ce pavé pour les joueurs plutôt que de le
+   * relier ici : le MJ perdait le geste le plus utile en plein combat, pour
+   * un aller-retour vers chaque fiche à la place.
+   */
+  const appliquerVitalJoueur = (combatantId: string, delta: number) => {
+    const fiche = snapshot.sheets.find((entry) => entry.id === combatantId);
+    if (!fiche) return;
+    const suivante = delta < 0
+      ? takeDamage(fiche.data, deriveCharacter(fiche.data), -delta).sheet
+      : heal(fiche.data, delta);
+    if (suivante === fiche.data) return;
+    void saveSheet(client, sync, fiche.id, suivante);
+  };
+
   const creerRencontre = (name: string, combatants: Combatant[]) => {
     void createEncounterTemplate(client, sync, campaignId, name, combatants);
   };
@@ -477,6 +499,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
         <GmCombatScreen
           state={affiche}
           onChange={changer}
+          onDegatsJoueur={appliquerVitalJoueur}
           concentrationParNom={concentrationParNom}
           onOpenSheet={(combatantId) => {
             // L'identifiant du combattant issu du groupe EST celui de la fiche

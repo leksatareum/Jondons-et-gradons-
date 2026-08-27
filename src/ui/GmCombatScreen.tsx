@@ -352,11 +352,11 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
   };
 
   // Un joueur porte SES points de vie sur sa fiche (`live.damageTaken`), pas
-  // sur ce combattant : `apply()` n'écrirait que sur la copie de la
-  // rencontre, sans jamais toucher ce que sa propre fiche affiche — un pavé
-  // silencieusement inopérant. « Fiche → » ouvre la fiche, où le MJ a « les
-  // mêmes pouvoirs que le joueur » (voir le commentaire d'`onOpenSheet`) :
-  // c'est le seul chemin qui écrit au bon endroit.
+  // sur ce combattant : le pavé fonctionne aussi pour lui, mais `onApply`
+  // (fourni par `GmCombatScreen`) écrit alors sur sa VRAIE fiche — jamais sur
+  // la copie de la rencontre, qui n'est relue nulle part. Une première
+  // version fermait ce pavé pour les joueurs plutôt que de le brancher au bon
+  // endroit ; le MJ perdait ainsi le geste le plus utile en plein combat.
   const estUnJoueur = target.side === 'joueur';
 
   return (
@@ -394,15 +394,13 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
 
         {onSupprimer && <SupprimerCombattant nom={target.name} onConfirmer={onSupprimer} />}
 
-        {!estUnJoueur && (
-          <div style={{
-            textAlign: 'center', padding: '9px 0 13px',
-            fontSize: 34, fontWeight: 700, lineHeight: 1,
-            color: entry ? 'var(--ink)' : 'var(--muted)',
-          }} className="num">
-            {entry || '0'}
-          </div>
-        )}
+        <div style={{
+          textAlign: 'center', padding: '9px 0 13px',
+          fontSize: 34, fontWeight: 700, lineHeight: 1,
+          color: entry ? 'var(--ink)' : 'var(--muted)',
+        }} className="num">
+          {entry || '0'}
+        </div>
 
         {/* ───── États ─────
             Au-dessus du pavé : un état se pose d'un appui, sans nombre à
@@ -430,51 +428,53 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
           ))}
         </div>
 
-        {estUnJoueur ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00', '←'].map((key) => (
+            <button
+              key={key}
+              onClick={() => press(key)}
+              style={{
+                minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
+                border: '1px solid var(--gold-dim)', fontSize: 18, fontWeight: 600,
+              }}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, margin: '11px 0 14px' }}>
+          <button
+            onClick={() => send('degats')}
+            style={{
+              flexGrow: 1, minHeight: 52, borderRadius: 11,
+              background: 'var(--vital)', color: 'var(--bg)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Dégâts
+          </button>
+          <button
+            onClick={() => send('soins')}
+            style={{
+              flexGrow: 1, minHeight: 52, borderRadius: 11,
+              border: '1.5px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
+            }}
+          >
+            Soins
+          </button>
+        </div>
+
+        {/* Pour un joueur, ce pavé écrit directement sur sa fiche — le
+            rappeler évite de croire qu'il faudrait encore répercuter le geste
+            ailleurs. « Fiche → » reste ouverte pour tout le reste (sorts,
+            ressources, inventaire). */}
+        {estUnJoueur && (
           <div className="lbl" style={{
             textTransform: 'none', textAlign: 'center', color: 'var(--muted)',
-            padding: '10px 0 16px', fontSize: 13, lineHeight: 1.5,
+            padding: '0 0 14px', fontSize: 12, lineHeight: 1.5,
           }}>
-            Ses points de vie se gèrent depuis sa fiche (« Fiche → » sur sa carte) : lui seul écrit sa propre feuille, le MJ y a les mêmes pouvoirs que lui.
+            Écrit directement sur sa fiche, comme s'il l'avait fait lui-même.
           </div>
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00', '←'].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => press(key)}
-                  style={{
-                    minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
-                    border: '1px solid var(--gold-dim)', fontSize: 18, fontWeight: 600,
-                  }}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, margin: '11px 0 14px' }}>
-              <button
-                onClick={() => send('degats')}
-                style={{
-                  flexGrow: 1, minHeight: 52, borderRadius: 11,
-                  background: 'var(--vital)', color: 'var(--bg)', fontSize: 14, fontWeight: 700,
-                }}
-              >
-                Dégâts
-              </button>
-              <button
-                onClick={() => send('soins')}
-                style={{
-                  flexGrow: 1, minHeight: 52, borderRadius: 11,
-                  border: '1.5px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
-                }}
-              >
-                Soins
-              </button>
-            </div>
-          </>
         )}
       </div>
     </div>
@@ -487,7 +487,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParNom }: {
+export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
   state: EncounterState;
   onChange: (suivant: EncounterState) => void;
   /**
@@ -495,6 +495,13 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
    * le joueur — c'est la RLS qui l'y autorise, pas cet écran.
    */
   onOpenSheet?: (combatantId: string) => void;
+  /**
+   * Le pavé de dégâts/soins d'un JOUEUR passe par ici — vers sa vraie fiche
+   * (`live.damageTaken`), jamais vers la copie de la rencontre. `combatantId`
+   * EST l'id de la fiche pour un membre du groupe (voir `roster.ts`,
+   * `combatantFromSheet`) — le même lien que celui d'`onOpenSheet`.
+   */
+  onDegatsJoueur?: (combatantId: string, delta: number) => void;
   /**
    * Le nom du sort en cours de concentration, par nom de personnage — lu sur
    * chaque fiche, jamais sur le combattant : `live.concentration` du joueur,
@@ -562,6 +569,13 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, concentrationParN
 
   const apply = (amount: number, mode: 'degats' | 'soins') => {
     if (!target) return;
+    // Un joueur porte ses PV sur sa fiche, pas sur ce combattant — écrire ici
+    // ne ferait qu'une copie que personne ne relit jamais (voir le
+    // commentaire d'`onDegatsJoueur`).
+    if (target.side === 'joueur') {
+      onDegatsJoueur?.(target.id, mode === 'degats' ? -amount : amount);
+      return;
+    }
     const updated = mode === 'degats'
       ? applyDamage(target, amount).combatant
       : applyHealing(target, amount);
