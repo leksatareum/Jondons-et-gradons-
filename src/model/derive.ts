@@ -20,8 +20,8 @@ import { arcanumChoisis, arcanumResourceKey } from './invocations';
 import { competenceExplorateurAgile, sortMineurSupplementaireDuDruide } from './choix-de-classe';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
-import { armorById, SHIELD } from '../content/armor';
-import { possedeBouclier } from '../domain/armor-ownership';
+import { armorById } from '../content/armor';
+import { bonusBouclier } from '../domain/armor-ownership';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
 import { speciesResourcesFor } from '../domain/species-resources';
 import { wildShapeUses } from '../domain/druid-resources';
@@ -333,9 +333,13 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
   // le sac à chaque calcul, jamais figée au moment où le bouclier a été
   // équipé. Vendu, donné ou jamais eu, le bonus disparaît sans qu'il faille y
   // penser, exactement comme l'arme en main (`armeEnMain`).
+  //
+  // Le bonus est celui du MEILLEUR bouclier reconnu dans le sac, pas un +2
+  // figé : « Bouclier », « Bouclier +1 », un exemplaire trouvé en jeu... tous
+  // comptent, chacun avec le sien (`domain/armor-ownership.ts`).
   const armorClass = armor.base
     + (armor.dexCap === null ? modifiers.dex : Math.min(modifiers.dex, armor.dexCap))
-    + (sheet.shield && possedeBouclier(sheet.inventory) ? SHIELD.bonus : 0)
+    + (sheet.shield ? bonusBouclier(sheet.inventory) : 0)
     + armorClassBonusFor(styleDeCombat, armor.id !== 'none');
 
   // ── Maîtrises ──────────────────────────────────────────────────────

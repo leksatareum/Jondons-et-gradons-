@@ -124,6 +124,26 @@ describe('bouclier — le bonus de CA suit vraiment s’il est équipé, pas jus
     expect(boucleirEquipe(repose)).toBe(false);
     expect(repose.inventory).toHaveLength(1); // pas jeté, juste plus au bras
   });
+
+  it('un bouclier magique (+1) trouvé en jeu donne SON bonus, pas le +2 générique', () => {
+    const sheet = fiche({ shield: true, inventory: [{ id: 'trouve', name: 'Bouclier +1', qty: 1 }] });
+    expect(boucleirEquipe(sheet)).toBe(true);
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex + 3);
+  });
+
+  it('un bouclier reconnu sous un autre nom que le catalogue vaut quand même le bonus de base', () => {
+    const sheet = fiche({ shield: true, inventory: [{ id: 'trouve', name: 'Petit bouclier', qty: 1 }] });
+    expect(boucleirEquipe(sheet)).toBe(true);
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex + 2);
+  });
+
+  it('deux boucliers différents dans le sac : le meilleur des deux compte, pas le premier trouvé', () => {
+    const sheet = fiche({
+      shield: true,
+      inventory: [{ id: 'a', name: 'Bouclier', qty: 1 }, { id: 'b', name: 'Bouclier +2', qty: 1 }],
+    });
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex + 4);
+  });
 });
 
 describe('attaques par Action', () => {

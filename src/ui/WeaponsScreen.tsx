@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { armesEquipables, attaquesDuPersonnage, attaquesParAction, boucleirEquipe } from '../model/weapons';
 import { isProficientWithWeapon } from '../domain/weapon-proficiency';
-import { possedeBouclier } from '../domain/armor-ownership';
+import { meilleurBouclier } from '../domain/armor-ownership';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 
@@ -37,7 +37,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer, onEquiper
   const classIds = sheet.classLevels.map((entry) => entry.classId);
   const equipable = armesEquipables(sheet);
   const arme = attaques.find((attaque) => attaque.id !== 'mains-nues');
-  const aUnBouclier = possedeBouclier(sheet.inventory);
+  const bouclier = meilleurBouclier(sheet.inventory);
   const boucleirActif = boucleirEquipe(sheet);
 
   return (
@@ -118,17 +118,21 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer, onEquiper
       {/* Le bouclier n'est proposé que s'il y en a un dans le sac — sinon
           rien à équiper. Rester dans le sac, à sa place, sans compter dans la
           CA : c'est exactement l'inverse de ce qui se passait avant, où le
-          bonus tenait tout seul, qu'il soit au bras ou juste rangé. */}
-      {aUnBouclier && (
+          bonus tenait tout seul, qu'il soit au bras ou juste rangé.
+
+          Le nom et le bonus affichés sont ceux du bouclier vraiment reconnu
+          — « Bouclier +1 » plutôt qu'un « Bouclier » et un « +2 » figés qui
+          mentiraient dès que le sac en contient un autre. */}
+      {bouclier && (
         <div className="card" style={{
           marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius)',
           border: '1px solid var(--gold-dim)', background: 'var(--surface)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flexGrow: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Bouclier</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{bouclier.name}</div>
               <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
-                {boucleirActif ? '+2 à la CA, au bras' : 'Dans le sac, pas au bras'}
+                {boucleirActif ? `+${bouclier.bonus} à la CA, au bras` : 'Dans le sac, pas au bras'}
               </div>
             </div>
             <button
