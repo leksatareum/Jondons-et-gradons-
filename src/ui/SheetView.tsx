@@ -37,7 +37,7 @@ import {
   finCourrouxDeLaMer, finFormeStellaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
 } from '../model/wild-shape';
 import { applyCompanionDamage, availableCompanions, bondCompanion, dismissCompanion, ramenerCompagnon } from '../model/companions';
-import { degainerArme, equiperArme } from '../model/weapons';
+import { degainerArme, equiperArme, equiperBouclier, retirerBouclier } from '../model/weapons';
 import type { CharacterSheet, SpellGrant } from '../model/character';
 import type { CampaignSync, JournalEntry, Message, Note, StoredSheet } from '../sync/campaign-sync';
 import { activeCombatant, type EncounterState } from '../domain/encounter';
@@ -402,6 +402,10 @@ export function SheetView({
     enregistrer(equiperArme(donnees, weaponId));
   const degainerUneArme = () =>
     enregistrer(degainerArme(donnees));
+  const equiperLeBouclier = () =>
+    enregistrer(equiperBouclier(donnees));
+  const retirerLeBouclier = () =>
+    enregistrer(retirerBouclier(donnees));
   // L'envoi peut échouer (réseau, format refusé côté bucket) : on laisse
   // l'erreur remonter jusqu'au médaillon, qui l'affiche — le brouillon
   // s'efface au même titre qu'un échec de `saveSheet` ordinaire.
@@ -521,6 +525,8 @@ export function SheetView({
           onRamenerCompagnon={ramenerCompagnonLie}
           onEquiperArme={equiperUneArme}
           onDegainerArme={degainerUneArme}
+          onEquiperBouclier={equiperLeBouclier}
+          onRetirerBouclier={retirerLeBouclier}
           niveauDisponible={niveauDisponible}
           onNiveauSuperieur={estMj
             ? basculerNiveauDisponible

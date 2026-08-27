@@ -1,5 +1,6 @@
 import { weaponById, type WeaponDef } from '../content/weapons';
 import { ownedWeapons } from '../domain/weapon-ownership';
+import { possedeBouclier } from '../domain/armor-ownership';
 import { unarmedStrikeAttack, weaponAttackFor, type WeaponAttack } from '../domain/weapon-attacks';
 import { chosenFightingStyles } from '../domain/fighting-styles';
 import { multiclassAttacksPerAction } from '../domain/multiclassing';
@@ -57,6 +58,33 @@ export function degainerArme(sheet: CharacterSheet): CharacterSheet {
 }
 
 /**
+ * Le bouclier est-il vraiment équipé — LA question qui décide de son bonus
+ * de CA (`model/derive.ts`) et du dé à mains nues.
+ *
+ * `sheet.shield` n'est qu'une DÉCISION (équipé au moment où le joueur l'a
+ * dit), jamais figée définitivement : sans la revalider contre le sac à
+ * chaque lecture, un bouclier vendu ou donné continuait de compter, et rien
+ * ne permettait de le reposer sans le retirer du sac lui-même — un Druide
+ * qui garde son bouclier en réserve pour prendre un bâton à deux mains n'a,
+ * lui, pas voulu le jeter.
+ */
+export const boucleirEquipe = (sheet: CharacterSheet): boolean =>
+  Boolean(sheet.shield) && possedeBouclier(sheet.inventory);
+
+/** Équipe le bouclier possédé. Refuse s'il n'y en a pas dans le sac. */
+export function equiperBouclier(sheet: CharacterSheet): CharacterSheet {
+  if (sheet.shield) return sheet;
+  if (!possedeBouclier(sheet.inventory)) return sheet;
+  return { ...sheet, shield: true };
+}
+
+/** Repose le bouclier — reste dans le sac, juste plus au bras. */
+export function retirerBouclier(sheet: CharacterSheet): CharacterSheet {
+  if (!sheet.shield) return sheet;
+  return { ...sheet, shield: false };
+}
+
+/**
  * Les attaques jouables du personnage : à mains nues, toujours présente, puis
  * celle de l'arme en main s'il y en a une. Le nombre d'attaques par Action
  * (Attaque supplémentaire) est indiqué sur chacune plutôt que dupliqué en
@@ -75,7 +103,7 @@ export function attaquesDuPersonnage(sheet: CharacterSheet, derived: DerivedChar
     ...attaques,
     // Combat à mains nues (mainsnues) monte le forfait à un vrai dé — 1d8 si
     // vraiment aucune arme ni bouclier n'est en main, 1d6 sinon.
-    unarmedStrikeAttack(derived.modifiers.str, derived.proficiencyBonus, styles, Boolean(arme) || sheet.shield),
+    unarmedStrikeAttack(derived.modifiers.str, derived.proficiencyBonus, styles, Boolean(arme) || boucleirEquipe(sheet)),
   ];
 }
 

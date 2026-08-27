@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { armeEnMain, armesEquipables, attaquesDuPersonnage, attaquesParAction, degainerArme, equiperArme } from './weapons';
+import {
+  armeEnMain, armesEquipables, attaquesDuPersonnage, attaquesParAction, boucleirEquipe,
+  degainerArme, equiperArme, equiperBouclier, retirerBouclier,
+} from './weapons';
 import { deriveCharacter } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
@@ -81,6 +84,45 @@ describe('attaques du personnage — toujours au moins les mains nues', () => {
     const attaques = attaquesDuPersonnage(sheet, deriveCharacter(sheet));
     expect(attaques.map((attaque) => attaque.id)).toEqual(['arme-epeelongue', 'mains-nues']);
     expect(attaques[0].proficient).toBe(true); // Guerrier : maîtrisé avec toute arme
+  });
+});
+
+describe('bouclier — le bonus de CA suit vraiment s’il est équipé, pas juste possédé', () => {
+  const avecBouclier = (over: Partial<CharacterSheet> = {}): CharacterSheet =>
+    fiche({ inventory: [{ id: 'kit0', name: 'Bouclier', qty: 1 }], ...over });
+
+  it('possédé mais pas équipé (`shield: false`) : pas de bonus', () => {
+    const sheet = avecBouclier({ shield: false });
+    expect(boucleirEquipe(sheet)).toBe(false);
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex);
+  });
+
+  it('équipé ET possédé : le bonus s’applique', () => {
+    const sheet = avecBouclier({ shield: true });
+    expect(boucleirEquipe(sheet)).toBe(true);
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex + 2);
+  });
+
+  it('marqué équipé mais VENDU du sac depuis : le bonus disparaît, comme une arme perdue', () => {
+    const sheet = fiche({ shield: true, inventory: [] });
+    expect(boucleirEquipe(sheet)).toBe(false);
+    expect(deriveCharacter(sheet).armorClass).toBe(10 + deriveCharacter(sheet).modifiers.dex);
+  });
+
+  it('équiperBouclier refuse s’il n’y en a pas dans le sac', () => {
+    const sheet = fiche({ shield: false, inventory: [] });
+    expect(equiperBouclier(sheet)).toBe(sheet);
+  });
+
+  it('équiperBouclier l’active, retirerBouclier le repose — le sac ne change pas', () => {
+    const sheet = avecBouclier({ shield: false });
+    const equipe = equiperBouclier(sheet);
+    expect(boucleirEquipe(equipe)).toBe(true);
+    expect(equipe.inventory).toHaveLength(1); // toujours dans le sac
+
+    const repose = retirerBouclier(equipe);
+    expect(boucleirEquipe(repose)).toBe(false);
+    expect(repose.inventory).toHaveLength(1); // pas jeté, juste plus au bras
   });
 });
 

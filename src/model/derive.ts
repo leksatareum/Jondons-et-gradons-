@@ -21,6 +21,7 @@ import { competenceExplorateurAgile, sortMineurSupplementaireDuDruide } from './
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
 import { armorById, SHIELD } from '../content/armor';
+import { possedeBouclier } from '../domain/armor-ownership';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
 import { speciesResourcesFor } from '../domain/species-resources';
 import { wildShapeUses } from '../domain/druid-resources';
@@ -327,9 +328,14 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
   // Défense (style de combat) : +1 tant qu'une armure est portée — le
   // choix se sauvegardait sur la fiche sans jamais être relu nulle part.
   const styleDeCombat = chosenFightingStyles(sheet.classChoices);
+  // `sheet.shield` n'est qu'une DÉCISION (équipé ou non, voir `model/weapons.ts`
+  // `equiperBouclier`/`retirerBouclier`) — la possession, elle, se relit dans
+  // le sac à chaque calcul, jamais figée au moment où le bouclier a été
+  // équipé. Vendu, donné ou jamais eu, le bonus disparaît sans qu'il faille y
+  // penser, exactement comme l'arme en main (`armeEnMain`).
   const armorClass = armor.base
     + (armor.dexCap === null ? modifiers.dex : Math.min(modifiers.dex, armor.dexCap))
-    + (sheet.shield ? SHIELD.bonus : 0)
+    + (sheet.shield && possedeBouclier(sheet.inventory) ? SHIELD.bonus : 0)
     + armorClassBonusFor(styleDeCombat, armor.id !== 'none');
 
   // ── Maîtrises ──────────────────────────────────────────────────────

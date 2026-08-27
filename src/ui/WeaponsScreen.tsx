@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { armesEquipables, attaquesDuPersonnage, attaquesParAction } from '../model/weapons';
+import { armesEquipables, attaquesDuPersonnage, attaquesParAction, boucleirEquipe } from '../model/weapons';
 import { isProficientWithWeapon } from '../domain/weapon-proficiency';
+import { possedeBouclier } from '../domain/armor-ownership';
 import type { CharacterSheet } from '../model/character';
 import type { DerivedCharacter } from '../model/derive';
 
@@ -22,11 +23,13 @@ import type { DerivedCharacter } from '../model/derive';
 
 const sign = (value: number): string => (value >= 0 ? `+${value}` : `${value}`);
 
-export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
+export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer, onEquiperBouclier, onRetirerBouclier }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
   onEquiper: (weaponId: string) => void;
   onDegainer: () => void;
+  onEquiperBouclier: () => void;
+  onRetirerBouclier: () => void;
 }) {
   const [choix, setChoix] = useState('');
   const attaques = attaquesDuPersonnage(sheet, derived);
@@ -34,6 +37,8 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
   const classIds = sheet.classLevels.map((entry) => entry.classId);
   const equipable = armesEquipables(sheet);
   const arme = attaques.find((attaque) => attaque.id !== 'mains-nues');
+  const aUnBouclier = possedeBouclier(sheet.inventory);
+  const boucleirActif = boucleirEquipe(sheet);
 
   return (
     <>
@@ -109,6 +114,37 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer }: {
       <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
         Changer d’arme ici est libre. En combat, ça passe par une carte « Équiper » qui coûte l’Action du tour.
       </p>
+
+      {/* Le bouclier n'est proposé que s'il y en a un dans le sac — sinon
+          rien à équiper. Rester dans le sac, à sa place, sans compter dans la
+          CA : c'est exactement l'inverse de ce qui se passait avant, où le
+          bonus tenait tout seul, qu'il soit au bras ou juste rangé. */}
+      {aUnBouclier && (
+        <div className="card" style={{
+          marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius)',
+          border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flexGrow: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>Bouclier</div>
+              <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
+                {boucleirActif ? '+2 à la CA, au bras' : 'Dans le sac, pas au bras'}
+              </div>
+            </div>
+            <button
+              onClick={boucleirActif ? onRetirerBouclier : onEquiperBouclier}
+              className="lbl"
+              style={{
+                minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 10,
+                border: `1px solid ${boucleirActif ? 'var(--gold-dim)' : 'var(--accent)'}`,
+                color: boucleirActif ? 'var(--ink)' : 'var(--accent)',
+              }}
+            >
+              {boucleirActif ? 'Reposer' : 'Équiper'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

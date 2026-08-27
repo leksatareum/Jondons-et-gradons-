@@ -30,7 +30,7 @@ export function FicheScreen({
   sheet, derived, avecAllies, estMj,
   onTransformer, onRevenir, onApprendre, onEchanger, onLier, onDegatsCompagnon, onDetacherCompagnon, onRamenerCompagnon,
   onCourrouxDeLaMer, onFinCourrouxDeLaMer, onFormeStellaire, onFinFormeStellaire,
-  onEquiperArme, onDegainerArme,
+  onEquiperArme, onDegainerArme, onEquiperBouclier, onRetirerBouclier,
   onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse, onChoisirPortrait,
 }: {
   sheet: CharacterSheet;
@@ -53,6 +53,8 @@ export function FicheScreen({
   onRamenerCompagnon: (companionId: string, rang: number) => void;
   onEquiperArme: (weaponId: string) => void;
   onDegainerArme: () => void;
+  onEquiperBouclier: () => void;
+  onRetirerBouclier: () => void;
   /**
    * Côté MJ : bascule la montée de niveau proposée (dé)/verrouillée.
    * Côté joueur : ouvre la fenêtre de choix, présente seulement quand le MJ
@@ -193,7 +195,10 @@ export function FicheScreen({
 
       <section>
         <h2 className="ttl" style={{ fontSize: 17, marginBottom: 10 }}>Armes</h2>
-        <WeaponsScreen sheet={sheet} derived={derived} onEquiper={onEquiperArme} onDegainer={onDegainerArme} />
+        <WeaponsScreen
+          sheet={sheet} derived={derived} onEquiper={onEquiperArme} onDegainer={onDegainerArme}
+          onEquiperBouclier={onEquiperBouclier} onRetirerBouclier={onRetirerBouclier}
+        />
       </section>
 
       {/* ───── Décisions de classe ─────
