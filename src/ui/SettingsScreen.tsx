@@ -114,13 +114,14 @@ function SectionNotifications({ client, userId }: { client: SupabaseClient; user
   );
 }
 
-export function SettingsScreen({ client, userId, email, onDeconnexion, onRetour }: {
+export function SettingsScreen({ client, userId, email, onDeconnexion, onRetour, retourVers = 'Fiche' }: {
   client: SupabaseClient;
   userId: string;
   email: string;
   onDeconnexion: () => void;
-  /** Cet écran s'ouvre depuis la Fiche : le chemin du retour doit se voir. */
+  /** Le chemin du retour doit se voir — d'où on est venu (la Fiche pour un joueur, le Combat pour le MJ). */
   onRetour: () => void;
+  retourVers?: string;
 }) {
   return (
     <main style={{
@@ -135,7 +136,7 @@ export function SettingsScreen({ client, userId, email, onDeconnexion, onRetour 
           borderRadius: 999, border: '1px solid var(--gold-dim)', color: 'var(--muted)', fontWeight: 700,
         }}
       >
-        ← Fiche
+        ← {retourVers}
       </button>
       <h2 className="ttl" style={{ margin: 0, fontSize: 18 }}>Réglages</h2>
 

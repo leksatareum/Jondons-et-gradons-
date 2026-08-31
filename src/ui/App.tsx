@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { GmCombatScreen } from './GmCombatScreen';
 import { SheetView, type SheetTab } from './SheetView';
 import { JournalScreen } from './JournalScreen';
+import { SettingsScreen } from './SettingsScreen';
 import { ToastStack, useToastsDeCampagne } from './notifications-toast';
 import { PreparedEncountersScreen } from './PreparedEncountersScreen';
 import { SignInScreen } from './SignInScreen';
@@ -109,8 +110,8 @@ function Table({ client, compte, campagne }: {
   const [onglet, setOnglet] = useState<SheetTab>('combat');
   /** Fiche que le MJ regarde. `null` : il est sur sa liste d'initiative. */
   const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
-  /** Écran principal du MJ, hors fiche ouverte : son combat, ou le journal. */
-  const [ecranMj, setEcranMj] = useState<'combat' | 'rencontres' | 'journal'>('combat');
+  /** Écran principal du MJ, hors fiche ouverte : son combat, le journal, ou ses réglages. */
+  const [ecranMj, setEcranMj] = useState<'combat' | 'rencontres' | 'journal' | 'reglages'>('combat');
   /** Le dialogue de repos du MJ — couvre toute la table ou une partie, en un geste. */
   const [reposEnCours, setReposEnCours] = useState(false);
 
@@ -224,16 +225,35 @@ function Table({ client, compte, campagne }: {
           valeur={ecranMj}
           onChanger={setEcranMj}
           droite={
-            <button
-              onClick={() => setReposEnCours(true)}
-              className="lbl"
-              style={{
-                minHeight: 32, padding: '0 14px', borderRadius: 999,
-                border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
-              }}
-            >
-              Repos
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                onClick={() => setReposEnCours(true)}
+                className="lbl"
+                style={{
+                  minHeight: 32, padding: '0 14px', borderRadius: 999,
+                  border: '1px solid var(--line)', color: 'var(--muted)', fontWeight: 700,
+                }}
+              >
+                Repos
+              </button>
+              {/* Seul chemin du MJ vers ses réglages — et sa déconnexion, qui n'y
+                  vivait auparavant que sur l'écran d'erreur : le MJ n'ouvre pas
+                  systématiquement une fiche de joueur pour se déconnecter. */}
+              <button
+                onClick={() => setEcranMj('reglages')}
+                aria-label="Réglages"
+                style={{
+                  width: 32, height: 32, borderRadius: 999, flexShrink: 0,
+                  border: '1px solid var(--line)', color: 'var(--muted)', display: 'grid', placeItems: 'center',
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path d="M12 2.8 v2.6 M12 18.6 v2.6 M2.8 12 h2.6 M18.6 12 h2.6 M5.5 5.5 l1.85 1.85 M16.65 16.65 l1.85 1.85 M18.5 5.5 l-1.85 1.85 M7.35 16.65 L5.5 18.5" />
+                </svg>
+              </button>
+            </div>
           }
         />
         {reposEnCours && (
@@ -257,6 +277,15 @@ function Table({ client, compte, campagne }: {
             onOuvrirFiche={setFicheOuverte}
             vue={ecranMj}
             onDeclencher={() => setEcranMj('combat')}
+          />
+        ) : ecranMj === 'reglages' ? (
+          <SettingsScreen
+            client={client}
+            userId={compte.userId}
+            email={compte.email}
+            onDeconnexion={() => void seDeconnecter(client)}
+            onRetour={() => setEcranMj('combat')}
+            retourVers="Combat"
           />
         ) : (
           <JournalScreen
@@ -361,9 +390,10 @@ function BandeauMj({ nom, onRetour }: { nom: string; onRetour: () => void }) {
  * pied de page de combat) — inutile de reproduire le même piège ici.
  */
 function MjOnglets({ valeur, onChanger, droite }: {
-  valeur: 'combat' | 'rencontres' | 'journal';
+  /** Les réglages ne sont pas un onglet — ils s'ouvrent à part (voir `droite`) et n'allument aucun de ceux-ci. */
+  valeur: 'combat' | 'rencontres' | 'journal' | 'reglages';
   onChanger: (valeur: 'combat' | 'rencontres' | 'journal') => void;
-  /** Action indépendante des onglets (ex. Repos) — rendue à part, poussée à droite. */
+  /** Action indépendante des onglets (ex. Repos, Réglages) — rendue à part, poussée à droite. */
   droite?: React.ReactNode;
 }) {
   const items: ['combat' | 'rencontres' | 'journal', string][] = [
