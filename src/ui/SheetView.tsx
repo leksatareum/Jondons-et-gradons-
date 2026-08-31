@@ -598,7 +598,15 @@ export function SheetView({
     }
 
     if (onglet === 'parametres') {
-      return <SettingsScreen email={userEmail} onDeconnexion={() => void seDeconnecter(client)} onRetour={() => onOnglet('fiche')} />;
+      return (
+        <SettingsScreen
+          client={client}
+          userId={userId}
+          email={userEmail}
+          onDeconnexion={() => void seDeconnecter(client)}
+          onRetour={() => onOnglet('fiche')}
+        />
+      );
     }
 
     const enCombat = rencontre != null && rencontre.turnIndex >= 0;

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { GmCombatScreen } from './GmCombatScreen';
 import { SheetView, type SheetTab } from './SheetView';
 import { JournalScreen } from './JournalScreen';
+import { ToastStack, useToastsDeCampagne } from './notifications-toast';
 import { PreparedEncountersScreen } from './PreparedEncountersScreen';
 import { SignInScreen } from './SignInScreen';
 import { SyncBanner } from './SyncBanner';
@@ -97,6 +98,12 @@ function Table({ client, compte, campagne }: {
   campagne: Appartenance;
 }) {
   const { snapshot, sync } = useCampaign(client, campagne.campaignId);
+  // Le pop-up d'une nouvelle entrée de journal, d'un message ou d'un
+  // secret — l'équivalent, quand l'appli est déjà ouverte, de la
+  // notification push qui réveille le téléphone quand elle est fermée.
+  // Avant tout retour anticipé : c'est un hook, il se lit à chaque rendu.
+  const { toasts, fermer } = useToastsDeCampagne(snapshot, compte.userId);
+  const pileDeToasts = <ToastStack toasts={toasts} onFermer={fermer} />;
   const [onglet, setOnglet] = useState<SheetTab>('combat');
   /** Fiche que le MJ regarde. `null` : il est sur sa liste d'initiative. */
   const [ficheOuverte, setFicheOuverte] = useState<string | null>(null);
@@ -139,33 +146,37 @@ function Table({ client, compte, campagne }: {
     const ouverte = snapshot.sheets.find((fiche) => fiche.id === ficheOuverte);
     if (ouverte) {
       return (
-        <SheetView
-          client={client}
-          sync={sync}
-          fiche={ouverte}
-          rencontre={rencontre}
-          encounterId={snapshot.encounter?.id}
-          onglet={onglet}
-          onOnglet={setOnglet}
-          entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
-          estMj
-          campaignId={campagne.campaignId}
-          userId={compte.userId}
-          userEmail={compte.email}
-          journalEntries={snapshot.journalEntries}
-          // Le MJ lit les notes de toute sa table (RLS `jg_is_gm`), mais
-          // l'onglet Journal d'une fiche ne montre que celles de cette
-          // fiche-là : celles d'un autre joueur n'ont rien à faire ici.
-          notes={snapshot.notes.filter((note) => note.ownerId === ouverte.ownerId)}
-          messages={snapshot.messages}
-          // Sur la fiche d'un joueur, le MJ n'écrit qu'à celui-là : c'est sa
-          // conversation avec lui qu'il ouvre, pas une boîte d'envoi générale.
-          correspondants={[{ id: ouverte.ownerId, nom: ouverte.data.name }]}
-        />
+        <>
+          {pileDeToasts}
+          <SheetView
+            client={client}
+            sync={sync}
+            fiche={ouverte}
+            rencontre={rencontre}
+            encounterId={snapshot.encounter?.id}
+            onglet={onglet}
+            onOnglet={setOnglet}
+            entete={<BandeauMj nom={ouverte.data.name} onRetour={() => setFicheOuverte(null)} />}
+            estMj
+            campaignId={campagne.campaignId}
+            userId={compte.userId}
+            userEmail={compte.email}
+            journalEntries={snapshot.journalEntries}
+            // Le MJ lit les notes de toute sa table (RLS `jg_is_gm`), mais
+            // l'onglet Journal d'une fiche ne montre que celles de cette
+            // fiche-là : celles d'un autre joueur n'ont rien à faire ici.
+            notes={snapshot.notes.filter((note) => note.ownerId === ouverte.ownerId)}
+            messages={snapshot.messages}
+            // Sur la fiche d'un joueur, le MJ n'écrit qu'à celui-là : c'est sa
+            // conversation avec lui qu'il ouvre, pas une boîte d'envoi générale.
+            correspondants={[{ id: ouverte.ownerId, nom: ouverte.data.name }]}
+          />
+        </>
       );
     }
     return (
       <>
+        {pileDeToasts}
         {bandeau}
         <MjOnglets
           valeur={ecranMj}
@@ -228,6 +239,7 @@ function Table({ client, compte, campagne }: {
   if (!maFiche) {
     return (
       <>
+        {pileDeToasts}
         {bandeau}
         <Echec
           titre="Pas encore de personnage"
@@ -239,23 +251,26 @@ function Table({ client, compte, campagne }: {
   }
 
   return (
-    <SheetView
-      client={client}
-      sync={sync}
-      fiche={maFiche}
-      rencontre={rencontre}
-      encounterId={snapshot.encounter?.id}
-      onglet={onglet}
-      onOnglet={setOnglet}
-      entete={bandeau}
-      campaignId={campagne.campaignId}
-      userId={compte.userId}
-      userEmail={compte.email}
-      journalEntries={snapshot.journalEntries}
-      notes={snapshot.notes}
-      messages={snapshot.messages}
-      correspondants={correspondantsDuJoueur}
-    />
+    <>
+      {pileDeToasts}
+      <SheetView
+        client={client}
+        sync={sync}
+        fiche={maFiche}
+        rencontre={rencontre}
+        encounterId={snapshot.encounter?.id}
+        onglet={onglet}
+        onOnglet={setOnglet}
+        entete={bandeau}
+        campaignId={campagne.campaignId}
+        userId={compte.userId}
+        userEmail={compte.email}
+        journalEntries={snapshot.journalEntries}
+        notes={snapshot.notes}
+        messages={snapshot.messages}
+        correspondants={correspondantsDuJoueur}
+      />
+    </>
   );
 }
 

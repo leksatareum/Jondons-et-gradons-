@@ -4,6 +4,7 @@ import {
   type CampaignSync,
 } from './campaign-sync';
 import type { SyncRow } from './supabase-transport';
+import type { SouscriptionPush } from '../notifications/push';
 import type { CharacterSheet } from '../model/character';
 import type { Combatant, EncounterState } from '../domain/encounter';
 
@@ -245,3 +246,31 @@ export const deleteEncounterTemplate = (
   sync: CampaignSync | null,
   id: string,
 ): Promise<void> => deleteRow(client, sync, ENCOUNTER_TEMPLATES_TABLE, id);
+
+const PUSH_SUBSCRIPTIONS_TABLE = 'jg_push_subscriptions';
+
+/**
+ * Souscriptions push : à part du reste — pas de `version`, pas de canal
+ * temps réel, jamais lues par un écran (voir `notifications/push.ts` et la
+ * fonction Edge `send-push`, seule à les consulter). `upsert` sur
+ * `endpoint` : un appareil qui redemande la permission remplace sa ligne au
+ * lieu d'en empiler une seconde identique.
+ */
+export async function savePushSubscription(
+  client: SupabaseClient,
+  userId: string,
+  souscription: SouscriptionPush,
+): Promise<void> {
+  const { error } = await client
+    .from(PUSH_SUBSCRIPTIONS_TABLE)
+    .upsert(
+      { user_id: userId, endpoint: souscription.endpoint, p256dh: souscription.p256dh, auth_key: souscription.authKey },
+      { onConflict: 'endpoint' },
+    );
+  if (error) throw new WriteError(PUSH_SUBSCRIPTIONS_TABLE, error.message);
+}
+
+export async function deletePushSubscription(client: SupabaseClient, endpoint: string): Promise<void> {
+  const { error } = await client.from(PUSH_SUBSCRIPTIONS_TABLE).delete().eq('endpoint', endpoint);
+  if (error) throw new WriteError(PUSH_SUBSCRIPTIONS_TABLE, error.message);
+}
