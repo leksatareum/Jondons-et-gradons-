@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AbilityScores, CharacterSheet } from '../model/character';
 import { deriveCharacter, type DerivedResource, type DerivedSkill, type DerivedSlot } from '../model/derive';
 import { ABILITY_ABBREVIATIONS, ABILITY_NAMES, ABILITY_ORDER, type AbilityId } from '../content/character-basics';
@@ -233,6 +233,43 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
   current: number; max: number; armorClass: number; temporary: number; onChange: (delta: number) => void;
 }) {
   const hauteur = max > 0 ? Math.max(0, Math.min(100, Math.round((current / max) * 100))) : 0;
+
+  /**
+   * Le chiffre qui s'échappe de l'orbe à chaque coup encaissé ou soigné.
+   *
+   * Il ne vient PAS du bouton « − » : les PV changent aussi quand le MJ
+   * frappe à distance, quand une potion soigne, quand le temps réel rattrape
+   * un autre écran. C'est donc la valeur elle-même qu'on surveille — le seul
+   * endroit qui les voit tous passer.
+   *
+   * `cle` force un nouvel élément à chaque coup : deux dégâts d'affilée
+   * doivent rejouer l'animation, or React garderait le même nœud (et donc la
+   * même animation déjà terminée) si rien ne le distinguait du précédent.
+   */
+  const [effet, setEffet] = useState<{ delta: number; cle: number } | null>(null);
+  const precedent = useRef(current);
+  const orbe = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const delta = current - precedent.current;
+    precedent.current = current;
+    if (delta === 0) return;
+    setEffet({ delta, cle: Date.now() });
+    // Le recul de l'orbe part d'ici plutôt que d'une classe CSS : deux coups
+    // d'affilée doivent le rejouer, or une classe déjà posée ne redémarre
+    // pas toute seule — et remonter l'orbe pour l'y forcer ferait SAUTER le
+    // niveau du liquide au lieu de le laisser glisser (`transition` de
+    // `.jg-orb-fill`, perdue à chaque remontage).
+    if (delta < 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      orbe.current?.animate([
+        { transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
+        { transform: 'translateX(4px)' }, { transform: 'translateX(-2px)' },
+        { transform: 'translateX(0)' },
+      ], { duration: 340, easing: 'ease-out' });
+    }
+    const minuteur = window.setTimeout(() => setEffet(null), 1000);
+    return () => window.clearTimeout(minuteur);
+  }, [current]);
+
   const step = (delta: number, label: string, side: 'left' | 'right') => (
     <button
       onClick={() => onChange(delta)}
@@ -258,7 +295,7 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
     <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
       <div style={{ position: 'relative' }}>
         <div className="jg-orb-ring">
-          <div className="jg-orb" style={{ width: 76, height: 76 }}>
+          <div ref={orbe} className="jg-orb" style={{ width: 76, height: 76 }}>
             <div className="jg-orb-fill" style={{ height: `${hauteur}%` }}>
               <div className="jg-wave jg-wave-a" />
               <div className="jg-wave jg-wave-b" />
@@ -266,6 +303,34 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
             <div className="jg-orb-glass" />
           </div>
         </div>
+
+        {/* Le chiffre qui s'échappe : rouge quand ça fait mal, vert quand ça
+            soigne — les deux seules couleurs que l'appli associe déjà aux PV
+            (`--vital`, `--ok`), jamais l'accent de classe.
+            Il monte À CÔTÉ de l'orbe, jamais dessus : au centre il couvrait
+            précisément le nombre de PV qu'on venait de changer, c'est-à-dire
+            le seul chiffre qu'on cherchait à lire. Et il se range du côté
+            OPPOSÉ au bouton qui vient d'être touché — un dégât monte à
+            droite, loin du « − » ; un soin à gauche, loin du « + » — pour ne
+            jamais éclore sous le doigt qui appuie. Le contour noir n'est pas
+            décoratif : le chiffre rase le liquide rouge de l'orbe, où un
+            rouge sans contour ne se lirait plus. */}
+        {effet && (
+          <div
+            key={effet.cle}
+            aria-hidden
+            className="num jg-anim-float-away"
+            style={{
+              position: 'absolute', top: 34, zIndex: 2, pointerEvents: 'none',
+              ...(effet.delta < 0 ? { left: 'calc(100% + 4px)' } : { left: -4 }),
+              fontSize: 21, fontWeight: 800, whiteSpace: 'nowrap',
+              color: effet.delta < 0 ? 'var(--vital-bright, var(--vital))' : 'var(--ok)',
+              textShadow: '0 0 3px #000, 0 1px 2px #000, 0 -1px 2px #000, 1px 0 2px #000, -1px 0 2px #000',
+            }}
+          >
+            {effet.delta < 0 ? `−${Math.abs(effet.delta)}` : `+${effet.delta}`}
+          </div>
+        )}
 
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <div style={{ textAlign: 'center', marginTop: -2 }}>
@@ -417,12 +482,47 @@ export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
   );
 }
 
-function ActionCard({ card, playable, hero, onPlay }: {
+/**
+ * Un total de dés qui se POSE au lieu d'apparaître.
+ *
+ * Le tirage est déjà fait quand ce composant s'affiche (voir `domain/dice.ts`
+ * et `model/inventory.ts`) : ce défilé ne tire rien du tout, il retarde
+ * seulement l'annonce, le temps qu'on ait l'impression d'avoir lancé quelque
+ * chose. Les valeurs qui passent sont donc du DÉCOR — le nombre affiché à
+ * l'arrivée est exactement celui qui a été joué, jamais un autre, et le
+ * détail des dés en dessous ne bouge pas d'un poil.
+ */
+function NombreQuiRoule({ total }: { total: number }) {
+  const [affiche, setAffiche] = useState(total);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setAffiche(total);
+      return;
+    }
+    const fin = Date.now() + 420;
+    const battement = window.setInterval(() => {
+      if (Date.now() >= fin) {
+        window.clearInterval(battement);
+        setAffiche(total);
+        return;
+      }
+      // Autour du résultat, jamais très loin : un défilé qui passerait par
+      // 40 sur un 2d4+2 se lirait comme un bug, pas comme un dé qui roule.
+      setAffiche(Math.max(1, total + Math.floor(Math.random() * 9) - 4));
+    }, 55);
+    return () => window.clearInterval(battement);
+  }, [total]);
+  return <>{affiche}</>;
+}
+
+function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
   card: PlayableCard;
   /** Jouable maintenant : pleinement lisible et actionnable. */
   playable: boolean;
   /** Première carte jouable : ses chiffres passent en grand. */
   hero: boolean;
+  /** Décalage d'entrée, en ms — le rang de la carte dans la pile. */
+  retard?: number;
   onPlay: (card: PlayableCard) => void;
 }) {
   const hasNumbers = card.toHit !== undefined || card.damage;
@@ -432,8 +532,13 @@ function ActionCard({ card, playable, hero, onPlay }: {
   const boutonLabel = card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser';
   return (
     <div
-      className="card jg-tile"
+      // Les cartes jouables se déroulent une à une à l'ouverture de l'onglet.
+      // Rien pour celles qui ne le sont pas : elles sont rangées, pas
+      // annoncées — et leur estompage (`opacity: .42`) se ferait de toute
+      // façon écraser par la fin d'une animation d'entrée.
+      className={`card jg-tile${playable ? ' jg-anim-rise' : ''}`}
       style={{
+        animationDelay: playable ? `${retard}ms` : undefined,
         // La première carte jouable se distingue par sa bordure et ses
         // grands chiffres — jamais par un bouton plein, des cabochons ou une
         // lueur qui pulse : ça la faisait ressembler à une recommandation de
@@ -1033,7 +1138,7 @@ export function CombatScreen({
       }}>
         {dernierObjet && (
           <div
-            className="jg-tile"
+            className="jg-tile jg-anim-pop"
             style={{
               padding: '10px 12px', borderRadius: 'var(--radius)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -1042,7 +1147,8 @@ export function CombatScreen({
           >
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ok)' }}>
-                {dernierObjet.nom}{dernierObjet.jet ? ` — ${dernierObjet.jet.total} PV` : ' — utilisé'}
+                {dernierObjet.nom}
+                {dernierObjet.jet ? <> — <NombreQuiRoule total={dernierObjet.jet.total} /> PV</> : ' — utilisé'}
               </div>
               {dernierObjet.jet && (
                 <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
@@ -1061,7 +1167,12 @@ export function CombatScreen({
           </div>
         )}
         {featured.map((card, index) => (
-          <ActionCard key={card.id} card={card} playable hero={index === 0} onPlay={play} />
+          // Le décalage s'arrête à la sixième : au-delà, la dernière carte
+          // attendrait plus longtemps que le temps qu'on met à la lire.
+          <ActionCard
+            key={card.id} card={card} playable hero={index === 0}
+            retard={Math.min(index, 5) * 55} onPlay={play}
+          />
         ))}
 
         {muted.length > 0 && (

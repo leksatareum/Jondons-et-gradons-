@@ -168,3 +168,103 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 
 .jg-rune { text-align: center; padding: 3px 0; border-radius: 3px 3px 7px 7px; }
+
+/**
+ * ═══ Le mouvement ═══
+ *
+ * C'est un jeu, pas un tableur : ce qui apparaît doit ARRIVER quelque part,
+ * ce qu'on encaisse doit se sentir. Mais le mouvement se paie en attente —
+ * d'où trois règles tenues partout ici :
+ *
+ * 1. Rien ne dure plus de 420 ms, sauf ce qui célèbre (la montée de niveau,
+ *    une fois par séance au mieux). Une carte de combat qu'on ouvre vingt
+ *    fois par soirée ne peut pas coûter une demi-seconde à chaque fois.
+ * 2. Uniquement `transform` et `opacity` — les deux seules propriétés que le
+ *    téléphone anime sans repasser par la mise en page. Animer une hauteur ou
+ *    une couleur de fond sur une liste de cartes fait tomber les images par
+ *    terre sur un vieil iPhone.
+ * 3. Tout est enfermé dans `prefers-reduced-motion: no-preference`. Les
+ *    animations d'ENTRÉE partent d'`opacity: 0` : elles doivent donc rester
+ *    dans la requête média, jamais en dehors — sinon un joueur qui a désactivé
+ *    les animations verrait des éléments définitivement invisibles.
+ */
+
+/* L'entrée de base : ça monte et ça s'éclaircit. */
+@keyframes jg-rise {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Apparition avec dépassement — c'est le dépassement qui donne du poids. */
+@keyframes jg-pop {
+  0%   { opacity: 0; transform: scale(.7); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Le chiffre qui tombe : arrive énorme et flou, s'écrase net. */
+@keyframes jg-slam {
+  0%   { opacity: 0; transform: scale(2.7); filter: blur(7px); }
+  55%  { opacity: 1; transform: scale(.93); filter: blur(0); }
+  76%  { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* L'onde de choc du chiffre : un anneau qui s'ouvre et se dissipe. */
+@keyframes jg-shockwave {
+  from { opacity: .8; transform: scale(.5); }
+  to   { opacity: 0; transform: scale(2.6); }
+}
+
+/* Le reflet qui balaie une surface — le brillant d'une carte à collectionner. */
+@keyframes jg-sweep {
+  from { transform: translateX(-140%) skewX(-20deg); }
+  to   { transform: translateX(240%) skewX(-20deg); }
+}
+
+/* Le chiffre de dégâts (ou de soin) qui s'échappe vers le haut et s'efface.
+   Le recul de l'orbe qui l'accompagne, lui, ne vit pas ici : il doit pouvoir
+   REJOUER à deux coups d'affilée, ce qu'une classe CSS déjà posée ne sait pas
+   faire — voir `HitPoints` dans `CombatScreen.tsx`. */
+/* La course est courte EXPRÈS (32 px) : l'orbe est collée sous l'en-tête, qui
+   coupe ce qui dépasse — un chiffre qui montait plus haut sortait par le
+   haut de l'écran, à moitié tranché. */
+@keyframes jg-float-away {
+  0%   { opacity: 0; transform: translate(-50%, 4px) scale(.8); }
+  22%  { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -32px) scale(1); }
+}
+
+@keyframes jg-toast-in {
+  from { opacity: 0; transform: translateY(-18px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Les ENTRÉES sont en `backwards`, jamais en `both` : `backwards` tient
+     l'état de départ pendant le `animation-delay` (sans lui, un élément
+     retardé clignote en place avant de partir) mais REND la main aux styles
+     normaux une fois finie. Avec `both`, l'opacité finale de l'animation
+     resterait posée par-dessus tout le reste — et une carte volontairement
+     estompée (`opacity: .42` sur ce qui n'est pas jouable) redeviendrait
+     opaque à la fin de son entrée.
+     Les animations qui doivent DISPARAÎTRE (l'onde de choc, le chiffre qui
+     s'envole) gardent `both` : leur état final, invisible, est justement ce
+     qu'il faut conserver. */
+  .jg-anim-rise { animation: jg-rise 300ms cubic-bezier(.2, .8, .3, 1) backwards; }
+  .jg-anim-pop { animation: jg-pop 380ms cubic-bezier(.2, .9, .3, 1.2) backwards; }
+  .jg-anim-slam { animation: jg-slam 620ms cubic-bezier(.15, .85, .25, 1) backwards; }
+  .jg-anim-shockwave { animation: jg-shockwave 780ms ease-out both; }
+  .jg-anim-float-away { animation: jg-float-away 1000ms ease-out both; }
+  .jg-anim-toast-in { animation: jg-toast-in 260ms cubic-bezier(.2, .9, .3, 1.15) backwards; }
+
+  /* Le balayage lumineux, réservé à ce qui se célèbre : le voile est posé
+     PAR-DESSUS (`pointer-events: none`), il ne masque jamais un geste. */
+  .jg-shine { position: relative; overflow: hidden; }
+  .jg-shine::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(255, 245, 220, .28), transparent);
+    animation: jg-sweep 2.6s ease-in-out 700ms infinite;
+  }
+}

@@ -5,17 +5,38 @@ import cornerOrnament from '../assets/level-up/corner-ornament.png';
 /**
  * L'écran plein cadre qui célèbre une montée de niveau.
  *
- * Le seul endroit de l'appli qui s'autorise un peu de faste — justement
- * parce que c'est rare et mérité : une texture de fond, quatre coins ornés
- * (fournis, recadrés en PNG transparent), et le médaillon « Braise et fer »
- * DÉJÀ existant (`.jg-orb-ring` de `theme.css`, le même qui entoure l'orbe
- * de vie en combat) plutôt qu'une image du nombre — recoloré à la matière
- * de la classe comme partout ailleurs, il resterait faux en violet chez un
+ * Le seul endroit de l'appli qui s'autorise du faste — justement parce que
+ * c'est rare et mérité : une texture de fond, quatre coins ornés (fournis,
+ * recadrés en PNG transparent), et le médaillon « Braise et fer » DÉJÀ
+ * existant (`.jg-orb-ring` de `theme.css`, le même qui entoure l'orbe de vie
+ * en combat) plutôt qu'une image du nombre — recoloré à la matière de la
+ * classe comme partout ailleurs, il resterait faux en violet chez un
  * Occultiste s'il était figé dans une image.
  *
- * Tout le texte reste du texte natif de l'appli : rien d'important ne doit
- * dépendre d'une image pour être lisible ou traduisible.
+ * Rien n'arrive en même temps : le cadre se pose, le médaillon tombe, le
+ * chiffre s'écrase avec son onde de choc, puis les gains se déroulent. C'est
+ * la seule mise en scène de l'appli qui dépasse la demi-seconde — ailleurs le
+ * mouvement doit disparaître derrière le geste (voir `theme.css`), ici il EST
+ * la récompense. Un joueur pressé peut appuyer sur « Continuer » sans
+ * attendre : le bouton n'est jamais désactivé, et la fiche est déjà à jour
+ * derrière (voir `SheetView`, `monterDeNiveau`).
+ *
+ * Tout le texte reste du texte natif : rien d'important ne doit dépendre
+ * d'une image pour être lisible.
  */
+
+/** Le rythme, en millisecondes — un seul endroit pour régler la cadence. */
+const TEMPS = {
+  coins: 80,
+  titre: 200,
+  medaillon: 300,
+  chiffre: 560,
+  nom: 820,
+  matiere: 900,
+  gains: 990,
+  bouton: 1180,
+};
+
 export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
   nom: string;
   theme: ClassTheme;
@@ -24,10 +45,14 @@ export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
   gains: { label: string; avant: string; apres: string }[];
   onContinuer: () => void;
 }) {
-  const coin = (style: React.CSSProperties) => (
+  const coin = (style: React.CSSProperties, retard: number) => (
     <img
       src={cornerOrnament} alt="" aria-hidden width={68} height={71}
-      style={{ position: 'absolute', opacity: 0.85, pointerEvents: 'none', ...style }}
+      className="jg-anim-rise"
+      style={{
+        position: 'absolute', opacity: 0.85, pointerEvents: 'none',
+        animationDelay: `${retard}ms`, animationDuration: '520ms', ...style,
+      }}
     />
   );
 
@@ -50,40 +75,87 @@ export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
         } as React.CSSProperties,
       }}
     >
-      {coin({ top: 14, left: 14 })}
-      {coin({ top: 14, right: 14, transform: 'scaleX(-1)' })}
-      {coin({ bottom: 14, left: 14, transform: 'scaleY(-1)' })}
-      {coin({ bottom: 14, right: 14, transform: 'scale(-1, -1)' })}
+      {coin({ top: 14, left: 14 }, TEMPS.coins)}
+      {coin({ top: 14, right: 14, transform: 'scaleX(-1)' }, TEMPS.coins + 70)}
+      {coin({ bottom: 14, left: 14, transform: 'scaleY(-1)' }, TEMPS.coins + 140)}
+      {coin({ bottom: 14, right: 14, transform: 'scale(-1, -1)' }, TEMPS.coins + 210)}
 
-      <div className="lbl" style={{ color: 'var(--gold-bright)', letterSpacing: '.22em' }}>
+      <div
+        className="lbl jg-anim-rise"
+        style={{ color: 'var(--gold-bright)', letterSpacing: '.22em', animationDelay: `${TEMPS.titre}ms` }}
+      >
         Montée de niveau
       </div>
 
-      <div className="jg-orb-ring" style={{ marginTop: 20 }}>
-        <div style={{
-          width: 132, height: 132, borderRadius: '50%', display: 'grid', placeItems: 'center',
-          background: 'radial-gradient(circle at 35% 28%, var(--surface-raised), #0c0e11)',
-          boxShadow: 'inset 0 8px 22px rgba(0,0,0,.9), inset 0 -3px 10px var(--accent-glow)',
-        }}>
-          <div className="num" style={{
-            fontSize: 52, fontWeight: 800, lineHeight: 1, color: '#fff',
-            textShadow: '0 2px 4px rgba(0,0,0,.9), 0 0 26px var(--accent-glow)',
-          }}>
-            {niveau}
+      <div style={{ position: 'relative', marginTop: 20, display: 'grid', placeItems: 'center' }}>
+        {/* La lueur de fond : elle déborde du médaillon et prend la couleur
+            de la classe — c'est elle qui fait « briller » l'écran, pas une
+            image, donc elle suit un Occultiste en violet sans rien changer. */}
+        <div
+          aria-hidden
+          className="jg-anim-pop"
+          style={{
+            position: 'absolute', width: 260, height: 260, borderRadius: '50%',
+            background: 'radial-gradient(circle, var(--accent-glow), transparent 68%)',
+            animationDelay: `${TEMPS.medaillon}ms`, animationDuration: '900ms',
+          }}
+        />
+
+        {/* L'onde de choc, calée sur l'écrasement du chiffre. */}
+        <div
+          aria-hidden
+          className="jg-anim-shockwave"
+          style={{
+            position: 'absolute', width: 142, height: 142, borderRadius: '50%',
+            border: '2px solid var(--gold-bright)',
+            animationDelay: `${TEMPS.chiffre}ms`,
+          }}
+        />
+
+        <div className="jg-anim-pop" style={{ animationDelay: `${TEMPS.medaillon}ms` }}>
+          <div className="jg-orb-ring">
+            <div className="jg-shine" style={{
+              width: 132, height: 132, borderRadius: '50%', display: 'grid', placeItems: 'center',
+              background: 'radial-gradient(circle at 35% 28%, var(--surface-raised), #0c0e11)',
+              boxShadow: 'inset 0 8px 22px rgba(0,0,0,.9), inset 0 -3px 10px var(--accent-glow)',
+            }}>
+              <div className="num jg-anim-slam" style={{
+                fontSize: 52, fontWeight: 800, lineHeight: 1, color: '#fff',
+                textShadow: '0 2px 4px rgba(0,0,0,.9), 0 0 26px var(--accent-glow)',
+                animationDelay: `${TEMPS.chiffre}ms`,
+              }}>
+                {niveau}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <h2 className="ttl" style={{ marginTop: 20, fontSize: 22 }}>{nom}</h2>
-      <div className="lbl" style={{ marginTop: 4, color: 'var(--gold)' }}>{theme.label}</div>
+      <h2
+        className="ttl jg-anim-rise"
+        style={{ marginTop: 20, fontSize: 22, animationDelay: `${TEMPS.nom}ms` }}
+      >
+        {nom}
+      </h2>
+      <div
+        className="lbl jg-anim-rise"
+        style={{ marginTop: 4, color: 'var(--gold)', animationDelay: `${TEMPS.matiere}ms` }}
+      >
+        {theme.label}
+      </div>
 
       {gains.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 22 }}>
-          {gains.map((gain) => (
-            <div key={gain.label} style={{
-              padding: '7px 12px', borderRadius: 999, border: '1px solid var(--gold-dim)',
-              background: 'rgba(0,0,0,.35)',
-            }}>
+          {gains.map((gain, index) => (
+            <div
+              key={gain.label}
+              className="jg-anim-pop"
+              style={{
+                padding: '7px 12px', borderRadius: 999, border: '1px solid var(--gold-dim)',
+                background: 'rgba(0,0,0,.35)',
+                animationDelay: `${TEMPS.gains + index * 90}ms`,
+              }}
+            >
               <div className="lbl" style={{ fontSize: 9 }}>{gain.label}</div>
               <div className="num" style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>
                 {gain.avant} → <strong style={{ color: 'var(--gold-bright)' }}>{gain.apres}</strong>
@@ -95,8 +167,12 @@ export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
 
       <button
         onClick={onContinuer}
-        className="jg-btn-hot"
-        style={{ marginTop: 28, width: '100%', maxWidth: 340, minHeight: 52, borderRadius: 'var(--radius-sm)', fontSize: 15 }}
+        className="jg-btn-hot jg-anim-rise"
+        style={{
+          marginTop: 28, width: '100%', maxWidth: 340, minHeight: 52,
+          borderRadius: 'var(--radius-sm)', fontSize: 15,
+          animationDelay: `${TEMPS.bouton}ms`,
+        }}
       >
         Continuer
       </button>

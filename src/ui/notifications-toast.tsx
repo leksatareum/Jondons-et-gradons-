@@ -106,6 +106,7 @@ export function ToastStack({ toasts, onFermer }: { toasts: Toast[]; onFermer: (i
         <button
           key={toast.id}
           onClick={() => onFermer(toast.id)}
+          className="jg-anim-toast-in"
           style={{
             pointerEvents: 'auto', textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
             border: '1px solid var(--accent)', background: 'var(--surface-raised)',
