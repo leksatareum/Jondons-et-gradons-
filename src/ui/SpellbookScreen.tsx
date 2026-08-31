@@ -61,7 +61,9 @@ function Fiche({ spell, onFermer }: { spell: Spell; onFermer: () => void }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flexGrow: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <DamageTypeIcons types={damageTypesOf(spell)} size={30} />
+              {/* Un seul sort ici, jamais une liste : rien à aligner d'une
+                  ligne à l'autre — il garde donc sa place devant le nom. */}
+              <DamageTypeIcons types={damageTypesOf(spell)} size={24} />
               <h2 className="ttl" style={{ margin: 0, fontSize: 19, lineHeight: 1.2 }}>{spell.name}</h2>
             </div>
             <div className="lbl" style={{ marginTop: 4, textTransform: 'none' }}>
@@ -135,16 +137,20 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
         onClick={onOuvrir}
         style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <DamageTypeIcons types={damageTypesOf(spell)} size={28} />
-          <div style={{ fontSize: 15, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {spell.name}
-          </div>
+        {/* Le nom seul sur sa ligne : les médaillons y vivaient avant lui,
+            et leur largeur variable (0, 1 ou 2) décalait le nom d'une ligne
+            à l'autre — les noms ne s'alignaient plus dans la liste. Ils
+            vivent maintenant sur la ligne de détail, réduits. */}
+        <div style={{ fontSize: 15, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {spell.name}
         </div>
-        <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
-          {detailOf(spell)} · {economyOf(spell) === 'bonus' ? 'action bonus'
-            : economyOf(spell) === 'reaction' ? 'réaction'
-            : economyOf(spell) === 'action' ? 'action' : spell.castingTime.toLocaleLowerCase('fr')}
+        <div className="lbl" style={{ textTransform: 'none', marginTop: 2, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+          <DamageTypeIcons types={damageTypesOf(spell)} size={16} />
+          <span>
+            {detailOf(spell)} · {economyOf(spell) === 'bonus' ? 'action bonus'
+              : economyOf(spell) === 'reaction' ? 'réaction'
+              : economyOf(spell) === 'action' ? 'action' : spell.castingTime.toLocaleLowerCase('fr')}
+          </span>
         </div>
         <div className="lbl" style={{ color: COULEUR[etat.kind], marginTop: 3 }}>
           {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` par ${sourceLisible(etat.par)}` : ''}
@@ -439,12 +445,13 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
                   onClick={() => setOuvert(spell)}
                   style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <DamageTypeIcons types={damageTypesOf(spell)} size={28} />
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
-                  </div>
-                  <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
-                    {detailOf(spell)}
+                  {/* Même raison qu'ailleurs dans cet écran : le nom seul sur
+                      sa ligne, les médaillons réduits sur la ligne de détail —
+                      voir `Ligne` un peu plus haut dans ce fichier. */}
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 2, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+                    <DamageTypeIcons types={damageTypesOf(spell)} size={16} />
+                    <span>{detailOf(spell)}</span>
                   </div>
                   <div className="lbl" style={{ color: 'var(--ok)', marginTop: 3 }}>
                     {grant.source}

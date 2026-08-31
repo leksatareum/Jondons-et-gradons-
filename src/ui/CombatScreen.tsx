@@ -526,9 +526,12 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Presque le double de l'ancienne taille (15 px), à la demande :
-            à 15 px les médaillons se lisaient mal en pleine partie. */}
-        <DamageTypeIcons types={card.damageTypes} size={28} />
+        {/* Le nom est TOUJOURS le premier élément de la ligne — c'est ce qui
+            le fait démarrer au même endroit d'une carte à l'autre. Les
+            médaillons vivaient ici avant lui : une carte à deux types les
+            décalait plus loin qu'une carte sans type, et les noms ne
+            s'alignaient plus d'une carte à la suivante. Ils vivent
+            maintenant sur la ligne du dessous (voir plus bas). */}
         <div
           className="ttl"
           style={{
@@ -575,17 +578,24 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
         )}
       </div>
 
-      <div className="lbl" style={{ marginTop: 3 }}>
-        <span>{ECONOMY_LABEL[card.economy]}</span>
-        {card.detail && (
-          <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
-        )}
-        {playable && (card.resources?.length ?? 0) > 1 && (
-          // Plusieurs ressources peuvent payer ce sort (multiclasse,
-          // lancements gratuits d'un Rôdeur…) : le choix se fait à l'appui
-          // sur « Utiliser », cette mention rappelle juste qu'il existe.
-          <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
-        )}
+      <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+        {/* Réduits (16 px, contre 28 avant) et déplacés ici : sur la ligne du
+            nom, leur largeur variable (0, 1 ou 2 médaillons) décalait le nom
+            d'une carte à l'autre — voir la ligne au-dessus. Cette ligne-ci
+            n'a jamais porté de texte aligné entre cartes, rien à perdre. */}
+        <DamageTypeIcons types={card.damageTypes} size={16} />
+        <span>
+          <span>{ECONOMY_LABEL[card.economy]}</span>
+          {card.detail && (
+            <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
+          )}
+          {playable && (card.resources?.length ?? 0) > 1 && (
+            // Plusieurs ressources peuvent payer ce sort (multiclasse,
+            // lancements gratuits d'un Rôdeur…) : le choix se fait à l'appui
+            // sur « Utiliser », cette mention rappelle juste qu'il existe.
+            <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
+          )}
+        </span>
       </div>
 
       {card.granted && (
