@@ -19,7 +19,7 @@ import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux, RUSE_MAGIQUE_KEY, utiliserRuseMagique } from '../model/occultiste';
 import { heal, takeDamage } from '../model/damage';
-import { addItem, donnerItem, removeItem, setGold, setItemQty } from '../model/inventory';
+import { addItem, donnerItem, removeItem, setGold, setItemQty, useHealingItem } from '../model/inventory';
 import {
   createItemTransfer, createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
   deleteNote, saveJournalEntry, saveNote, saveSheet,
@@ -482,6 +482,14 @@ export function SheetView({
     enregistrer(suivante);
     void createItemTransfer(client, sync, campaignId, userId, { recipientId, ...envoye });
   };
+  // Boire une potion de soins : le jet se fait ici, avec les mêmes
+  // probabilités qu'un vrai dé (`domain/dice.ts`) — jamais une moyenne.
+  const boireSoin = (itemId: string) => {
+    const resultat = useHealingItem(donnees, itemId, Math.random);
+    if (!resultat) return null;
+    enregistrer(resultat.sheet);
+    return resultat.jet;
+  };
 
   const dialogues = (
     <>
@@ -619,6 +627,7 @@ export function SheetView({
           onRetirer={retirerObjet}
           onOr={fixerOr}
           onDonner={donnerObjet}
+          onBoire={boireSoin}
         />
       );
     }

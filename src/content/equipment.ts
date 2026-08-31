@@ -8,6 +8,8 @@ export type EquipmentEntry = {
   desc: string;
   consumable?: boolean;
   heal?: boolean;
+  /** Formule de dés du soin, telle qu'un dé physique la tirerait — « 2d4+2 ». Voir `domain/dice.ts`. */
+  healDice?: string;
   uses?: number;
   capacity?: string;
   service?: boolean;
@@ -139,7 +141,7 @@ export const ADVENTURING_GEAR: EquipmentEntry[] = [
   item('av-poison', 'Poison simple', 'aventure', 'Alchimie', 100, 0, 'Action bonus : enduit une arme ou trois munitions ; prochain impact ajoute 1d4 poison pendant 1 minute.', { consumable: true, actionSlot: 'bonus' }),
   item('av-perche', 'Perche', 'aventure', 'Utilitaire', 0.05, 3.2, 'Perche de 3 m ; avantage pour un saut en hauteur ou en longueur avec élan à la perche.'),
   item('av-marmite', 'Marmite en fer', 'aventure', 'Contenants', 2, 4.5, 'Contient environ 3,8 litres.'),
-  item('av-potion-soins', 'Potion de soins', 'aventure', 'Soins', 50, 0.23, 'Action bonus : une créature adjacente récupère 2d4 + 2 PV.', { consumable: true, heal: true, actionSlot: 'bonus' }),
+  item('av-potion-soins', 'Potion de soins', 'aventure', 'Soins', 50, 0.23, 'Action bonus : une créature adjacente récupère 2d4 + 2 PV.', { consumable: true, heal: true, healDice: '2d4+2', actionSlot: 'bonus' }),
   item('av-sacoche', 'Sacoche', 'aventure', 'Contenants', 0.5, 0.45, 'Contient jusqu’à 2,7 kg.', { capacity: '2,7 kg' }),
   item('pack-pretre', 'Sacoche de prêtre', 'aventure', 'Paquets', 33, 13.2, 'Sac à dos, couverture, eau bénite, lampe, rations, robe et briquet.'),
   item('av-carquois', 'Carquois', 'aventure', 'Contenants', 1, 0.45, 'Contient jusqu’à 20 flèches.'),

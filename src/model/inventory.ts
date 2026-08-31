@@ -1,4 +1,7 @@
 import type { CharacterSheet, InventoryItem } from './character';
+import { resolveHealingItem } from '../domain/consumable-ownership';
+import { rollFormula, type JetDeDes } from '../domain/dice';
+import { heal } from './damage';
 
 /**
  * Le sac.
@@ -69,6 +72,27 @@ export function recevoirItem(sheet: CharacterSheet, objet: ObjetDonne): Characte
     ...(objet.catalogId ? { catalogId: objet.catalogId } : {}),
   };
   return { ...sheet, inventory: [...sheet.inventory, nouvel] };
+}
+
+/**
+ * Boire une potion de soins (ou tout futur consommable du même genre) :
+ * tirée avec les mêmes probabilités qu'un vrai dé (`domain/dice.ts`),
+ * jamais une moyenne — puis appliquée et l'objet consommé, en un seul
+ * geste. `null` si l'objet visé n'existe pas, n'est plus en stock, ou n'est
+ * pas un consommable de soin reconnu (`domain/consumable-ownership.ts`) :
+ * rien à boire, rien à tirer.
+ */
+export function useHealingItem(
+  sheet: CharacterSheet, itemId: string, random: () => number = Math.random,
+): { sheet: CharacterSheet; itemName: string; jet: JetDeDes } | null {
+  const item = sheet.inventory.find((entry) => entry.id === itemId);
+  if (!item || item.qty <= 0) return null;
+  const catalogue = resolveHealingItem(item);
+  if (!catalogue?.healDice) return null;
+  const jet = rollFormula(catalogue.healDice, random);
+  if (!jet) return null;
+  const consomme = item.qty <= 1 ? removeItem(sheet, itemId) : setItemQty(sheet, itemId, item.qty - 1);
+  return { sheet: heal(consomme, jet.total), itemName: item.name, jet };
 }
 
 /** Jamais sous 0 : une dette n'a pas de sens en pièces d'or comptées à la table. */

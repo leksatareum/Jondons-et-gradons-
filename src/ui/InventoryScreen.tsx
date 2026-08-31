@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { CharacterSheet, InventoryItem } from '../model/character';
 import { TAB_BAR_CLEARANCE } from './TabBar';
+import { resolveHealingItem } from '../domain/consumable-ownership';
+import type { JetDeDes } from '../domain/dice';
 
 /**
  * Le sac.
@@ -53,13 +55,15 @@ function Pas({ onClick, disabled, children, label }: {
   );
 }
 
-function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner }: {
+function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner, onBoire }: {
   item: InventoryItem;
   onQty: (qty: number) => void;
   onRetirer: () => void;
   /** Vide : personne à qui donner pour l'instant — le lien « Donner » ne s'affiche pas. */
   destinataires: DestinataireDon[];
   onDonner?: (recipientId: string, qty: number) => void;
+  /** Objet reconnu comme un soin (Potion de soins…) — absent sinon, le lien « Boire » ne s'affiche pas. */
+  onBoire?: () => void;
 }) {
   const [donOuvert, setDonOuvert] = useState(false);
   const [destinataire, setDestinataire] = useState(destinataires[0]?.id ?? '');
@@ -83,15 +87,22 @@ function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner }: {
         <div style={{ flexGrow: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>{item.name}</div>
           {item.note && <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{item.note}</div>}
-          {destinataires.length > 0 && (
-            <button
-              onClick={() => (donOuvert ? setDonOuvert(false) : ouvrirDon())}
-              className="lbl"
-              style={{ color: 'var(--accent)', marginTop: 4 }}
-            >
-              {donOuvert ? 'Annuler' : 'Donner'}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 14, marginTop: 4 }}>
+            {onBoire && (
+              <button onClick={onBoire} className="lbl" style={{ color: 'var(--ok)' }}>
+                Boire
+              </button>
+            )}
+            {destinataires.length > 0 && (
+              <button
+                onClick={() => (donOuvert ? setDonOuvert(false) : ouvrirDon())}
+                className="lbl"
+                style={{ color: 'var(--accent)' }}
+              >
+                {donOuvert ? 'Annuler' : 'Donner'}
+              </button>
+            )}
+          </div>
         </div>
         <Pas onClick={() => onQty(item.qty - 1)} label={`Retirer un ${item.name}`}>−</Pas>
         <div className="num" style={{ width: 28, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>
@@ -150,7 +161,7 @@ function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner }: {
   );
 }
 
-export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onRetirer, onOr, onDonner }: {
+export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onRetirer, onOr, onDonner, onBoire }: {
   sheet: CharacterSheet;
   /** Les autres personnages de la table à qui l'on peut donner un objet — jamais le MJ. */
   destinataires: DestinataireDon[];
@@ -159,9 +170,20 @@ export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onReti
   onRetirer: (itemId: string) => void;
   onOr: (gold: number) => void;
   onDonner?: (itemId: string, recipientId: string, qty: number) => void;
+  /**
+   * Tire les dés et applique le soin d'un coup (`model/inventory.ts`,
+   * `useHealingItem`) — synchrone, pour que cet écran affiche le jet dès
+   * l'appui, sans attendre l'aller-retour réseau. `null` si l'objet visé
+   * n'est plus un soin reconnu (déjà consommé par ailleurs, par exemple).
+   */
+  onBoire?: (itemId: string) => JetDeDes | null;
 }) {
   const [nom, setNom] = useState('');
   const [orEnEdition, setOrEnEdition] = useState<string | null>(null);
+  // L'objet qui a bu peut disparaître du sac au même geste (dernière potion)
+  // — ce résultat vit donc ici, pas dans la ligne qui l'a déclenché, sinon
+  // il disparaîtrait avec elle avant que le joueur ait pu le lire.
+  const [dernierSoin, setDernierSoin] = useState<{ nom: string; jet: JetDeDes } | null>(null);
 
   const ajouter = () => {
     if (!nom.trim()) return;
@@ -176,6 +198,33 @@ export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onReti
       overflowY: 'auto', WebkitOverflowScrolling: 'touch',
     }}>
       <h2 className="ttl" style={{ fontSize: 17 }}>Sac</h2>
+
+      {dernierSoin && (
+        <div
+          className="jg-tile"
+          style={{
+            ...carte, justifyContent: 'space-between',
+            border: '1px solid var(--ok)', background: 'var(--surface)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ok)' }}>
+              {dernierSoin.nom} — {dernierSoin.jet.total} PV
+            </div>
+            <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
+              {dernierSoin.jet.des.join(' + ')}
+              {dernierSoin.jet.bonus ? ` ${dernierSoin.jet.bonus > 0 ? '+' : '−'} ${Math.abs(dernierSoin.jet.bonus)}` : ''}
+            </div>
+          </div>
+          <button
+            onClick={() => setDernierSoin(null)}
+            aria-label="Fermer"
+            style={{ flexShrink: 0, width: 32, height: 32, color: 'var(--muted)', fontSize: 16 }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="jg-tile" style={{ ...carte, justifyContent: 'space-between' }}>
         <div className="lbl">Bourse</div>
@@ -236,6 +285,10 @@ export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onReti
             onQty={(qty) => onQty(item.id, qty)}
             onRetirer={() => onRetirer(item.id)}
             onDonner={onDonner ? (recipientId, qty) => onDonner(item.id, recipientId, qty) : undefined}
+            onBoire={onBoire && resolveHealingItem(item) ? () => {
+              const jet = onBoire(item.id);
+              if (jet) setDernierSoin({ nom: item.name, jet });
+            } : undefined}
           />
         ))
       )}

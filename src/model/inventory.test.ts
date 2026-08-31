@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, donnerItem, recevoirItem, removeItem, setGold, setItemQty } from './inventory';
+import { addItem, donnerItem, recevoirItem, removeItem, setGold, setItemQty, useHealingItem } from './inventory';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -121,5 +121,47 @@ describe('recevoir un objet — depuis le sac de quelqu’un d’autre', () => {
     const beneficiaireApres = recevoirItem(beneficiaire, envoye!);
     expect(donateurApres.inventory[0].qty).toBe(1);
     expect(beneficiaireApres.inventory[0]).toMatchObject({ name: 'Potion de soins', qty: 2 });
+  });
+});
+
+describe('boire une potion de soins — jet automatique, mêmes probabilités qu’un vrai dé', () => {
+  const blesse = (pv: number) => fiche({
+    inventory: [{ id: 'p', name: 'Potion de soins', qty: 2 }],
+    live: { ...fiche().live, damageTaken: pv },
+  });
+
+  it('tire 2d4+2, jamais une moyenne — soigne exactement ce que les dés donnent', () => {
+    const resultat = useHealingItem(blesse(20), 'p', () => 0); // chaque d4 au plus bas : 1+1+2 = 4
+    expect(resultat?.jet).toEqual({ total: 4, des: [1, 1], bonus: 2 });
+    expect(resultat?.sheet.live.damageTaken).toBe(16);
+  });
+
+  it('un jet au plafond soigne le maximum de la formule', () => {
+    const resultat = useHealingItem(blesse(20), 'p', () => 0.999); // chaque d4 au plus haut : 4+4+2 = 10
+    expect(resultat?.jet.total).toBe(10);
+    expect(resultat?.sheet.live.damageTaken).toBe(10);
+  });
+
+  it('consomme une seule potion, garde le reste', () => {
+    const resultat = useHealingItem(blesse(20), 'p', () => 0.5);
+    expect(resultat?.sheet.inventory).toEqual([{ id: 'p', name: 'Potion de soins', qty: 1 }]);
+  });
+
+  it('la dernière potion bue disparaît du sac', () => {
+    const uneSeule = fiche({ inventory: [{ id: 'p', name: 'Potion de soins', qty: 1 }] });
+    const resultat = useHealingItem(uneSeule, 'p', () => 0.5);
+    expect(resultat?.sheet.inventory).toEqual([]);
+  });
+
+  it('un objet inconnu, ou qui n’est pas une potion de soins, ne renvoie rien', () => {
+    const sheet = fiche({ inventory: [{ id: 'c', name: 'Corde', qty: 1 }] });
+    expect(useHealingItem(sheet, 'p')).toBeNull(); // aucune potion dans ce sac
+    expect(useHealingItem(sheet, 'c')).toBeNull(); // « Corde » n'est pas reconnue comme un soin
+  });
+
+  it('ne dépasse jamais le maximum — heal() plafonne déjà, ce n’est pas à boire une potion de le refaire', () => {
+    const presqueGueri = blesse(2); // 2 PV manquants, la potion en rend au moins 4
+    const resultat = useHealingItem(presqueGueri, 'p', () => 0);
+    expect(resultat?.sheet.live.damageTaken).toBe(0); // jamais négatif
   });
 });
