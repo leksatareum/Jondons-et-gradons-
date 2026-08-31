@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveCharacter } from './derive';
+import { deriveCharacter, vitesseEffective } from './derive';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -13,6 +13,29 @@ const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
   inventory: [], armorId: null, shield: false, gold: 0,
   live: { ...EMPTY_LIVE_STATE, hitDiceSpent: {}, spellSlotsSpent: {}, resourcesSpent: {}, conditions: [] },
   ...over,
+});
+
+describe('vitesse effective — vitesse d’espèce moins la pénalité d’Épuisement', () => {
+  it('vaut la vitesse d’espèce sans Épuisement', () => {
+    const derived = deriveCharacter(fiche({ speciesId: 'humain' }));
+    expect(vitesseEffective(derived)).toBe('9 m');
+  });
+
+  it('retire 1,50 m par cran d’Épuisement', () => {
+    const derived = deriveCharacter(fiche({
+      speciesId: 'humain',
+      live: { ...fiche().live, exhaustion: 2 },
+    }));
+    expect(vitesseEffective(derived)).toBe('6 m');
+  });
+
+  it('ne descend jamais sous 0', () => {
+    const derived = deriveCharacter(fiche({
+      speciesId: 'humain',
+      live: { ...fiche().live, exhaustion: 6 },
+    }));
+    expect(vitesseEffective(derived)).toBe('0 m');
+  });
 });
 
 describe('DD de sauvegarde et bonus d’attaque de sort', () => {

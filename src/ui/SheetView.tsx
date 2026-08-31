@@ -432,6 +432,15 @@ export function SheetView({
     }
   };
 
+  // Taille et historique : deux décisions de création qui n'avaient nulle
+  // part où vivre à l'écran — jusqu'ici stockées (`sheet.size`) ou même pas
+  // (`sheet.history` n'existait pas), sans qu'aucune fiche ne les affiche
+  // ni ne permette de les remplir.
+  const choisirTaille = (taille: string) =>
+    enregistrer({ ...donnees, size: taille });
+  const modifierHistorique = (history: string) =>
+    enregistrer({ ...donnees, history });
+
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
   const ajouterEntreeJournal = (entree: { title: string | null; chapter: string | null; body: string }) =>
@@ -558,6 +567,8 @@ export function SheetView({
           onRegles={() => onOnglet('regles')}
           onChoixDeClasse={enregistrerChoixDeClasse}
           onChoisirPortrait={choisirPortrait}
+          onChoisirTaille={choisirTaille}
+          onModifierHistorique={modifierHistorique}
         />
       );
     }

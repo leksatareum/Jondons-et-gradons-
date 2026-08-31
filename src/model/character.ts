@@ -213,11 +213,19 @@ export interface CharacterSheet {
   lineageId?: string | null;
   /** Ascendance (dragon rouge, faveur de géant…), si l'espèce en propose. */
   ancestryId?: string | null;
+  /** `'TP' | 'P' | 'M' | 'G'` — voir `content/species.ts`, `sizesFor`. */
   size?: string | null;
   backgroundId: string;
   /** Caractéristiques de base, telles que réparties à la création. */
   abilities: AbilityScores;
   alignment?: string | null;
+  /**
+   * L'histoire du personnage, écrite par le joueur — d'où il vient, ce qui
+   * l'a mené là. Texte libre, jamais dérivé de rien : contrairement au fond
+   * (`backgroundId`, une mécanique de règle), c'est du roman, pas une
+   * décision de fiche.
+   */
+  history?: string;
 
   // ── Décisions de progression ─────────────────────────────────────────
   /** Niveaux par classe, avec la sous-classe choisie. Multiclasse dès l'origine. */

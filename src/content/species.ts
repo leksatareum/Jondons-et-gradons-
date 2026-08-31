@@ -88,6 +88,35 @@ export const speciesById = (id: string | null | undefined): SpeciesDef | undefin
 export const lineageOf = (speciesId: string | null | undefined, lineageId: string | null | undefined): SpeciesLineage | undefined =>
   speciesById(speciesId)?.lineages?.find((lineage) => lineage.id === lineageId);
 
+/** Nom lisible d'une taille — les mêmes lettres que le bestiaire (`content/creatures.ts`). */
+export const SIZE_LABEL: Record<'TP' | 'P' | 'M' | 'G', string> = {
+  TP: 'Très petite', P: 'Petite', M: 'Moyenne', G: 'Grande',
+};
+
+/**
+ * Les tailles qu'une espèce propose vraiment. La plupart n'en proposent
+ * qu'une (Moyenne, implicite) — seules celles qui offrent un choix RÉEL
+ * (PHB 2024 : Aasimar, Élfe, Humain, Tieffelin… « M ou P ») listent `sizes`.
+ * Sans cette distinction, une espèce à taille fixe se serait vu proposer un
+ * choix qui n'en est pas un.
+ */
+export const sizesFor = (speciesId: string | null | undefined): ('TP' | 'P' | 'M' | 'G')[] =>
+  speciesById(speciesId)?.sizes ?? ['M'];
+
+/**
+ * La taille à afficher : celle choisie si elle est encore une option
+ * valable pour cette espèce, sinon la première proposée. Une fiche jamais
+ * remplie (le champ n'existait nulle part à l'écran jusqu'ici) affiche donc
+ * quand même quelque chose de juste, plutôt qu'un blanc.
+ */
+export function resolvedSize(
+  sheet: { speciesId: string | null | undefined; size?: string | null },
+): 'TP' | 'P' | 'M' | 'G' {
+  const options = sizesFor(sheet.speciesId);
+  const choisie = sheet.size as 'TP' | 'P' | 'M' | 'G' | null | undefined;
+  return choisie && options.includes(choisie) ? choisie : options[0];
+}
+
 export const ancestryOf = (speciesId: string | null | undefined, ancestryId: string | null | undefined): SpeciesAncestry | undefined =>
   speciesById(speciesId)?.ancestries?.find((ancestry) => ancestry.id === ancestryId);
 

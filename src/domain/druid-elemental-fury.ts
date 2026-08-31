@@ -1,3 +1,5 @@
+import { formatMeters, parseMeters } from './meters';
+
 export type ElementalFuryChoice = 'frappe-primordiale' | 'incantation-puissante' | null;
 
 export type ElementalFuryCharacter = {
@@ -75,16 +77,6 @@ export function druidPotentSpellcastingDamageFormula(
   return `${baseFormula}${bonus > 0 ? '+' : ''}${bonus}`;
 }
 
-const parseMeterRange = (range: string | undefined): number | null => {
-  const match = String(range || '').trim().match(/^(\d+(?:[.,]\d+)?)\s*m\b/i);
-  if (!match) return null;
-  return Number.parseFloat(match[1].replace(',', '.'));
-};
-
-const formatMeters = (value: number): string => Number.isInteger(value)
-  ? String(value)
-  : String(value).replace('.', ',');
-
 export function druidPotentSpellcastingRangeLabel(
   character: ElementalFuryCharacter,
   spell: ElementalFurySpell,
@@ -93,7 +85,7 @@ export function druidPotentSpellcastingRangeLabel(
   const base = String(spell.r || '—');
   if (druidLevel(character) < 15 || druidElementalFuryChoice(character) !== 'incantation-puissante') return base;
   if (sourceClass !== 'druide' || Number(spell.lv) !== 0) return base;
-  const meters = parseMeterRange(spell.r);
+  const meters = parseMeters(spell.r);
   if (meters == null || meters < 3) return base;
   return `${formatMeters(meters + 90)} m`;
 }

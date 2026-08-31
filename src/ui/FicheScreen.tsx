@@ -8,9 +8,10 @@ import { WeaponsScreen } from './WeaponsScreen';
 import { PortraitMedallion } from './Portrait';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { decisionsDeClasse } from '../model/choix-de-classe';
-import { speciesById } from '../content/species';
+import { resolvedSize, SIZE_LABEL, sizesFor, speciesById } from '../content/species';
 import { classById } from '../content/classes';
 import { themeDeClasse } from '../content/class-themes';
+import { vitesseEffective } from '../model/derive';
 
 /**
  * La fiche : l'identité du personnage, ses caractéristiques, ses compétences,
@@ -32,6 +33,7 @@ export function FicheScreen({
   onCourrouxDeLaMer, onFinCourrouxDeLaMer, onFormeStellaire, onFinFormeStellaire,
   onEquiperArme, onDegainerArme, onEquiperBouclier, onRetirerBouclier,
   onNiveauSuperieur, niveauDisponible, onRepos, onReglages, onRegles, onChoixDeClasse, onChoisirPortrait,
+  onChoisirTaille, onModifierHistorique,
 }: {
   sheet: CharacterSheet;
   derived: DerivedCharacter;
@@ -71,15 +73,24 @@ export function FicheScreen({
   onChoixDeClasse: (classId: string, key: string, optionId: string) => void;
   /** Envoie le fichier choisi et enregistre son URL sur la fiche. */
   onChoisirPortrait: (file: File) => Promise<void>;
+  /** `'TP' | 'P' | 'M' | 'G'` — voir `content/species.ts`. */
+  onChoisirTaille: (size: string) => void;
+  onModifierHistorique: (history: string) => void;
 }) {
   // Décisions que le MJ a rouvertes pour correction, le temps de l'écran.
   const [aCorriger, setACorriger] = useState<ReadonlySet<string>>(new Set());
+  const [selecteurTailleOuvert, setSelecteurTailleOuvert] = useState(false);
+  const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
+  const [brouillonHistorique, setBrouillonHistorique] = useState<string | null>(null);
   const decisions = decisionsDeClasse(sheet, derived);
   const espece = speciesById(sheet.speciesId)?.name;
   const classes = sheet.classLevels
     .map((entry) => `${classById(entry.classId)?.name ?? entry.classId} ${entry.level}`)
     .join(' / ');
   const theme = themeDeClasse(sheet.classLevels);
+  const tailleOptions = sizesFor(sheet.speciesId);
+  const taille = resolvedSize(sheet);
+  const vitesse = vitesseEffective(derived);
 
   return (
     <main style={{
@@ -101,6 +112,42 @@ export function FicheScreen({
             <div className="lbl" style={{ textTransform: 'none', marginTop: 3, fontSize: 13 }}>
               {[espece, classes].filter(Boolean).join(' · ')}
             </div>
+            <div className="lbl" style={{ textTransform: 'none', marginTop: 2, fontSize: 13, color: 'var(--muted)' }}>
+              {tailleOptions.length > 1 ? (
+                // Un vrai choix (Aasimar, Humain, Tieffelin…) : le libellé
+                // s'ouvre en petit sélecteur plutôt que de figer une taille
+                // qu'on ne pourrait jamais revoir — c'est une décision de
+                // création, pas une règle qui se dérive.
+                <button
+                  onClick={() => setSelecteurTailleOuvert((ouvert) => !ouvert)}
+                  style={{ color: 'var(--accent)', fontWeight: 600 }}
+                >
+                  {SIZE_LABEL[taille]} ▾
+                </button>
+              ) : (
+                <span>{SIZE_LABEL[taille]}</span>
+              )}
+              {' · '}{vitesse} de vitesse
+            </div>
+            {selecteurTailleOuvert && tailleOptions.length > 1 && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                {tailleOptions.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => { onChoisirTaille(option); setSelecteurTailleOuvert(false); }}
+                    className="lbl"
+                    style={{
+                      minHeight: 30, padding: '0 12px', borderRadius: 999,
+                      border: `1px solid ${option === taille ? 'var(--accent)' : 'var(--gold-dim)'}`,
+                      background: option === taille ? 'var(--accent-wash)' : 'transparent',
+                      color: option === taille ? 'var(--accent)' : 'var(--muted)', fontWeight: 700,
+                    }}
+                  >
+                    {SIZE_LABEL[option]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={onRegles}
@@ -179,6 +226,41 @@ export function FicheScreen({
           <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 6 }}>
             En attente du joueur — reclique pour annuler.
           </div>
+        )}
+      </section>
+
+      {/* ───── Historique : le roman du personnage, replié par défaut — la
+          fiche ne doit pas s'ouvrir sur un mur de texte quand on ne cherche
+          qu'un score de Force. */}
+      <section>
+        <button
+          onClick={() => {
+            if (!historiqueOuvert) setBrouillonHistorique(sheet.history ?? '');
+            setHistoriqueOuvert((ouvert) => !ouvert);
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}
+        >
+          <h2 className="ttl" style={{ fontSize: 17, flexGrow: 1, textAlign: 'left' }}>Historique</h2>
+          <span className="lbl" style={{ color: 'var(--muted)' }}>{historiqueOuvert ? '▴' : '▾'}</span>
+        </button>
+        {!historiqueOuvert && !sheet.history && (
+          <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 4 }}>
+            Rien d'écrit pour l'instant.
+          </div>
+        )}
+        {historiqueOuvert && (
+          <textarea
+            value={brouillonHistorique ?? ''}
+            onChange={(event) => setBrouillonHistorique(event.target.value)}
+            onBlur={() => { if (brouillonHistorique !== null) onModifierHistorique(brouillonHistorique.trim()); }}
+            placeholder="D'où vient ton personnage, ce qui l'a mené là…"
+            rows={8}
+            style={{
+              width: '100%', marginTop: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--gold-dim)', background: 'var(--surface)', color: 'var(--ink)',
+              fontSize: 14, lineHeight: 1.5, resize: 'vertical',
+            }}
+          />
         )}
       </section>
 

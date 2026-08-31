@@ -18,6 +18,7 @@ import { spellById } from '../content/spell-catalogue';
 import { grantResourceKey } from './spell-grants';
 import { arcanumChoisis, arcanumResourceKey } from './invocations';
 import { competenceExplorateurAgile, sortMineurSupplementaireDuDruide } from './choix-de-classe';
+import { formatMeters, parseMeters } from '../domain/meters';
 import { backgroundById } from '../content/backgrounds';
 import { SKILLS } from '../content/character-basics';
 import { armorById } from '../content/armor';
@@ -484,4 +485,18 @@ export function deriveCharacter(sheet: CharacterSheet): DerivedCharacter {
     },
     hitDice,
   };
+}
+
+/**
+ * La vitesse RÉELLEMENT disponible — `derived.speed` moins la pénalité
+ * d'Épuisement, jamais sous 0. `derived.speed` reste la vitesse de l'espèce,
+ * intacte : c'est ce nombre-ci, jamais l'autre, qu'il faut lire sur la
+ * fiche — `speedPenaltyMeters` existait déjà (PHB 2024, table de
+ * l'Épuisement) sans qu'aucun écran ne vienne jamais le soustraire.
+ */
+export function vitesseEffective(derived: DerivedCharacter): string {
+  const base = parseMeters(derived.speed);
+  if (base == null) return derived.speed;
+  const effective = Math.max(0, base - derived.exhaustion.speedPenaltyMeters);
+  return `${formatMeters(effective)} m`;
 }
