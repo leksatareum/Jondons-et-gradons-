@@ -598,11 +598,12 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
       </div>
 
       <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        {/* Réduits (16 px, contre 28 avant) et déplacés ici : sur la ligne du
-            nom, leur largeur variable (0, 1 ou 2 médaillons) décalait le nom
-            d'une carte à l'autre — voir la ligne au-dessus. Cette ligne-ci
-            n'a jamais porté de texte aligné entre cartes, rien à perdre. */}
-        <DamageTypeIcons types={card.damageTypes} size={16} />
+        {/* 22 px : 28 débordait, 16 ne se lisait plus. Ils vivent ici plutôt
+            que sur la ligne du nom, où leur largeur variable (0, 1 ou 2
+            médaillons) décalait le nom d'une carte à l'autre — voir la ligne
+            au-dessus. Cette ligne-ci ne porte aucun texte à aligner d'une
+            carte à la suivante : leur taille y est libre. */}
+        <DamageTypeIcons types={card.damageTypes} size={22} />
         <span style={{ flexGrow: 1, minWidth: 0 }}>
           <span>{ECONOMY_LABEL[card.economy]}</span>
           {card.detail && (

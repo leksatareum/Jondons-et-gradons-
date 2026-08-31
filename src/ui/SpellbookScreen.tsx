@@ -145,7 +145,7 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
           {spell.name}
         </div>
         <div className="lbl" style={{ textTransform: 'none', marginTop: 2, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-          <DamageTypeIcons types={damageTypesOf(spell)} size={16} />
+          <DamageTypeIcons types={damageTypesOf(spell)} size={22} />
           <span>
             {detailOf(spell)} · {economyOf(spell) === 'bonus' ? 'action bonus'
               : economyOf(spell) === 'reaction' ? 'réaction'
@@ -450,7 +450,7 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
                       voir `Ligne` un peu plus haut dans ce fichier. */}
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
                   <div className="lbl" style={{ textTransform: 'none', marginTop: 2, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-                    <DamageTypeIcons types={damageTypesOf(spell)} size={16} />
+                    <DamageTypeIcons types={damageTypesOf(spell)} size={22} />
                     <span>{detailOf(spell)}</span>
                   </div>
                   <div className="lbl" style={{ color: 'var(--ok)', marginTop: 3 }}>
