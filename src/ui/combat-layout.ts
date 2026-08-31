@@ -33,6 +33,12 @@ export interface PlayableCard {
   toHit?: number;
   damage?: string;
   /**
+   * Types de dégâts lus dans le texte du sort (`domain/spell-damage-types.ts`)
+   * — jamais un chiffre, seulement le badge coloré qui dit « feu », « froid »…
+   * Absent pour une carte d'arme : son type se lit déjà sur l'arme elle-même.
+   */
+  damageTypes?: string[];
+  /**
    * Les paiements LÉGAUX de cette carte, du moins cher au plus cher — pas
    * un seul. Un sort de rang 1 se lance avec un emplacement de rang 1 ou
    * de n'importe quel rang supérieur ; un multiclassé Occultiste peut le

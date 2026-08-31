@@ -12,6 +12,7 @@ import { spellById } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { themeDeClasse } from '../content/class-themes';
 import { TAB_BAR_CLEARANCE } from './TabBar';
+import { DamageTypeIcons } from './damage-type-icon';
 
 /**
  * Écran de combat du joueur.
@@ -437,6 +438,7 @@ function ActionCard({ card, playable, hero, onPlay }: {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <DamageTypeIcons types={card.damageTypes} size={hero ? 17 : 15} />
         <div
           className="ttl"
           style={{

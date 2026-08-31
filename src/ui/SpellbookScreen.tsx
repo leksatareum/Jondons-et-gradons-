@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { preparedBudget, spellbookOf, spellChoices, type BookEntry, type ChoiceState, type ClassBudget } from '../model/spellbook';
 import { detailOf, economyOf, sourceLisible } from './spell-cards';
+import { damageTypesOf } from '../domain/spell-damage-types';
+import { DamageTypeIcons } from './damage-type-icon';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
 import { cantripBudget, cantripChoices, grantedCantrips } from '../model/spellbook';
 import type { Spell } from '../content/spell-catalogue';
@@ -58,7 +60,10 @@ function Fiche({ spell, onFermer }: { spell: Spell; onFermer: () => void }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flexGrow: 1, minWidth: 0 }}>
-            <h2 className="ttl" style={{ margin: 0, fontSize: 19, lineHeight: 1.2 }}>{spell.name}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <DamageTypeIcons types={damageTypesOf(spell)} size={17} />
+              <h2 className="ttl" style={{ margin: 0, fontSize: 19, lineHeight: 1.2 }}>{spell.name}</h2>
+            </div>
             <div className="lbl" style={{ marginTop: 4, textTransform: 'none' }}>
               {spell.level === 0 ? 'Sort mineur' : `Rang ${spell.level}`} · {spell.school}
             </div>
@@ -130,7 +135,12 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
         onClick={onOuvrir}
         style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
       >
-        <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <DamageTypeIcons types={damageTypesOf(spell)} size={15} />
+          <div style={{ fontSize: 15, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {spell.name}
+          </div>
+        </div>
         <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
           {detailOf(spell)} · {economyOf(spell) === 'bonus' ? 'action bonus'
             : economyOf(spell) === 'reaction' ? 'réaction'
@@ -429,7 +439,10 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
                   onClick={() => setOuvert(spell)}
                   style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <DamageTypeIcons types={damageTypesOf(spell)} size={15} />
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
+                  </div>
                   <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
                     {detailOf(spell)}
                   </div>

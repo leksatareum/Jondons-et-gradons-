@@ -11,6 +11,7 @@ import { estCercleDesEtoiles } from '../model/wild-shape';
 import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
 import { PAS_DES_FEES_KEY } from '../domain/warlock-patron-resources';
+import { damageTypesOf } from '../domain/spell-damage-types';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -215,12 +216,14 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
     const spell = spellById(chosen.id);
     if (!spell) continue;
     const noteInvocation = noteDechargeAgonisante(sheet, spell.id);
+    const typesDeDegats = damageTypesOf(spell);
     cartes.push({
       id: spell.id,
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
       detail: noteInvocation ? `${detailOf(spell)} · ${noteInvocation}` : detailOf(spell),
+      ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
     });
   }
 
@@ -228,6 +231,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
     const { spell, standing } = entree;
     if (spell.level === 0) continue;
     const paiements = paiementsPourSort(spell, derived, sheet);
+    const typesDeDegats = damageTypesOf(spell);
     cartes.push({
       id: spell.id,
       name: spell.name,
@@ -236,6 +240,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       detail: detailOf(spell),
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(paiements.length ? { resources: paiements } : {}),
+      ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
     });
   }
 
@@ -246,6 +251,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
     const spell = spellById(arcanum.spellId);
     if (!spell) continue;
     const ressource = derived.resources.find((entry) => entry.key === arcanumResourceKey(arcanum.rank));
+    const typesDeDegats = damageTypesOf(spell);
     cartes.push({
       id: `arcanum-${arcanum.rank}`,
       name: spell.name,
@@ -254,6 +260,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       detail: detailOf(spell),
       granted: true,
       grantedBy: `ton Arcanum de rang ${arcanum.rank}`,
+      ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
       ...(ressource ? {
         resources: [{
           key: ressource.key,
@@ -288,6 +295,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
   // même — c'est tout l'intérêt d'une récompense de scénario.
   for (const { grant, spell } of grantedSpells(sheet, derived)) {
     const ressource = derived.resources.find((entry) => entry.key === grantResourceKey(grant));
+    const typesDeDegats = damageTypesOf(spell);
     cartes.push({
       id: `don-${grant.id}`,
       name: spell.name,
@@ -296,6 +304,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       detail: detailOf(spell),
       granted: true,
       grantedBy: grant.source,
+      ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
       ...(ressource ? {
         resources: [{
           key: ressource.key,
