@@ -774,7 +774,14 @@ export function CombatScreen({
         </div>
 
         <div style={{ marginBottom: 5 }}>
-          <div className="lbl" style={{ marginBottom: 2, fontSize: 10 }}>Jets de sauvegarde</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+            <div className="lbl" style={{ flexGrow: 1, fontSize: 10 }}>Jets de sauvegarde</div>
+            {/* Le modificateur d'initiative n'apparaissait nulle part sur
+                l'écran de combat — seulement déductible de la case DEX de la
+                Fiche. Sur la ligne des sauvegardes plutôt qu'une ligne à lui
+                seul : l'en-tête n'a plus de hauteur à céder. */}
+            <div className="lbl" style={{ fontSize: 10 }}>Initiative {sign(derived.modifiers.dex)}</div>
+          </div>
           <SaveStrip
             modifiers={derived.modifiers}
             proficient={derived.saveProficiencies}

@@ -185,6 +185,10 @@ export function FicheScreen({
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <h2 className="ttl" style={{ fontSize: 17, flexGrow: 1 }}>Caractéristiques</h2>
+          {/* L'initiative ne se lisait nulle part par son nom — seulement
+              déductible de la case DEX ci-dessous, ce qui suppose de déjà
+              savoir que c'est elle qui compte. */}
+          <div className="lbl" style={{ color: 'var(--muted)' }}>Initiative {sign(derived.modifiers.dex)}</div>
           <div className="lbl" style={{ color: 'var(--muted)' }}>Maîtrise {sign(derived.proficiencyBonus)}</div>
         </div>
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>

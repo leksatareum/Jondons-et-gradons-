@@ -12,6 +12,8 @@ import { orderedCombatants, type Combatant, type EncounterState } from '../domai
  * L'écran demande les nombres UNE fois, tous ensemble, au moment où on les
  * jette à la table. Il ne lance aucun dé : le joueur annonce, le MJ tape.
  */
+const sign = (value: number): string => (value >= 0 ? `+${value}` : `${value}`);
+
 export function InitiativeDialog({ state, onLancer, onFermer }: {
   state: EncounterState;
   onLancer: (initiatives: Record<string, number>) => void;
@@ -103,8 +105,12 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
                   {combatant.name}
                 </label>
                 <div className="lbl" style={{ textTransform: 'none', marginTop: 1 }}>
+                  {/* Le modificateur — celui qu'on ajoute au d20 jeté à la
+                      table — manquait ici : rien ne le rappelait au moment
+                      même où on demande à chacun son initiative. Toujours
+                      affiché, même à +0, qui reste une vraie valeur. */}
                   {combatant.side === 'joueur' ? 'joueur' : 'créature'}
-                  {combatant.dexterity !== 0 && ` · DEX ${combatant.dexterity >= 0 ? '+' : ''}${combatant.dexterity}`}
+                  {` · modificateur ${sign(combatant.dexterity)}`}
                 </div>
               </div>
               <input
