@@ -332,7 +332,7 @@ function JetDiscret({ onEnvoyer }: { onEnvoyer: (body: string) => void }) {
 export function JournalScreen({
   entries, notes, estMj, notesOwnerName,
   moi, gmId, correspondants, messages,
-  onAjouterEntree, onSupprimerEntree,
+  onAjouterEntree, onModifierEntree, onSupprimerEntree,
   onAjouterNote, onModifierNote, onSupprimerNote,
   onEnvoyerMessage, onSupprimerMessage,
 }: {
@@ -350,6 +350,7 @@ export function JournalScreen({
   correspondants: Correspondant[];
   messages: Message[];
   onAjouterEntree?: (entree: { title: string | null; chapter: string | null; body: string }) => void;
+  onModifierEntree?: (id: string, entree: { title: string | null; chapter: string | null; body: string }) => void;
   onSupprimerEntree?: (id: string) => void;
   onAjouterNote?: (note: { title: string | null; chapter: string | null; body: string }) => void;
   onModifierNote?: (id: string, note: { title: string | null; chapter: string | null; body: string }) => void;
@@ -361,6 +362,14 @@ export function JournalScreen({
   const [titreJournal, setTitreJournal] = useState('');
   const [chapitreJournal, setChapitreJournal] = useState('');
   const [corpsJournal, setCorpsJournal] = useState('');
+  // L'id de l'entrée en cours de modification — pour ranger une entrée déjà
+  // publiée dans un chapitre qui n'existait pas encore au moment de
+  // l'écrire. Distinct du formulaire de publication au-dessus : on modifie
+  // une entrée existante en place, sur sa propre carte, pas en haut de liste.
+  const [entreeEnEdition, setEntreeEnEdition] = useState<string | null>(null);
+  const [titreEdition, setTitreEdition] = useState('');
+  const [chapitreEdition, setChapitreEdition] = useState('');
+  const [corpsEdition, setCorpsEdition] = useState('');
   // L'id de la note ouverte, 'nouvelle' pour une création, ou rien.
   const [noteOuverte, setNoteOuverte] = useState<string | null>(null);
   const [titreNote, setTitreNote] = useState('');
@@ -385,6 +394,26 @@ export function JournalScreen({
     setTitreJournal('');
     setChapitreJournal('');
     setCorpsJournal('');
+  };
+
+  const ouvrirEditionEntree = (entree: JournalEntry) => {
+    setEntreeEnEdition(entree.id);
+    setTitreEdition(entree.title ?? '');
+    setChapitreEdition(entree.chapter ?? '');
+    setCorpsEdition(entree.body);
+  };
+  const annulerEditionEntree = () => {
+    setEntreeEnEdition(null);
+    setTitreEdition('');
+    setChapitreEdition('');
+    setCorpsEdition('');
+  };
+  const enregistrerEditionEntree = () => {
+    if (!entreeEnEdition || !corpsEdition.trim()) return;
+    onModifierEntree?.(entreeEnEdition, {
+      title: titreEdition.trim() || null, chapter: chapitreEdition.trim() || null, body: corpsEdition.trim(),
+    });
+    annulerEditionEntree();
   };
 
   const ouvrirNote = (note?: Note) => {
@@ -587,22 +616,70 @@ export function JournalScreen({
               <div key={chapitre ?? '·'} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <EnteteChapitre chapitre={chapitre} visible={groupesEntrees.length > 1} />
                 {lignes.map((entree) => (
-                  <CarteDepliante
-                    key={entree.id}
-                    titre={entree.title || RESUME(entree.body, 60)}
-                    date={dateCourte(entree.createdAt)}
-                    corps={entree.body}
-                    ouverte={ouvertes.has(entree.id)}
-                    onBasculer={() => basculer(entree.id)}
-                    actions={estMj && (
-                      <button
-                        onClick={(event) => { event.stopPropagation(); onSupprimerEntree?.(entree.id); }}
-                        className="lbl" style={{ color: 'var(--muted)' }}
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  />
+                  entreeEnEdition === entree.id ? (
+                    // Édition en place : la carte devient son propre
+                    // formulaire — c'est ce qui permet de ranger dans un
+                    // chapitre une entrée écrite avant que ce chapitre existe.
+                    <div key={entree.id} style={{ ...carte, borderColor: 'var(--accent)' }}>
+                      <input
+                        value={titreEdition}
+                        onChange={(event) => setTitreEdition(event.target.value)}
+                        placeholder="Titre (facultatif)"
+                        autoComplete="off"
+                        style={{ ...champ, marginTop: 0 }}
+                      />
+                      <input
+                        value={chapitreEdition}
+                        onChange={(event) => setChapitreEdition(event.target.value)}
+                        placeholder="Chapitre (facultatif) — Valbrume…"
+                        autoComplete="off"
+                        list="jg-chapitres-connus"
+                        style={champ}
+                      />
+                      <textarea
+                        value={corpsEdition}
+                        onChange={(event) => setCorpsEdition(event.target.value)}
+                        style={zone}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          onClick={enregistrerEditionEntree}
+                          disabled={!corpsEdition.trim()}
+                          style={{ ...bouton(Boolean(corpsEdition.trim())), flexGrow: 1 }}
+                        >
+                          Enregistrer
+                        </button>
+                        <button onClick={annulerEditionEntree} style={bouton(false)}>
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <CarteDepliante
+                      key={entree.id}
+                      titre={entree.title || RESUME(entree.body, 60)}
+                      date={dateCourte(entree.createdAt)}
+                      corps={entree.body}
+                      ouverte={ouvertes.has(entree.id)}
+                      onBasculer={() => basculer(entree.id)}
+                      actions={estMj && (
+                        <>
+                          <button
+                            onClick={(event) => { event.stopPropagation(); ouvrirEditionEntree(entree); }}
+                            className="lbl" style={{ color: 'var(--accent)' }}
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            onClick={(event) => { event.stopPropagation(); onSupprimerEntree?.(entree.id); }}
+                            className="lbl" style={{ color: 'var(--muted)' }}
+                          >
+                            Supprimer
+                          </button>
+                        </>
+                      )}
+                    />
+                  )
                 ))}
               </div>
             ))

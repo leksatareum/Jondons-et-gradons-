@@ -114,6 +114,13 @@ export async function createJournalEntry(
   return row;
 }
 
+export const saveJournalEntry = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+  entry: { title?: string | null; chapter?: string | null; body: string },
+): Promise<SyncRow> => writeRow(client, sync, JOURNAL_TABLE, id, entry);
+
 export const deleteJournalEntry = (
   client: SupabaseClient,
   sync: CampaignSync | null,

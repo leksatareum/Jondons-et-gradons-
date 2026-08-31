@@ -13,7 +13,7 @@ import { chargerAppartenances, choisirCampagne, type Appartenance } from '../syn
 import { withParty } from './roster';
 import {
   createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
-  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveSheet,
+  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry, saveSheet,
 } from '../sync/mutations';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
@@ -228,6 +228,7 @@ function Table({ client, compte, campagne }: {
             correspondants={correspondantsDeLaTable}
             messages={snapshot.messages}
             onAjouterEntree={(entree) => void createJournalEntry(client, sync, campagne.campaignId, compte.userId, entree)}
+            onModifierEntree={(id, entree) => void saveJournalEntry(client, sync, id, entree)}
             onSupprimerEntree={(id) => void deleteJournalEntry(client, sync, id)}
             onEnvoyerMessage={(message) => void createMessage(client, sync, campagne.campaignId, compte.userId, message)}
             onSupprimerMessage={(id) => void deleteMessage(client, sync, id)}

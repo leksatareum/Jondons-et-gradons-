@@ -22,7 +22,7 @@ import { heal, takeDamage } from '../model/damage';
 import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
   createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
-  deleteNote, saveNote, saveSheet,
+  deleteNote, saveJournalEntry, saveNote, saveSheet,
 } from '../sync/mutations';
 import { uploadPortrait } from '../sync/portraits';
 import { seDeconnecter } from '../sync/session';
@@ -430,6 +430,8 @@ export function SheetView({
   // s'y essaierait sans l'être.
   const ajouterEntreeJournal = (entree: { title: string | null; chapter: string | null; body: string }) =>
     void createJournalEntry(client, sync, campaignId, userId, entree);
+  const modifierEntreeJournal = (id: string, entree: { title: string | null; chapter: string | null; body: string }) =>
+    void saveJournalEntry(client, sync, id, entree);
   const supprimerEntreeJournal = (id: string) => void deleteJournalEntry(client, sync, id);
 
   // Notes : toujours celles de qui regarde l'écran — jamais celles d'un
@@ -557,6 +559,7 @@ export function SheetView({
           correspondants={correspondants}
           messages={messages}
           onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}
+          onModifierEntree={estMj ? modifierEntreeJournal : undefined}
           onSupprimerEntree={estMj ? supprimerEntreeJournal : undefined}
           onAjouterNote={estMj ? undefined : ajouterNote}
           onModifierNote={estMj ? undefined : modifierNote}
