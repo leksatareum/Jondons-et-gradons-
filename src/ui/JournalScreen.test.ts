@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { conversationsAvec, secretsEnvoyesA, secretsRecus } from './JournalScreen';
-import type { Message } from '../sync/campaign-sync';
+import { conversationsAvec, parChapitre, secretsEnvoyesA, secretsRecus } from './JournalScreen';
+import type { JournalEntry, Message } from '../sync/campaign-sync';
 
 const message = (over: Partial<Message> & { id: string }): Message => ({
   authorId: 'moi', recipientId: 'veya', kind: 'message', body: '…',
+  version: 1, createdAt: '2026-08-20T10:00:00Z', ...over,
+});
+
+const entree = (over: Partial<JournalEntry> & { id: string }): JournalEntry => ({
+  authorId: 'mj', title: null, chapter: null, body: '…',
   version: 1, createdAt: '2026-08-20T10:00:00Z', ...over,
 });
 
@@ -110,5 +115,42 @@ describe('secrets envoyés, sur la fiche d’un personnage précis', () => {
     const dauby = { id: 'dauby', nom: 'Dauby' };
     const messages = [message({ id: 'x', kind: 'secret', authorId: 'dauby', recipientId: 'dauby' })];
     expect(secretsEnvoyesA(messages, 'mj', [dauby])).toEqual([]);
+  });
+});
+
+describe('regroupement par chapitre', () => {
+  it('rassemble les entrées du même chapitre, plus récente d’abord à l’intérieur', () => {
+    const lignes = [
+      entree({ id: 'vieille', chapter: 'Valbrume', createdAt: '2026-08-01T10:00:00Z' }),
+      entree({ id: 'neuve', chapter: 'Valbrume', createdAt: '2026-08-20T10:00:00Z' }),
+    ];
+    const groupes = parChapitre(lignes);
+    expect(groupes).toHaveLength(1);
+    expect(groupes[0].chapitre).toBe('Valbrume');
+    expect(groupes[0].lignes.map((l) => l.id)).toEqual(['neuve', 'vieille']);
+  });
+
+  it('classe les chapitres selon leur entrée la plus récente, ce chapitre-là en tête', () => {
+    const lignes = [
+      entree({ id: 'a', chapter: 'Valbrume', createdAt: '2026-08-01T10:00:00Z' }),
+      entree({ id: 'b', chapter: 'La dent cassée', createdAt: '2026-08-20T10:00:00Z' }),
+    ];
+    const groupes = parChapitre(lignes);
+    expect(groupes.map((g) => g.chapitre)).toEqual(['La dent cassée', 'Valbrume']);
+  });
+
+  it('le registre général (sans chapitre) reste toujours en dernier', () => {
+    const lignes = [
+      entree({ id: 'sans', chapter: null, createdAt: '2026-08-25T10:00:00Z' }), // la plus récente de toutes
+      entree({ id: 'avec', chapter: 'Valbrume', createdAt: '2026-08-01T10:00:00Z' }),
+    ];
+    const groupes = parChapitre(lignes);
+    expect(groupes.map((g) => g.chapitre)).toEqual(['Valbrume', null]);
+  });
+
+  it('un chapitre fait d’espaces seulement compte comme aucun chapitre', () => {
+    const lignes = [entree({ id: 'x', chapter: '   ' })];
+    const groupes = parChapitre(lignes);
+    expect(groupes).toEqual([{ chapitre: null, lignes: [lignes[0]] }]);
   });
 });

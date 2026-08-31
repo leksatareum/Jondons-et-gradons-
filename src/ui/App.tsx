@@ -161,6 +161,7 @@ function Table({ client, compte, campagne }: {
             campaignId={campagne.campaignId}
             userId={compte.userId}
             userEmail={compte.email}
+            gmId={campagne.gmId}
             journalEntries={snapshot.journalEntries}
             // Le MJ lit les notes de toute sa table (RLS `jg_is_gm`), mais
             // l'onglet Journal d'une fiche ne montre que celles de cette
@@ -265,6 +266,7 @@ function Table({ client, compte, campagne }: {
         campaignId={campagne.campaignId}
         userId={compte.userId}
         userEmail={compte.email}
+        gmId={campagne.gmId}
         journalEntries={snapshot.journalEntries}
         notes={snapshot.notes}
         messages={snapshot.messages}

@@ -69,6 +69,8 @@ export interface JournalEntry {
   id: string;
   authorId: string;
   title: string | null;
+  /** Chapitre nommé à la main (« Valbrume »…) — `null` : registre général, pas orpheline. */
+  chapter: string | null;
   body: string;
   version: number;
   createdAt: string;
@@ -78,6 +80,7 @@ export interface Note {
   id: string;
   ownerId: string;
   title: string | null;
+  chapter: string | null;
   body: string;
   version: number;
   createdAt: string;
@@ -143,6 +146,7 @@ const toJournalEntry = (row: SyncRow): JournalEntry => ({
   id: row.id,
   authorId: String(row.author_id ?? ''),
   title: (row.title as string | null) ?? null,
+  chapter: (row.chapter as string | null) ?? null,
   body: String(row.body ?? ''),
   version: row.version,
   createdAt: String(row.created_at ?? ''),
@@ -152,6 +156,7 @@ const toNote = (row: SyncRow): Note => ({
   id: row.id,
   ownerId: String(row.owner_id ?? ''),
   title: (row.title as string | null) ?? null,
+  chapter: (row.chapter as string | null) ?? null,
   body: String(row.body ?? ''),
   version: row.version,
   createdAt: String(row.created_at ?? ''),

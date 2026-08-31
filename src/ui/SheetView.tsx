@@ -64,7 +64,7 @@ export type SheetTab = MainTab;
 
 export function SheetView({
   client, sync, fiche, rencontre, encounterId, onglet, onOnglet, entete, estMj,
-  campaignId, userId, userEmail, journalEntries, notes, messages, correspondants,
+  campaignId, userId, userEmail, gmId, journalEntries, notes, messages, correspondants,
 }: {
   client: SupabaseClient;
   sync: CampaignSync;
@@ -83,6 +83,8 @@ export function SheetView({
   userId: string;
   /** Pour l'onglet Réglages : le compte connecté, pas celui de la fiche. */
   userEmail: string;
+  /** Id du MJ — pour router le jet discret du Journal vers lui. Absent côté MJ, il n'en a pas besoin. */
+  gmId?: string;
   journalEntries: JournalEntry[];
   /**
    * Côté joueur : les siennes — la RLS ne renvoie jamais celles d'un autre.
@@ -426,15 +428,15 @@ export function SheetView({
 
   // Journal : seul le MJ écrit, la RLS le rappellerait de toute façon à qui
   // s'y essaierait sans l'être.
-  const ajouterEntreeJournal = (entree: { title: string | null; body: string }) =>
+  const ajouterEntreeJournal = (entree: { title: string | null; chapter: string | null; body: string }) =>
     void createJournalEntry(client, sync, campaignId, userId, entree);
   const supprimerEntreeJournal = (id: string) => void deleteJournalEntry(client, sync, id);
 
   // Notes : toujours celles de qui regarde l'écran — jamais celles d'un
   // joueur dont le MJ consulterait la fiche.
-  const ajouterNote = (note: { title: string | null; body: string }) =>
+  const ajouterNote = (note: { title: string | null; chapter: string | null; body: string }) =>
     void createNote(client, sync, campaignId, userId, note);
-  const modifierNote = (id: string, note: { title: string | null; body: string }) =>
+  const modifierNote = (id: string, note: { title: string | null; chapter: string | null; body: string }) =>
     void saveNote(client, sync, id, note);
   const supprimerNote = (id: string) => void deleteNote(client, sync, id);
 
@@ -551,6 +553,7 @@ export function SheetView({
           estMj={Boolean(estMj)}
           notesOwnerName={estMj ? donnees.name : undefined}
           moi={userId}
+          gmId={gmId}
           correspondants={correspondants}
           messages={messages}
           onAjouterEntree={estMj ? ajouterEntreeJournal : undefined}

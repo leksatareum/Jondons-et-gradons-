@@ -78,7 +78,7 @@ describe('journal et notes', () => {
     const { client, sent } = fakeClient({ data: { id: 'j1', version: 1, body: 'La table est arrivée' }, error: null });
     await createJournalEntry(client, null, 'c1', 'mj1', { title: 'Séance 1', body: 'La table est arrivée' });
     expect(sent[0]?.payload).toEqual({
-      campaign_id: 'c1', author_id: 'mj1', title: 'Séance 1', body: 'La table est arrivée',
+      campaign_id: 'c1', author_id: 'mj1', title: 'Séance 1', chapter: null, body: 'La table est arrivée',
     });
   });
 
@@ -92,7 +92,7 @@ describe('journal et notes', () => {
   it('créer une note envoie campagne, propriétaire et contenu', async () => {
     const { client, sent } = fakeClient({ data: { id: 'n1', version: 1, body: 'Secret' }, error: null });
     await createNote(client, null, 'c1', 'joueur1', { body: 'Secret' });
-    expect(sent[0]?.payload).toEqual({ campaign_id: 'c1', owner_id: 'joueur1', title: null, body: 'Secret' });
+    expect(sent[0]?.payload).toEqual({ campaign_id: 'c1', owner_id: 'joueur1', title: null, chapter: null, body: 'Secret' });
   });
 
   it('sauvegarder une note n’envoie que titre et corps — jamais le propriétaire ni la version', async () => {

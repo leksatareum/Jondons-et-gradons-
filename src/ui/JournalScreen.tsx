@@ -8,12 +8,21 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * · **Notes** — personnelles. Le joueur les écrit ; le MJ peut les lire (il
  *   garde un œil sur sa table) mais jamais les modifier.
  * · **Journal** — public. Le MJ l'écrit, toute la table le lit.
- * · **Messages** — privés, entre deux personnes, dans les deux sens.
+ * · **Messages** — privés, entre deux personnes, dans les deux sens. Les
+ *   joueurs y écrivent aussi bien au MJ qu'aux autres personnages.
  * · **Secrets** — ce que le MJ confie à un seul joueur, et auquel on ne
  *   répond pas.
  *
  * Chaque registre a ses propres droits, tenus par la RLS ; cet écran ne fait
  * que proposer ce qu'elle autorise, il ne vérifie rien lui-même.
+ *
+ * Notes et Journal se regroupent par CHAPITRE — un texte libre posé par
+ * l'auteur (« Valbrume », « La dent cassée »…), jamais une entité à part :
+ * pas de date de début/fin, pas de description, juste une étiquette. Une
+ * entrée sans chapitre reste dans le registre général, jamais orpheline.
+ * Chaque entrée est une carte dépliante : le titre se lit d'un coup d'œil,
+ * le texte n'apparaît qu'au tap — un journal de plusieurs séances ne tient
+ * plus tout entier ouvert sur l'écran.
  */
 
 export type JournalSection = 'notes' | 'journal' | 'messages' | 'secrets';
@@ -76,6 +85,47 @@ export function secretsEnvoyesA(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Plus récent d'abord — c'est un journal, pas une liste à parcourir depuis le début. */
+const parDateDecroissante = <T extends { createdAt: string }>(lignes: T[]): T[] =>
+  [...lignes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+/**
+ * Regroupe par chapitre — le plus récemment alimenté d'abord, le registre
+ * général (`chapitre: null`, rien n'y a été rangé) toujours en dernier : un
+ * chapitre nommé porte une intention de l'auteur, son absence n'en est pas
+ * une à mettre en avant.
+ */
+export function parChapitre<T extends { chapter: string | null; createdAt: string }>(
+  lignes: T[],
+): { chapitre: string | null; lignes: T[] }[] {
+  const groupes = new Map<string | null, T[]>();
+  for (const ligne of parDateDecroissante(lignes)) {
+    const cle = ligne.chapter?.trim() || null;
+    if (!groupes.has(cle)) groupes.set(cle, []);
+    groupes.get(cle)!.push(ligne);
+  }
+  return [...groupes.entries()].sort((a, b) => {
+    if (a[0] === null) return 1;
+    if (b[0] === null) return -1;
+    return b[1][0].createdAt.localeCompare(a[1][0].createdAt);
+  }).map(([chapitre, lignesDuChapitre]) => ({ chapitre, lignes: lignesDuChapitre }));
+}
+
+/** Les chapitres déjà utilisés, pour la saisie semi-automatique — jamais un « valbrume » qui redouble un « Valbrume ». */
+const chapitresConnus = (...groupes: { chapter: string | null }[][]): string[] => {
+  const vus = new Set<string>();
+  for (const groupe of groupes) {
+    for (const ligne of groupe) {
+      const nom = ligne.chapter?.trim();
+      if (nom) vus.add(nom);
+    }
+  }
+  return [...vus].sort((a, b) => a.localeCompare(b, 'fr'));
+};
+
+const RESUME = (texte: string, max: number): string =>
+  texte.length > max ? `${texte.slice(0, max).trimEnd()}…` : texte;
+
 const champ: React.CSSProperties = {
   width: '100%', minHeight: 'var(--tap)', marginTop: 8,
   padding: '0 12px', borderRadius: 'var(--radius-sm)',
@@ -106,10 +156,6 @@ const dateCourte = (iso: string): string => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 };
-
-/** Plus récent d'abord — c'est un journal, pas une liste à parcourir depuis le début. */
-const parDateDecroissante = <T extends { createdAt: string }>(lignes: T[]): T[] =>
-  [...lignes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 const SECTIONS: [JournalSection, string][] = [
   ['notes', 'Notes'],
@@ -144,6 +190,77 @@ function SousOnglets({ actif, onChanger }: {
   );
 }
 
+/** L'en-tête d'un groupe de chapitre — absent pour le registre général quand il n'est pas seul. */
+function EnteteChapitre({ chapitre, visible }: {
+  chapitre: string | null;
+  /** Faux quand c'est le seul groupe : rien à distinguer, une étiquette serait de trop. */
+  visible: boolean;
+}) {
+  if (!visible) return null;
+  const couleur = chapitre === null ? 'var(--muted)' : 'var(--accent)';
+  return (
+    <div className="lbl" style={{ marginTop: 4, color: couleur, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ width: 14, height: 1, background: couleur }} aria-hidden />
+      {/* Sans étiquette, cette entrée se confondrait visuellement avec le
+          groupe juste au-dessus — elle n'a pas moins besoin d'un en-tête,
+          juste un en-tête qui dit l'absence plutôt qu'un nom. */}
+      {chapitre ?? 'Sans chapitre'}
+    </div>
+  );
+}
+
+/**
+ * Une carte dépliante : le titre (ou un extrait, faute de titre) et la date
+ * se lisent toujours ; le corps n'apparaît qu'au tap. C'est ce qui permet à
+ * plusieurs séances de tenir sur l'écran sans défiler à travers du texte
+ * qu'on ne relit pas.
+ */
+function CarteDepliante({ titre, date, corps, ouverte, onBasculer, actions }: {
+  titre: string;
+  date: string;
+  corps: string;
+  ouverte: boolean;
+  onBasculer: () => void;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div style={carte}>
+      <button
+        onClick={onBasculer}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left' }}
+      >
+        <div
+          className="ttl"
+          style={{
+            fontSize: 15, flexGrow: 1, minWidth: 0,
+            overflow: ouverte ? undefined : 'hidden',
+            textOverflow: ouverte ? undefined : 'ellipsis',
+            whiteSpace: ouverte ? undefined : 'nowrap',
+          }}
+        >
+          {titre}
+        </div>
+        <div className="lbl" style={{ flexShrink: 0 }}>{date}</div>
+        <span
+          aria-hidden
+          style={{
+            flexShrink: 0, color: 'var(--muted)', fontSize: 14,
+            transform: ouverte ? 'rotate(90deg)' : 'none', transition: 'transform .15s',
+          }}
+        >
+          ›
+        </span>
+      </button>
+      {ouverte && (
+        <>
+          <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{corps}</p>
+          {actions && <div style={{ marginTop: 8, display: 'flex', gap: 12 }}>{actions}</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
 function Bulle({ message, deMoi, onSupprimer }: {
   message: Message; deMoi: boolean; onSupprimer?: () => void;
 }) {
@@ -167,9 +284,54 @@ function Bulle({ message, deMoi, onSupprimer }: {
   );
 }
 
+/**
+ * Le jet discret : un d20, envoyé directement au MJ comme un message privé
+ * — jamais public, jamais visible des autres joueurs. C'est tout ce que ça
+ * fait : ni bonus, ni historique séparé, juste le geste le plus simple pour
+ * tenter quelque chose à la table sans que tout le monde sache si ça a
+ * marché.
+ */
+function JetDiscret({ onEnvoyer }: { onEnvoyer: (body: string) => void }) {
+  const [tentative, setTentative] = useState('');
+  const [dernierJet, setDernierJet] = useState<number | null>(null);
+
+  const lancer = () => {
+    const resultat = 1 + Math.floor(Math.random() * 20);
+    setDernierJet(resultat);
+    const libelle = tentative.trim();
+    onEnvoyer(libelle ? `Jet discret (d20) : ${resultat} — ${libelle}` : `Jet discret (d20) : ${resultat}`);
+  };
+
+  return (
+    <div style={{ ...carte, borderColor: 'var(--accent)' }}>
+      <div className="lbl" style={{ color: 'var(--accent)' }}>Jet discret</div>
+      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>
+        Un d20 envoyé au MJ en message privé — les autres joueurs ne voient rien.
+      </div>
+      <input
+        value={tentative}
+        onChange={(event) => setTentative(event.target.value)}
+        placeholder="Ce que tu tentes (facultatif) — Discrétion, fouiller le coffre…"
+        autoComplete="off"
+        style={{ ...champ, marginTop: 8 }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+        <button onClick={lancer} style={{ ...bouton(true), flexGrow: 1 }}>
+          🎲 Lancer un d20
+        </button>
+        {dernierJet !== null && (
+          <div className="num" style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)', minWidth: 32, textAlign: 'center' }}>
+            {dernierJet}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function JournalScreen({
   entries, notes, estMj, notesOwnerName,
-  moi, correspondants, messages,
+  moi, gmId, correspondants, messages,
   onAjouterEntree, onSupprimerEntree,
   onAjouterNote, onModifierNote, onSupprimerNote,
   onEnvoyerMessage, onSupprimerMessage,
@@ -182,48 +344,64 @@ export function JournalScreen({
   notesOwnerName?: string;
   /** Qui regarde — pour distinguer ce qu'on a envoyé de ce qu'on a reçu. */
   moi: string;
+  /** Id du MJ — pour router le jet discret vers lui, absent côté MJ (il n'en a pas besoin). */
+  gmId?: string;
   /** À qui l'on peut écrire. Vide : la section Messages le dit plutôt que d'afficher un formulaire mort. */
   correspondants: Correspondant[];
   messages: Message[];
-  onAjouterEntree?: (entree: { title: string | null; body: string }) => void;
+  onAjouterEntree?: (entree: { title: string | null; chapter: string | null; body: string }) => void;
   onSupprimerEntree?: (id: string) => void;
-  onAjouterNote?: (note: { title: string | null; body: string }) => void;
-  onModifierNote?: (id: string, note: { title: string | null; body: string }) => void;
+  onAjouterNote?: (note: { title: string | null; chapter: string | null; body: string }) => void;
+  onModifierNote?: (id: string, note: { title: string | null; chapter: string | null; body: string }) => void;
   onSupprimerNote?: (id: string) => void;
   onEnvoyerMessage?: (message: { recipientId: string; body: string; kind: 'message' | 'secret' }) => void;
   onSupprimerMessage?: (id: string) => void;
 }) {
   const [section, setSection] = useState<JournalSection>('notes');
   const [titreJournal, setTitreJournal] = useState('');
+  const [chapitreJournal, setChapitreJournal] = useState('');
   const [corpsJournal, setCorpsJournal] = useState('');
   // L'id de la note ouverte, 'nouvelle' pour une création, ou rien.
   const [noteOuverte, setNoteOuverte] = useState<string | null>(null);
   const [titreNote, setTitreNote] = useState('');
+  const [chapitreNote, setChapitreNote] = useState('');
   const [corpsNote, setCorpsNote] = useState('');
   const [destinataire, setDestinataire] = useState(correspondants[0]?.id ?? '');
   const [corpsMessage, setCorpsMessage] = useState('');
   const [corpsSecret, setCorpsSecret] = useState('');
+  // Les cartes ouvertes — communes aux notes et au journal, les id sont des UUID uniques.
+  const [ouvertes, setOuvertes] = useState<ReadonlySet<string>>(new Set());
+  const basculer = (id: string) => setOuvertes((courant) => {
+    const suite = new Set(courant);
+    if (suite.has(id)) suite.delete(id); else suite.add(id);
+    return suite;
+  });
 
   const publierEntree = () => {
     if (!corpsJournal.trim()) return;
-    onAjouterEntree?.({ title: titreJournal.trim() || null, body: corpsJournal.trim() });
+    onAjouterEntree?.({
+      title: titreJournal.trim() || null, chapter: chapitreJournal.trim() || null, body: corpsJournal.trim(),
+    });
     setTitreJournal('');
+    setChapitreJournal('');
     setCorpsJournal('');
   };
 
   const ouvrirNote = (note?: Note) => {
     setNoteOuverte(note ? note.id : 'nouvelle');
     setTitreNote(note?.title ?? '');
+    setChapitreNote(note?.chapter ?? '');
     setCorpsNote(note?.body ?? '');
   };
   const fermerNote = () => {
     setNoteOuverte(null);
     setTitreNote('');
+    setChapitreNote('');
     setCorpsNote('');
   };
   const enregistrerNote = () => {
     if (!corpsNote.trim()) return;
-    const payload = { title: titreNote.trim() || null, body: corpsNote.trim() };
+    const payload = { title: titreNote.trim() || null, chapter: chapitreNote.trim() || null, body: corpsNote.trim() };
     if (noteOuverte && noteOuverte !== 'nouvelle') onModifierNote?.(noteOuverte, payload);
     else onAjouterNote?.(payload);
     fermerNote();
@@ -240,6 +418,9 @@ export function JournalScreen({
   const conversations = conversationsAvec(messages, moi, correspondants);
   const secrets = secretsRecus(messages, moi);
   const secretsEnvoyes = secretsEnvoyesA(messages, moi, correspondants);
+  const groupesNotes = parChapitre(notes);
+  const groupesEntrees = parChapitre(entries);
+  const suggestionsChapitres = chapitresConnus(entries, notes);
 
   const choixDestinataire = correspondants.length > 1 && (
     <select
@@ -257,6 +438,10 @@ export function JournalScreen({
       display: 'flex', flexDirection: 'column', gap: 10,
       overflowY: 'auto', WebkitOverflowScrolling: 'touch',
     }}>
+      <datalist id="jg-chapitres-connus">
+        {suggestionsChapitres.map((nom) => <option key={nom} value={nom} />)}
+      </datalist>
+
       <SousOnglets actif={section} onChanger={setSection} />
 
       {/* ───── Notes personnelles ───── */}
@@ -296,6 +481,14 @@ export function JournalScreen({
                 autoComplete="off"
                 style={{ ...champ, marginTop: 0 }}
               />
+              <input
+                value={chapitreNote}
+                onChange={(event) => setChapitreNote(event.target.value)}
+                placeholder="Chapitre (facultatif) — Valbrume…"
+                autoComplete="off"
+                list="jg-chapitres-connus"
+                style={champ}
+              />
               <textarea
                 value={corpsNote}
                 onChange={(event) => setCorpsNote(event.target.value)}
@@ -317,31 +510,35 @@ export function JournalScreen({
                 : 'Ouvre la fiche d’un joueur pour lire ses notes.'}
             </p>
           ) : (
-            parDateDecroissante(notes).map((note) => (
-              <div
-                key={note.id}
-                onClick={estMj ? undefined : () => ouvrirNote(note)}
-                role={estMj ? undefined : 'button'}
-                style={{ ...carte, textAlign: 'left', cursor: estMj ? 'default' : 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  {note.title && <div className="ttl" style={{ fontSize: 15, flexGrow: 1 }}>{note.title}</div>}
-                  <div className="lbl" style={note.title ? undefined : { flexGrow: 1, textAlign: 'right' }}>
-                    {dateCourte(note.createdAt)}
-                  </div>
-                </div>
-                <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                  {note.body}
-                </p>
-                {!estMj && (
-                  <button
-                    onClick={(event) => { event.stopPropagation(); onSupprimerNote?.(note.id); }}
-                    className="lbl"
-                    style={{ marginTop: 8, color: 'var(--muted)' }}
-                  >
-                    Supprimer
-                  </button>
-                )}
+            groupesNotes.map(({ chapitre, lignes }) => (
+              <div key={chapitre ?? '·'} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <EnteteChapitre chapitre={chapitre} visible={groupesNotes.length > 1} />
+                {lignes.map((note) => (
+                  <CarteDepliante
+                    key={note.id}
+                    titre={note.title || RESUME(note.body, 60)}
+                    date={dateCourte(note.createdAt)}
+                    corps={note.body}
+                    ouverte={ouvertes.has(note.id)}
+                    onBasculer={() => basculer(note.id)}
+                    actions={!estMj && (
+                      <>
+                        <button
+                          onClick={(event) => { event.stopPropagation(); ouvrirNote(note); }}
+                          className="lbl" style={{ color: 'var(--accent)' }}
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={(event) => { event.stopPropagation(); onSupprimerNote?.(note.id); }}
+                          className="lbl" style={{ color: 'var(--muted)' }}
+                        >
+                          Supprimer
+                        </button>
+                      </>
+                    )}
+                  />
+                ))}
               </div>
             ))
           )}
@@ -361,6 +558,14 @@ export function JournalScreen({
                 autoComplete="off"
                 style={{ ...champ, marginTop: 0 }}
               />
+              <input
+                value={chapitreJournal}
+                onChange={(event) => setChapitreJournal(event.target.value)}
+                placeholder="Chapitre (facultatif) — Valbrume…"
+                autoComplete="off"
+                list="jg-chapitres-connus"
+                style={champ}
+              />
               <textarea
                 value={corpsJournal}
                 onChange={(event) => setCorpsJournal(event.target.value)}
@@ -378,20 +583,27 @@ export function JournalScreen({
               {estMj ? 'Rien publié pour l’instant.' : 'Le MJ n’a encore rien écrit.'}
             </p>
           ) : (
-            parDateDecroissante(entries).map((entree) => (
-              <div key={entree.id} style={carte}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  {entree.title && <div className="ttl" style={{ fontSize: 15, flexGrow: 1 }}>{entree.title}</div>}
-                  <div className="lbl" style={entree.title ? undefined : { flexGrow: 1, textAlign: 'right' }}>
-                    {dateCourte(entree.createdAt)}
-                  </div>
-                </div>
-                <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{entree.body}</p>
-                {estMj && (
-                  <button onClick={() => onSupprimerEntree?.(entree.id)} className="lbl" style={{ marginTop: 8, color: 'var(--muted)' }}>
-                    Supprimer
-                  </button>
-                )}
+            groupesEntrees.map(({ chapitre, lignes }) => (
+              <div key={chapitre ?? '·'} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <EnteteChapitre chapitre={chapitre} visible={groupesEntrees.length > 1} />
+                {lignes.map((entree) => (
+                  <CarteDepliante
+                    key={entree.id}
+                    titre={entree.title || RESUME(entree.body, 60)}
+                    date={dateCourte(entree.createdAt)}
+                    corps={entree.body}
+                    ouverte={ouvertes.has(entree.id)}
+                    onBasculer={() => basculer(entree.id)}
+                    actions={estMj && (
+                      <button
+                        onClick={(event) => { event.stopPropagation(); onSupprimerEntree?.(entree.id); }}
+                        className="lbl" style={{ color: 'var(--muted)' }}
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  />
+                ))}
               </div>
             ))
           )}
@@ -402,6 +614,13 @@ export function JournalScreen({
       {section === 'messages' && (
         <>
           <h2 className="ttl" style={{ fontSize: 17 }}>Messages privés</h2>
+
+          {/* Le jet discret : seuls les joueurs en ont l'usage — le MJ voit
+              déjà tout ce qui se passe à la table. */}
+          {!estMj && gmId && (
+            <JetDiscret onEnvoyer={(body) => onEnvoyerMessage?.({ recipientId: gmId, body, kind: 'message' })} />
+          )}
+
           {correspondants.length === 0 ? (
             <p className="lbl" style={{ textTransform: 'none', color: 'var(--muted)' }}>
               Personne à qui écrire pour l’instant.

@@ -97,11 +97,14 @@ export async function createJournalEntry(
   sync: CampaignSync | null,
   campaignId: string,
   authorId: string,
-  entry: { title?: string | null; body: string },
+  entry: { title?: string | null; chapter?: string | null; body: string },
 ): Promise<SyncRow> {
   const { data, error } = await client
     .from(JOURNAL_TABLE)
-    .insert({ campaign_id: campaignId, author_id: authorId, title: entry.title ?? null, body: entry.body })
+    .insert({
+      campaign_id: campaignId, author_id: authorId,
+      title: entry.title ?? null, chapter: entry.chapter ?? null, body: entry.body,
+    })
     .select()
     .single();
   if (error) throw new WriteError(JOURNAL_TABLE, error.message);
@@ -127,11 +130,14 @@ export async function createNote(
   sync: CampaignSync | null,
   campaignId: string,
   ownerId: string,
-  note: { title?: string | null; body: string },
+  note: { title?: string | null; chapter?: string | null; body: string },
 ): Promise<SyncRow> {
   const { data, error } = await client
     .from(NOTES_TABLE)
-    .insert({ campaign_id: campaignId, owner_id: ownerId, title: note.title ?? null, body: note.body })
+    .insert({
+      campaign_id: campaignId, owner_id: ownerId,
+      title: note.title ?? null, chapter: note.chapter ?? null, body: note.body,
+    })
     .select()
     .single();
   if (error) throw new WriteError(NOTES_TABLE, error.message);
@@ -145,7 +151,7 @@ export const saveNote = (
   client: SupabaseClient,
   sync: CampaignSync | null,
   id: string,
-  note: { title?: string | null; body: string },
+  note: { title?: string | null; chapter?: string | null; body: string },
 ): Promise<SyncRow> => writeRow(client, sync, NOTES_TABLE, id, note);
 
 export const deleteNote = (
