@@ -29,6 +29,7 @@ import { uploadPortrait } from '../sync/portraits';
 import { seDeconnecter } from '../sync/session';
 import { GrantSpellDialog } from './GrantSpellDialog';
 import { LevelUpDialog } from './LevelUpDialog';
+import { LevelUpCelebration } from './LevelUpCelebration';
 import { rest, type RestKind } from '../model/rest';
 import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
@@ -107,6 +108,11 @@ export function SheetView({
   /** Un jet de sauvegarde de concentration à faire à la table, DD déjà calculé. */
   const [jetConcentration, setJetConcentration] = useState<{ dd: number; bonusSagesse: number } | null>(null);
   const [niveauEnCours, setNiveauEnCours] = useState(false);
+  /** L'écran de célébration qui suit une montée de niveau — voir `monterDeNiveau`. */
+  const [celebration, setCelebration] = useState<{
+    nom: string; theme: ReturnType<typeof themeDeClasse>; niveau: number;
+    gains: { label: string; avant: string; apres: string }[];
+  } | null>(null);
   const [aRevoquer, setARevoquer] = useState<string | null>(null);
 
   /**
@@ -357,6 +363,28 @@ export function SheetView({
   };
 
   const monterDeNiveau = (suivante: CharacterSheet) => {
+    // Les stats « avant » se lisent sur `donnees` avant qu'`enregistrer` ne
+    // les remplace — les capturer après serait déjà trop tard.
+    const avant = deriveCharacter(donnees);
+    const apres = deriveCharacter(suivante);
+    const classeMontee = suivante.classLevels.find((niveau) => {
+      const avantNiveau = donnees.classLevels.find((n) => n.classId === niveau.classId);
+      return !avantNiveau || avantNiveau.level !== niveau.level;
+    });
+    setCelebration({
+      nom: suivante.name,
+      theme: themeDeClasse(suivante.classLevels),
+      niveau: classeMontee?.level ?? suivante.classLevels[0]?.level ?? 1,
+      gains: [
+        { label: 'PV max', avant: String(avant.maxHp), apres: String(apres.maxHp) },
+        { label: 'Maîtrise', avant: `+${avant.proficiencyBonus}`, apres: `+${apres.proficiencyBonus}` },
+        ...(apres.spellcasting.slots.length > 0 ? [{
+          label: 'Emplacements',
+          avant: avant.spellcasting.slots.map((slot) => slot.max).join('/') || '—',
+          apres: apres.spellcasting.slots.map((slot) => slot.max).join('/') || '—',
+        }] : []),
+      ],
+    });
     // La montée effectuée referme la porte que le MJ avait ouverte : sans ce
     // même geste, elle resterait proposée pour toujours.
     enregistrer({ ...suivante, live: { ...suivante.live, levelUpUnlocked: false } });
@@ -508,6 +536,15 @@ export function SheetView({
           sheet={donnees}
           onMonter={monterDeNiveau}
           onFermer={() => setNiveauEnCours(false)}
+        />
+      )}
+      {celebration && (
+        <LevelUpCelebration
+          nom={celebration.nom}
+          theme={celebration.theme}
+          niveau={celebration.niveau}
+          gains={celebration.gains}
+          onContinuer={() => setCelebration(null)}
         />
       )}
       {jetConcentration && (
