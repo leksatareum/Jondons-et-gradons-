@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, donnerItem, recevoirItem, removeItem, setGold, setItemQty, useHealingItem } from './inventory';
+import { addItem, donnerItem, recevoirItem, removeItem, setGold, setItemQty, useActionItem, useHealingItem } from './inventory';
 import { EMPTY_LIVE_STATE, type CharacterSheet } from './character';
 
 const fiche = (over: Partial<CharacterSheet> = {}): CharacterSheet => ({
@@ -163,5 +163,40 @@ describe('boire une potion de soins — jet automatique, mêmes probabilités qu
     const presqueGueri = blesse(2); // 2 PV manquants, la potion en rend au moins 4
     const resultat = useHealingItem(presqueGueri, 'p', () => 0);
     expect(resultat?.sheet.live.damageTaken).toBe(0); // jamais négatif
+  });
+});
+
+describe('utiliser un objet — le raccourci de l’écran de Combat', () => {
+  it('un soignant se résout exactement comme useHealingItem, jet compris', () => {
+    const sheet = fiche({
+      inventory: [{ id: 'p', name: 'Potion de soins', qty: 1 }],
+      live: { ...fiche().live, damageTaken: 20 },
+    });
+    const resultat = useActionItem(sheet, 'p', () => 0);
+    expect(resultat?.jet).toEqual({ total: 4, des: [1, 1], bonus: 2 });
+    expect(resultat?.sheet.live.damageTaken).toBe(16);
+    expect(resultat?.sheet.inventory).toEqual([]);
+  });
+
+  it('un objet sans dés à tirer (Antitoxine…) se consomme sans jet', () => {
+    const sheet = fiche({ inventory: [{ id: 'a', name: 'Antitoxine', qty: 3 }] });
+    const resultat = useActionItem(sheet, 'a');
+    expect(resultat?.jet).toBeNull();
+    expect(resultat?.sheet.inventory).toEqual([{ id: 'a', name: 'Antitoxine', qty: 2 }]);
+  });
+
+  it('la dernière unité consommée disparaît du sac', () => {
+    const sheet = fiche({ inventory: [{ id: 'a', name: 'Poison simple', qty: 1 }] });
+    const resultat = useActionItem(sheet, 'a');
+    expect(resultat?.sheet.inventory).toEqual([]);
+  });
+
+  it('un objet consommable mais sans action de combat (papier, rations…) ne renvoie rien', () => {
+    const sheet = fiche({ inventory: [{ id: 'r', name: 'Rations (1 jour)', qty: 1 }] });
+    expect(useActionItem(sheet, 'r')).toBeNull();
+  });
+
+  it('un objet inconnu du sac ne renvoie rien', () => {
+    expect(useActionItem(fiche(), 'rien')).toBeNull();
   });
 });

@@ -61,19 +61,28 @@ export interface PlayableCard {
    */
   equipWeaponId?: string;
   /**
-   * Magie, à distance ou corps à corps — pour trier le rouleau en trois
-   * onglets plutôt qu'un seul tas. Une carte de sort la porte toujours ;
-   * une carte d'arme ou d'« Équiper » la déduit de l'arme visée.
+   * Utiliser un objet du sac au lieu d'attaquer ou de lancer un sort — l'id
+   * de la ligne d'inventaire visée (`ui/item-cards.ts`). Comme
+   * `equipWeaponId`, ne coûte que l'économie d'action de la carte ; jouer
+   * la carte tire les dés s'il y en a (une potion) et consomme l'objet.
+   */
+  useItemId?: string;
+  /**
+   * Magie, à distance, corps à corps ou objets — pour trier le rouleau en
+   * quatre onglets plutôt qu'un seul tas. Une carte de sort la porte
+   * toujours ; une carte d'arme ou d'« Équiper » la déduit de l'arme visée ;
+   * une carte d'objet vaut toujours « objets ».
    */
   category: CardCategory;
 }
 
-export type CardCategory = 'magie' | 'distance' | 'melee';
+export type CardCategory = 'magie' | 'distance' | 'melee' | 'objets';
 
 export const CARD_CATEGORIES: { id: CardCategory; label: string }[] = [
   { id: 'magie', label: 'Magie' },
   { id: 'distance', label: 'À distance' },
   { id: 'melee', label: 'Mêlée' },
+  { id: 'objets', label: 'Objets' },
 ];
 
 /**

@@ -11,6 +11,7 @@ import { SettingsScreen } from './SettingsScreen';
 import { TabBar, type MainTab } from './TabBar';
 import { cardsFromCharacter, concentre } from './spell-cards';
 import { weaponCardsFromCharacter } from './weapon-cards';
+import { itemCardsFromCharacter } from './item-cards';
 import type { PlayableCard } from './combat-layout';
 import { deriveCharacter } from '../model/derive';
 import { restoreResource, spendResource } from '../model/cast';
@@ -19,7 +20,7 @@ import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux, RUSE_MAGIQUE_KEY, utiliserRuseMagique } from '../model/occultiste';
 import { heal, takeDamage } from '../model/damage';
-import { addItem, donnerItem, removeItem, setGold, setItemQty, useHealingItem } from '../model/inventory';
+import { addItem, donnerItem, removeItem, setGold, setItemQty, useActionItem, useHealingItem } from '../model/inventory';
 import {
   createItemTransfer, createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
   deleteNote, saveJournalEntry, saveNote, saveSheet,
@@ -145,7 +146,7 @@ export function SheetView({
   // Grimoire, Sac, Journal — sans que chacun ait à la recalculer.
   const theme = useMemo(() => themeDeClasse(donnees.classLevels), [donnees.classLevels]);
   const cartes = useMemo(
-    () => [...weaponCardsFromCharacter(donnees, derivee), ...cardsFromCharacter(donnees, derivee)],
+    () => [...weaponCardsFromCharacter(donnees, derivee), ...cardsFromCharacter(donnees, derivee), ...itemCardsFromCharacter(donnees)],
     [donnees, derivee],
   );
 
@@ -490,6 +491,15 @@ export function SheetView({
     enregistrer(resultat.sheet);
     return resultat.jet;
   };
+  // Le raccourci de l'écran de Combat : même geste que « Boire » pour un
+  // soignant, sinon une simple consommation — voir `model/inventory.ts`,
+  // `useActionItem`.
+  const utiliserObjet = (itemId: string) => {
+    const resultat = useActionItem(donnees, itemId, Math.random);
+    if (!resultat) return null;
+    enregistrer(resultat.sheet);
+    return { itemName: resultat.itemName, jet: resultat.jet };
+  };
 
   const dialogues = (
     <>
@@ -678,6 +688,7 @@ export function SheetView({
         onDepenserRessource={depenserRessource}
         onRestaurerRessource={restaurerRessource}
         onRompreConcentration={rompreConcentration}
+        onUtiliserObjet={utiliserObjet}
         turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat

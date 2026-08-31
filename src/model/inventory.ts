@@ -1,5 +1,5 @@
 import type { CharacterSheet, InventoryItem } from './character';
-import { resolveHealingItem } from '../domain/consumable-ownership';
+import { resolveActionableItem, resolveHealingItem } from '../domain/consumable-ownership';
 import { rollFormula, type JetDeDes } from '../domain/dice';
 import { heal } from './damage';
 
@@ -93,6 +93,29 @@ export function useHealingItem(
   if (!jet) return null;
   const consomme = item.qty <= 1 ? removeItem(sheet, itemId) : setItemQty(sheet, itemId, item.qty - 1);
   return { sheet: heal(consomme, jet.total), itemName: item.name, jet };
+}
+
+/**
+ * Le raccourci de l'écran de Combat : « utiliser » n'importe quel objet
+ * reconnu comme une action de combat (`domain/consumable-ownership.ts`,
+ * `resolveActionableItem`) — potion, antitoxine, poison, acide, parchemin
+ * de sort… Un soignant (`healDice`) se résout exactement comme
+ * `useHealingItem` — jet compris. Les autres n'ont rien à tirer : leur
+ * texte de règle (dégâts d'une fiole d'acide, avantage de l'antitoxine…)
+ * se lit sur la carte, et se joue à la table comme une attaque à l'arme —
+ * cet écran ne fait que consommer l'objet. `null` dans les mêmes cas que
+ * `useHealingItem` : rien à utiliser, rien à tirer.
+ */
+export function useActionItem(
+  sheet: CharacterSheet, itemId: string, random: () => number = Math.random,
+): { sheet: CharacterSheet; itemName: string; jet: JetDeDes | null } | null {
+  const item = sheet.inventory.find((entry) => entry.id === itemId);
+  if (!item || item.qty <= 0) return null;
+  const catalogue = resolveActionableItem(item);
+  if (!catalogue) return null;
+  if (catalogue.healDice) return useHealingItem(sheet, itemId, random);
+  const consomme = item.qty <= 1 ? removeItem(sheet, itemId) : setItemQty(sheet, itemId, item.qty - 1);
+  return { sheet: consomme, itemName: item.name, jet: null };
 }
 
 /** Jamais sous 0 : une dette n'a pas de sens en pièces d'or comptées à la table. */

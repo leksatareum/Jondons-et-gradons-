@@ -13,6 +13,7 @@ import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { themeDeClasse } from '../content/class-themes';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { DamageTypeIcons } from './damage-type-icon';
+import type { JetDeDes } from '../domain/dice';
 
 /**
  * Écran de combat du joueur.
@@ -70,6 +71,16 @@ function TabIcon({ categorie, color }: { categorie: CardCategory; color: string 
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M5.5 20 Q2.5 12 5.5 4" />
         <path d="M5.5 4 L19 12 L5.5 20" />
+      </svg>
+    );
+  }
+  if (categorie === 'objets') {
+    // Une fiole : goulot, bouchon, panse arrondie — potions, antitoxine,
+    // parchemins et le reste des objets à raccourci de Combat.
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M10 2.5 h4 M10.5 2.5 v4.3 L6 15.4 a4.4 4.4 0 0 0 4 6.1 h4 a4.4 4.4 0 0 0 4-6.1 L13.5 6.8 V2.5" />
+        <path d="M8.2 14.5 h7.6" />
       </svg>
     );
   }
@@ -602,6 +613,7 @@ function FeuilleDeChoix({ titre, sousTitre, options, onChoisir, onFermer }: {
 export function CombatScreen({
   sheet, cards, turn, onSpendHp, onPlayCard, onEquiperArme, turnId, cibles = [], etats = [],
   onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource, onRompreConcentration,
+  onUtiliserObjet,
 }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
@@ -650,9 +662,20 @@ export function CombatScreen({
    * barrée pour tout le reste du combat.
    */
   turnId?: string;
+  /**
+   * Une carte d'objet vient d'être jouée (`card.useItemId`) : tire les dés
+   * s'il y en a et consomme l'objet, en un seul geste
+   * (`model/inventory.ts`, `useActionItem`). Synchrone, pour que cet écran
+   * affiche le résultat dès l'appui, sans attendre l'aller-retour réseau.
+   */
+  onUtiliserObjet?: (itemId: string) => { itemName: string; jet: JetDeDes | null } | null;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
   const [tourSuivi, setTourSuivi] = useState(turnId);
+  // Comme pour le Sac : l'objet joué peut disparaître de `cards` au même
+  // geste (dernière unité) — le résultat vit donc ici, jamais dans la carte
+  // qui l'a déclenché, sinon il disparaîtrait avec elle.
+  const [dernierObjet, setDernierObjet] = useState<{ nom: string; jet: JetDeDes | null } | null>(null);
 
   // Remise à zéro pendant le rendu, sans effet différé : l'écran ne doit
   // jamais afficher, même un instant, l'économie du tour précédent.
@@ -677,7 +700,7 @@ export function CombatScreen({
    * fait que filtrer ce qui s'affiche, jamais ce qui est jouable.
    */
   const comptesParCategorie = useMemo(() => {
-    const comptes: Record<CardCategory, number> = { magie: 0, distance: 0, melee: 0 };
+    const comptes: Record<CardCategory, number> = { magie: 0, distance: 0, melee: 0, objets: 0 };
     for (const card of cards) comptes[card.category] += 1;
     return comptes;
   }, [cards]);
@@ -701,6 +724,10 @@ export function CombatScreen({
   const confirmer = (card: PlayableCard, paiement?: PayableResource, cible?: CibleMarquee) => {
     setSpent((current) => ({ ...current, [card.economy]: true }));
     if (card.equipWeaponId) onEquiperArme?.(card.equipWeaponId);
+    else if (card.useItemId) {
+      const resultat = onUtiliserObjet?.(card.useItemId);
+      if (resultat) setDernierObjet({ nom: resultat.itemName, jet: resultat.jet });
+    }
     // Bénédiction du Ténébreux ne paie rien (« Libre », sans `resources`) :
     // sans ce cas, une carte sans paiement ne prévenait jamais l'écran
     // parent, comme un sort mineur qu'on relance sans rien à retenir. Elle,
@@ -1004,6 +1031,35 @@ export function CombatScreen({
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11,
       }}>
+        {dernierObjet && (
+          <div
+            className="jg-tile"
+            style={{
+              padding: '10px 12px', borderRadius: 'var(--radius)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              border: '1px solid var(--ok)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ok)' }}>
+                {dernierObjet.nom}{dernierObjet.jet ? ` — ${dernierObjet.jet.total} PV` : ' — utilisé'}
+              </div>
+              {dernierObjet.jet && (
+                <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--muted)' }}>
+                  {dernierObjet.jet.des.join(' + ')}
+                  {dernierObjet.jet.bonus ? ` ${dernierObjet.jet.bonus > 0 ? '+' : '−'} ${Math.abs(dernierObjet.jet.bonus)}` : ''}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setDernierObjet(null)}
+              aria-label="Fermer"
+              style={{ flexShrink: 0, width: 32, height: 32, color: 'var(--muted)', fontSize: 16 }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {featured.map((card, index) => (
           <ActionCard key={card.id} card={card} playable hero={index === 0} onPlay={play} />
         ))}
