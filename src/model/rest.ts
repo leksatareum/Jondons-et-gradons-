@@ -142,7 +142,8 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
     ...sheet,
     live: {
       ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {},
-      hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 },
+      hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1),
+      deathSaves: { success: 0, fail: 0 }, deathStatus: null,
       concentration: null, wildShapeSwapOpen, wildResurgenceTurn: null, huntersMark: null,
       weaponMasteriesLocked: false,
     },

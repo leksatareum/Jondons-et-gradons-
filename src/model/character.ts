@@ -90,6 +90,20 @@ export interface LiveState {
   conditions: { id: string; detail?: string }[];
   exhaustion: number;
   deathSaves: { success: number; fail: number };
+  /**
+   * Où en est le personnage tombé à 0 PV.
+   *
+   * Les seuls compteurs ne suffisent pas à le dire : « stabilisé » se lit à
+   * 0 succès / 0 échec exactement comme « vient de tomber », et on peut être
+   * stabilisé SANS avoir réussi trois jets (un allié qui réussit un test de
+   * Médecine DD 10, une trousse de soins). D'où ce statut à part, plutôt
+   * qu'une déduction fausse une fois sur deux.
+   *
+   * Optionnel : les fiches créées avant cet ajout n'en ont pas, et une fiche
+   * debout n'en a pas besoin — voir `etatDeMort` dans `model/death-state.ts`,
+   * qui le déduit quand il manque.
+   */
+  deathStatus?: 'dying' | 'stable' | 'dead' | null;
   heroicInspiration: boolean;
   /** Concentration en cours, s'il y en a une. */
   concentration?: { spellId: string; note?: string } | null;
@@ -366,6 +380,7 @@ export const EMPTY_LIVE_STATE: LiveState = {
   conditions: [],
   exhaustion: 0,
   deathSaves: { success: 0, fail: 0 },
+  deathStatus: null,
   heroicInspiration: false,
   concentration: null,
   wildResurgenceTurn: null,

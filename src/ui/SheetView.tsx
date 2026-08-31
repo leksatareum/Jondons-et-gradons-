@@ -35,6 +35,10 @@ import { withGrant, withoutGrant } from '../model/spell-grants';
 import { spellById } from '../content/spell-catalogue';
 import { themeDeClasse } from '../content/class-themes';
 import {
+  apresChangementDePv, echecParDegats, etatDeMort, lancerJetContreLaMort,
+  noterJetContreLaMort, reinitialiserJets, stabiliser, type ResultatJet,
+} from '../model/death-state';
+import {
   activerCourrouxDeLaMer, activerFormeStellaire, bonusConcentrationEclatLunaire, type Constellation,
   finCourrouxDeLaMer, finFormeStellaire, learnForm, revert as revenirDeForme, swapForm, transform, wildShapeAccess,
 } from '../model/wild-shape';
@@ -206,12 +210,25 @@ export function SheetView({
     // Jamais d'écriture directe sur `damageTaken` : les dégâts passent par la
     // transition canonique, qui consomme d'abord les PV temporaires. L'écran
     // les affichait sans qu'ils n'absorbent quoi que ce soit.
-    const suivante = delta < 0
+    const dejaATerre = etatDeMort(donnees, derivee).aTerre;
+    const apresPv = delta < 0
       ? takeDamage(donnees, derivee, -delta).sheet
       : heal(donnees, delta);
+    // Deux règles s'appliquent d'elles-mêmes autour de ce changement de PV,
+    // et aucune ne se déclenche « quelque part plus tard » : encaisser des
+    // dégâts en étant DÉJÀ à terre ajoute un échec contre la mort (la chute
+    // à 0, elle, n'en ajoute aucun — elle ouvre seulement les jets), et
+    // remonter au-dessus de 0 efface les compteurs. Les faire ici, au seul
+    // endroit par où passent tous les changements de PV du joueur, évite de
+    // les oublier sur l'un des chemins (potion, soin d'un allié, bouton).
+    const suivante = delta < 0
+      ? (dejaATerre ? echecParDegats(apresPv, derivee, -delta) : apresPv)
+      : apresChangementDePv(apresPv, derivee);
     if (suivante === donnees) return;
     if (suivante.live.damageTaken === donnees.live.damageTaken
-      && suivante.live.temporaryHp === donnees.live.temporaryHp) return;
+      && suivante.live.temporaryHp === donnees.live.temporaryHp
+      && suivante.live.deathSaves === donnees.live.deathSaves
+      && suivante.live.deathStatus === donnees.live.deathStatus) return;
     // Encaisser des dégâts en étant concentré appelle une sauvegarde — le jet
     // se fait à la table comme toujours, mais rien ne rappelait jusqu'ici
     // qu'il fallait le faire, ni son DD. `delta` est ce qui vient d'être tapé
@@ -227,6 +244,26 @@ export function SheetView({
       });
     }
     enregistrer(suivante);
+  };
+
+  /**
+   * Les jets de sauvegarde contre la mort.
+   *
+   * Toute la règle est dans `model/death-state.ts` (lui-même adossé à
+   * `domain/death.ts`) : ici on ne fait qu'enregistrer ce qu'elle renvoie.
+   * `lancerContreLaMort` rend le dé tiré à l'écran de Combat, qui l'affiche —
+   * la fiche, elle, ne retient que la conséquence.
+   */
+  const lancerContreLaMort = () => {
+    const jet = lancerJetContreLaMort(donnees, derivee);
+    if (jet.sheet === donnees) return null;
+    enregistrer(jet.sheet);
+    return { de: jet.de, resultat: jet.resultat };
+  };
+
+  const noterContreLaMort = (resultat: ResultatJet) => {
+    const suivante = noterJetContreLaMort(donnees, derivee, resultat);
+    if (suivante !== donnees) enregistrer(suivante);
   };
 
   /**
@@ -516,7 +553,9 @@ export function SheetView({
   const boireSoin = (itemId: string) => {
     const resultat = useHealingItem(donnees, itemId, Math.random);
     if (!resultat) return null;
-    enregistrer(resultat.sheet);
+    // Une potion bue à terre relève : les jets contre la mort s'effacent ici
+    // aussi, pas seulement quand les PV changent par les boutons.
+    enregistrer(apresChangementDePv(resultat.sheet, derivee));
     return resultat.jet;
   };
   // Le raccourci de l'écran de Combat : même geste que « Boire » pour un
@@ -525,7 +564,7 @@ export function SheetView({
   const utiliserObjet = (itemId: string) => {
     const resultat = useActionItem(donnees, itemId, Math.random);
     if (!resultat) return null;
-    enregistrer(resultat.sheet);
+    enregistrer(apresChangementDePv(resultat.sheet, derivee));
     return { itemName: resultat.itemName, jet: resultat.jet };
   };
 
@@ -726,6 +765,11 @@ export function SheetView({
         onRestaurerRessource={restaurerRessource}
         onRompreConcentration={rompreConcentration}
         onUtiliserObjet={utiliserObjet}
+        etatDeMort={etatDeMort(donnees, derivee)}
+        onLancerJetContreLaMort={lancerContreLaMort}
+        onNoterJetContreLaMort={noterContreLaMort}
+        onStabiliser={() => enregistrer(stabiliser(donnees, derivee))}
+        onReinitialiserJetsContreLaMort={() => enregistrer(reinitialiserJets(donnees, derivee))}
         turnId={turnIdentity(encounterId, rencontre)}
         turn={
           enCombat

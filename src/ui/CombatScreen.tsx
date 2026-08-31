@@ -13,6 +13,9 @@ import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { themeDeClasse } from '../content/class-themes';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { DamageTypeIcons } from './damage-type-icon';
+import { NombreQuiRoule } from './NombreQuiRoule';
+import { DeathSavesPanel } from './DeathSavesPanel';
+import type { EtatDeMort, ResultatJet } from '../model/death-state';
 import type { JetDeDes } from '../domain/dice';
 
 /**
@@ -482,39 +485,6 @@ export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
   );
 }
 
-/**
- * Un total de dés qui se POSE au lieu d'apparaître.
- *
- * Le tirage est déjà fait quand ce composant s'affiche (voir `domain/dice.ts`
- * et `model/inventory.ts`) : ce défilé ne tire rien du tout, il retarde
- * seulement l'annonce, le temps qu'on ait l'impression d'avoir lancé quelque
- * chose. Les valeurs qui passent sont donc du DÉCOR — le nombre affiché à
- * l'arrivée est exactement celui qui a été joué, jamais un autre, et le
- * détail des dés en dessous ne bouge pas d'un poil.
- */
-function NombreQuiRoule({ total }: { total: number }) {
-  const [affiche, setAffiche] = useState(total);
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setAffiche(total);
-      return;
-    }
-    const fin = Date.now() + 420;
-    const battement = window.setInterval(() => {
-      if (Date.now() >= fin) {
-        window.clearInterval(battement);
-        setAffiche(total);
-        return;
-      }
-      // Autour du résultat, jamais très loin : un défilé qui passerait par
-      // 40 sur un 2d4+2 se lirait comme un bug, pas comme un dé qui roule.
-      setAffiche(Math.max(1, total + Math.floor(Math.random() * 9) - 4));
-    }, 55);
-    return () => window.clearInterval(battement);
-  }, [total]);
-  return <>{affiche}</>;
-}
-
 function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
   card: PlayableCard;
   /** Jouable maintenant : pleinement lisible et actionnable. */
@@ -719,6 +689,11 @@ export function CombatScreen({
   sheet, cards, turn, onSpendHp, onPlayCard, onEquiperArme, turnId, cibles = [], etats = [],
   onFinMarque, onTransfererMarque, onDepenserRessource, onRestaurerRessource, onRompreConcentration,
   onUtiliserObjet,
+  etatDeMort,
+  onLancerJetContreLaMort,
+  onNoterJetContreLaMort,
+  onStabiliser,
+  onReinitialiserJetsContreLaMort,
 }: {
   sheet: CharacterSheet;
   cards: PlayableCard[];
@@ -774,6 +749,14 @@ export function CombatScreen({
    * affiche le résultat dès l'appui, sans attendre l'aller-retour réseau.
    */
   onUtiliserObjet?: (itemId: string) => { itemName: string; jet: JetDeDes | null } | null;
+  /** Où en est le personnage tombé à 0 PV — voir `model/death-state.ts`. */
+  etatDeMort?: EtatDeMort;
+  /** Lance un d20 contre la mort et applique le résultat ; rend le dé tiré. */
+  onLancerJetContreLaMort?: () => { de: number; resultat: ResultatJet } | null;
+  /** Enregistre un jet fait avec un dé de la table. */
+  onNoterJetContreLaMort?: (resultat: ResultatJet) => void;
+  onStabiliser?: () => void;
+  onReinitialiserJetsContreLaMort?: () => void;
 }) {
   const [spent, setSpent] = useState<TurnContext['spent']>({});
   const [tourSuivi, setTourSuivi] = useState(turnId);
@@ -781,6 +764,14 @@ export function CombatScreen({
   // geste (dernière unité) — le résultat vit donc ici, jamais dans la carte
   // qui l'a déclenché, sinon il disparaîtrait avec elle.
   const [dernierObjet, setDernierObjet] = useState<{ nom: string; jet: JetDeDes | null } | null>(null);
+  // Le dernier d20 contre la mort, gardé ici pour être MONTRÉ : la fiche ne
+  // retient que ses conséquences (un succès de plus), jamais le dé lui-même.
+  const [dernierDeMort, setDernierDeMort] = useState<
+    { de: number; resultat: ResultatJet; cle: number } | null
+  >(null);
+  // Narrow d'un coup : `aTerre` porte l'état quand il y en a un, `null`
+  // sinon — ce qui évite de retester `etatDeMort` à chaque usage.
+  const aTerre = etatDeMort?.aTerre ? etatDeMort : null;
 
   // Remise à zéro pendant le rendu, sans effet différé : l'écran ne doit
   // jamais afficher, même un instant, l'économie du tour précédent.
@@ -1166,7 +1157,23 @@ export function CombatScreen({
             </button>
           </div>
         )}
-        {featured.map((card, index) => (
+        {/* À terre, les cartes n'ont plus lieu d'être : un personnage
+            inconscient ne lance pas un sort. L'écran ne montre donc que ce
+            qu'il lui reste à faire — ses jets contre la mort — au lieu d'un
+            rouleau de boutons qu'aucune règle ne l'autorise à toucher. */}
+        {aTerre ? (
+          <DeathSavesPanel
+            etat={aTerre}
+            dernierDe={dernierDeMort}
+            onNoter={(resultat) => { setDernierDeMort(null); onNoterJetContreLaMort?.(resultat); }}
+            onLancer={() => {
+              const jet = onLancerJetContreLaMort?.();
+              if (jet) setDernierDeMort({ ...jet, cle: Date.now() });
+            }}
+            onStabiliser={() => { setDernierDeMort(null); onStabiliser?.(); }}
+            onReinitialiser={() => { setDernierDeMort(null); onReinitialiserJetsContreLaMort?.(); }}
+          />
+        ) : featured.map((card, index) => (
           // Le décalage s'arrête à la sixième : au-delà, la dernière carte
           // attendrait plus longtemps que le temps qu'on met à la lire.
           <ActionCard
@@ -1175,7 +1182,7 @@ export function CombatScreen({
           />
         ))}
 
-        {muted.length > 0 && (
+        {!aTerre && muted.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '2px 2px 0' }}>
             <div className="lbl">
               {!inCombat ? 'indisponible' : isYourTurn ? 'plus tard dans le tour' : 'rangé pour l’instant'}
@@ -1183,11 +1190,11 @@ export function CombatScreen({
             <div style={{ flexGrow: 1, height: 1, background: 'var(--line)' }} />
           </div>
         )}
-        {muted.map((card) => (
+        {!aTerre && muted.map((card) => (
           <ActionCard key={card.id} card={card} playable={false} hero={false} onPlay={play} />
         ))}
 
-        {featured.length === 0 && muted.length === 0 && (
+        {!aTerre && featured.length === 0 && muted.length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--muted)', margin: '6px 2px' }}>
             Rien dans « {CARD_CATEGORIES.find((categorie) => categorie.id === onglet)?.label} » pour l’instant.
           </p>
