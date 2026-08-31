@@ -493,7 +493,23 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
   retard?: number;
   onPlay: (card: PlayableCard) => void;
 }) {
-  const hasNumbers = card.toHit !== undefined || card.damage || card.spellSave;
+  /**
+   * Les chiffres de la carte, une valeur par ligne, calés à droite.
+   *
+   * Ils occupaient une TROISIÈME ligne à eux seuls, chacun sous son
+   * étiquette (« +6 » au-dessus de « TOUCHE ») : une carte qui en portait
+   * était bien plus haute qu'une carte sans, pour trois caractères utiles.
+   * Repliés ici, ils tiennent dans la ligne de détail déjà présente.
+   *
+   * Chaque valeur garde son mot. « 1d8+3 » se lirait bien tout seul, mais
+   * pas les dégâts d'une attaque à mains nues, qui valent « 1 » : « +1
+   * touche · 1 » ne veut rien dire.
+   */
+  const chiffres = [
+    card.toHit !== undefined ? `${sign(card.toHit)} touche` : null,
+    card.damage ? `${card.damage} ${card.damage === '1' ? 'dégât' : 'dégâts'}` : null,
+    card.spellSave ? `DD ${card.spellSave.dc} ${ABILITY_ABBREVIATIONS[card.spellSave.ability]}` : null,
+  ].filter((valeur): valeur is string => Boolean(valeur));
   // Les pastilles montrent le paiement PROPOSÉ — le premier qui reste
   // disponible. Quand il y en a plusieurs, le joueur tranchera.
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
@@ -519,7 +535,10 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
         borderWidth: 1,
         borderStyle: card.granted ? 'dashed' : 'solid',
         borderRadius: 12,
-        padding: playable ? 14 : '12px 14px',
+        // Resserré (14 → 11) une fois les chiffres repliés dans la ligne
+        // de détail : à deux lignes, l'ancien rembourrage laissait
+        // beaucoup de vide en haut et en bas pour rien.
+        padding: playable ? '11px 13px' : '10px 13px',
         // Seul ce qui n'est PAS jouable est atténué. Une carte jouable reste
         // pleinement lisible, même quand elle n'est pas la première.
         opacity: playable ? 1 : 0.42,
@@ -578,13 +597,13 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
         )}
       </div>
 
-      <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+      <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         {/* Réduits (16 px, contre 28 avant) et déplacés ici : sur la ligne du
             nom, leur largeur variable (0, 1 ou 2 médaillons) décalait le nom
             d'une carte à l'autre — voir la ligne au-dessus. Cette ligne-ci
             n'a jamais porté de texte aligné entre cartes, rien à perdre. */}
         <DamageTypeIcons types={card.damageTypes} size={16} />
-        <span>
+        <span style={{ flexGrow: 1, minWidth: 0 }}>
           <span>{ECONOMY_LABEL[card.economy]}</span>
           {card.detail && (
             <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
@@ -596,6 +615,20 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
             <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
           )}
         </span>
+        {chiffres.length > 0 && (
+          // Calés à DROITE, sous le bouton : c'est la même colonne pour
+          // toutes les cartes, donc le même endroit où poser l'œil — au lieu
+          // de suivre la fin d'un texte de longueur variable.
+          <span
+            className="num"
+            style={{
+              flexShrink: 0, textTransform: 'none', fontSize: 12.5, fontWeight: 700,
+              color: 'var(--accent)', textAlign: 'right', lineHeight: 1.35,
+            }}
+          >
+            {chiffres.map((valeur) => <div key={valeur}>{valeur}</div>)}
+          </span>
+        )}
       </div>
 
       {card.granted && (
@@ -604,39 +637,6 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
               par ton don » ne dit pas d'où, et c'est précisément ce que le
               joueur cherchera à la séance suivante. */}
           {card.grantedBy ? `accordé par ${card.grantedBy} · hors budget` : 'accordé · hors budget'}
-        </div>
-      )}
-
-      {hasNumbers && (
-        // Plus petits qu'au temps de la carte mise en avant (27 px) : ils
-        // informent, ils ne proclament plus.
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, margin: '8px 0 2px' }}>
-          {card.toHit !== undefined && (
-            <div>
-              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, color: 'var(--accent)' }}>
-                {sign(card.toHit)}
-              </div>
-              <div className="lbl" style={{ marginTop: 3 }}>touche</div>
-            </div>
-          )}
-          {card.damage && (
-            <div>
-              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1 }}>{card.damage}</div>
-              <div className="lbl" style={{ marginTop: 3 }}>dégâts</div>
-            </div>
-          )}
-          {card.spellSave && (
-            <div>
-              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, color: 'var(--accent)' }}>
-                {card.spellSave.dc}
-              </div>
-              <div className="lbl" style={{ marginTop: 3 }}>
-                {/* Le DD, puis QUI doit sauver — sans ça « DD 15 » ne dit pas
-                    à quel jet de sauvegarde de la cible il faut le comparer. */}
-                DD sauvegarde {ABILITY_ABBREVIATIONS[card.spellSave.ability]}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1153,7 +1153,7 @@ export function CombatScreen({
       {/* ───── Rouleau réordonné ───── */}
       <main style={{
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11,
+        padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 9,
       }}>
         {dernierObjet && (
           <div
