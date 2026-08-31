@@ -309,12 +309,35 @@ export class SyncConnection<E> {
    * Ferme le canal ET invalide sa génération : un canal fermé peut encore
    * livrer un statut ou un événement en vol, et l'écouter reviendrait à agir
    * sur une connexion qui n'existe plus.
+   *
+   * L'invalidation se fait AVANT d'appeler le fermeur, pas après — c'est ce
+   * qui a coûté une vraie panne en production. `supabase-js` déclenche, à
+   * l'intérieur même de son `unsubscribe()`, un rappel de statut synchrone
+   * (le canal se déclare « fermé » avant que l'appel ne rende la main). Ce
+   * rappel revient ici dans `handleChannelStatus`, qui rappelle
+   * `scheduleReconnect` → `teardownChannel` : si `this.closeChannel` n'a pas
+   * encore été mis à `null` à ce moment-là (parce qu'on est encore dans son
+   * tout premier appel, pas encore retourné), ce second passage referme LE
+   * MÊME canal une seconde fois pendant que la première fermeture est encore
+   * en cours — et ainsi de suite, `supabase-js` rentrant en boucle dans son
+   * propre mécanisme de désabonnement jusqu'à épuiser la pile d'appels
+   * (`RangeError: Maximum call stack size exceeded`). L'exception éclate en
+   * plein milieu de `scheduleReconnect`, avant la ligne qui arme le minuteur
+   * de reconnexion : la connexion reste plantée là, silencieusement, sans
+   * plus jamais retenter — d'où le besoin de recharger l'app pour la faire
+   * repartir.
+   *
+   * En couper court avant l'appel, le rappel réentrant voit une génération
+   * déjà périmée (`generation !== this.generation`) et ressort aussitôt par
+   * la garde de `handleChannelStatus`, exactement comme n'importe quel autre
+   * événement tardif d'un canal qui n'existe déjà plus.
    */
   private teardownChannel(): void {
-    if (!this.closeChannel) return;
-    this.closeChannel();
+    const fermer = this.closeChannel;
+    if (!fermer) return;
     this.closeChannel = null;
     this.generation += 1;
+    fermer();
   }
 
   private setStatus(next: SyncStatus): void {

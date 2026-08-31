@@ -251,6 +251,46 @@ describe('événements', () => {
   });
 });
 
+/**
+ * La panne réellement vécue : `supabase-js` déclenche, DEPUIS l'intérieur
+ * même de son `unsubscribe()`, un rappel de statut synchrone — le canal se
+ * dit « fermé » avant que l'appel ne rende la main. Sans protection contre
+ * cette réentrance, `teardownChannel` referme le même canal une seconde fois
+ * pendant que la première fermeture est encore en cours, et ainsi de suite,
+ * jusqu'à épuiser la pile d'appels. L'exception éclatait alors en plein
+ * milieu de `scheduleReconnect`, avant la ligne qui arme le minuteur de
+ * reconnexion : la connexion restait plantée là pour de bon, sans jamais
+ * retenter — d'où l'obligation de recharger l'app.
+ */
+describe('réentrance pendant la fermeture du canal', () => {
+  it('un rappel de statut synchrone PENDANT la fermeture (comme le fait vraiment supabase-js à l’unsubscribe) ne boucle pas indéfiniment', () => {
+    const env = makeEnvironment();
+    let handlers: { onEvent: (e: string) => void; onStatus: (s: ChannelStatus) => void } | null = null;
+    let opens = 0;
+    const closes = vi.fn(() => {
+      // Le cœur de la simulation : fermer le canal redéclenche, tout de
+      // suite, un rappel de statut — exactement le piège qui faisait
+      // boucler `teardownChannel` avant le correctif.
+      handlers?.onStatus('closed');
+    });
+    const transport: SyncTransport<string> = {
+      open(h) { opens += 1; handlers = h; return closes; },
+      fetchSnapshot: vi.fn(async () => {}),
+    };
+    const connection = new SyncConnection<string>({
+      transport, environment: env.environment,
+      onEvent: () => {}, backoffMs: [100], livenessTimeoutMs: 1_000,
+    });
+
+    connection.start();
+    expect(() => handlers?.onStatus('error')).not.toThrow();
+    expect(connection.getStatus()).toBe('connecting');
+
+    env.advance(100);
+    expect(opens).toBe(2); // une reconnexion normale, pas une cascade
+  });
+});
+
 describe('arrêt', () => {
   it('ferme tout et ne planifie plus rien', async () => {
     const { env, tr, connection } = setup();
