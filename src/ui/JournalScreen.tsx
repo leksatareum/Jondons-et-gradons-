@@ -95,32 +95,52 @@ const parDateDecroissante = <T extends { createdAt: string }>(lignes: T[]): T[] 
  * chapitre nommé porte une intention de l'auteur, son absence n'en est pas
  * une à mettre en avant.
  */
+/**
+ * Deux façons d'écrire le même chapitre ne doivent jamais compter comme deux
+ * chapitres — « La dent cassée » et « La Dent cassée » sont la même
+ * histoire, juste tapée deux fois différemment. Même normalisation que la
+ * reconnaissance des armes et des boucliers (`domain/weapon-ownership.ts`,
+ * `domain/armor-ownership.ts`) : accents et casse ignorés pour COMPARER,
+ * jamais pour afficher — l'écran garde le nom tel que l'auteur l'a tapé.
+ */
+const normaliserChapitre = (nom: string): string => nom
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .trim()
+  .toLocaleLowerCase('fr');
+
 export function parChapitre<T extends { chapter: string | null; createdAt: string }>(
   lignes: T[],
 ): { chapitre: string | null; lignes: T[] }[] {
-  const groupes = new Map<string | null, T[]>();
+  const groupes = new Map<string, { chapitre: string; lignes: T[] }>();
+  const sansChapitre: T[] = [];
   for (const ligne of parDateDecroissante(lignes)) {
-    const cle = ligne.chapter?.trim() || null;
-    if (!groupes.has(cle)) groupes.set(cle, []);
-    groupes.get(cle)!.push(ligne);
+    const brut = ligne.chapter?.trim();
+    if (!brut) { sansChapitre.push(ligne); continue; }
+    const cle = normaliserChapitre(brut);
+    const groupe = groupes.get(cle);
+    // Le nom AFFICHÉ est celui de l'entrée la plus récente du groupe — la
+    // première rencontrée, puisqu'on parcourt déjà du plus récent au plus
+    // ancien : cohérent avec le tri des chapitres eux-mêmes, ci-dessous.
+    if (groupe) groupe.lignes.push(ligne);
+    else groupes.set(cle, { chapitre: brut, lignes: [ligne] });
   }
-  return [...groupes.entries()].sort((a, b) => {
-    if (a[0] === null) return 1;
-    if (b[0] === null) return -1;
-    return b[1][0].createdAt.localeCompare(a[1][0].createdAt);
-  }).map(([chapitre, lignesDuChapitre]) => ({ chapitre, lignes: lignesDuChapitre }));
+  const resultat: { chapitre: string | null; lignes: T[] }[] = [...groupes.values()]
+    .sort((a, b) => b.lignes[0].createdAt.localeCompare(a.lignes[0].createdAt))
+    .map(({ chapitre, lignes: lignesDuChapitre }) => ({ chapitre, lignes: lignesDuChapitre }));
+  if (sansChapitre.length > 0) resultat.push({ chapitre: null, lignes: sansChapitre });
+  return resultat;
 }
 
 /** Les chapitres déjà utilisés, pour la saisie semi-automatique — jamais un « valbrume » qui redouble un « Valbrume ». */
 const chapitresConnus = (...groupes: { chapter: string | null }[][]): string[] => {
-  const vus = new Set<string>();
+  const vus = new Map<string, string>();
   for (const groupe of groupes) {
     for (const ligne of groupe) {
       const nom = ligne.chapter?.trim();
-      if (nom) vus.add(nom);
+      if (nom && !vus.has(normaliserChapitre(nom))) vus.set(normaliserChapitre(nom), nom);
     }
   }
-  return [...vus].sort((a, b) => a.localeCompare(b, 'fr'));
+  return [...vus.values()].sort((a, b) => a.localeCompare(b, 'fr'));
 };
 
 const RESUME = (texte: string, max: number): string =>

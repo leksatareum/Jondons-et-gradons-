@@ -130,6 +130,34 @@ describe('regroupement par chapitre', () => {
     expect(groupes[0].lignes.map((l) => l.id)).toEqual(['neuve', 'vieille']);
   });
 
+  it('« La dent cassée » et « La Dent cassée » sont le même chapitre, pas deux', () => {
+    // Le bug réel : deux entrées tapées avec une casse différente créaient
+    // deux groupes distincts qui avaient l'air identiques à l'écran.
+    const lignes = [
+      entree({ id: 'a', chapter: 'La dent cassée', createdAt: '2026-08-01T10:00:00Z' }),
+      entree({ id: 'b', chapter: 'La Dent cassée', createdAt: '2026-08-20T10:00:00Z' }),
+    ];
+    const groupes = parChapitre(lignes);
+    expect(groupes).toHaveLength(1);
+    expect(groupes[0].lignes.map((l) => l.id)).toEqual(['b', 'a']);
+  });
+
+  it('affiche le nom tel que tapé sur l’entrée la plus récente du groupe', () => {
+    const lignes = [
+      entree({ id: 'a', chapter: 'valbrume', createdAt: '2026-08-01T10:00:00Z' }),
+      entree({ id: 'b', chapter: 'Valbrume', createdAt: '2026-08-20T10:00:00Z' }),
+    ];
+    expect(parChapitre(lignes)[0].chapitre).toBe('Valbrume');
+  });
+
+  it('les accents ne créent pas non plus deux chapitres', () => {
+    const lignes = [
+      entree({ id: 'a', chapter: 'Valbrume', createdAt: '2026-08-01T10:00:00Z' }),
+      entree({ id: 'b', chapter: 'Vàlbrûme', createdAt: '2026-08-20T10:00:00Z' }),
+    ];
+    expect(parChapitre(lignes)).toHaveLength(1);
+  });
+
   it('classe les chapitres selon leur entrée la plus récente, ce chapitre-là en tête', () => {
     const lignes = [
       entree({ id: 'a', chapter: 'Valbrume', createdAt: '2026-08-01T10:00:00Z' }),
