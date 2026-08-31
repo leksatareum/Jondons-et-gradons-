@@ -1,4 +1,5 @@
 import type { DerivedCharacter } from '../model/derive';
+import type { AbilityId } from '../content/character-basics';
 
 /**
  * Ordonnancement des cartes de l'écran de combat.
@@ -32,6 +33,15 @@ export interface PlayableCard {
   detail?: string;
   toHit?: number;
   damage?: string;
+  /**
+   * Le DD à annoncer quand ce sort impose une sauvegarde plutôt qu'une
+   * attaque (`domain/spell-roll-type.ts`) — jamais les deux en même temps
+   * qu'un `toHit` sur la même carte, un sort tire l'un ou l'autre.
+   * `ability` est la caractéristique lue dans le texte du sort ; `dc` est le
+   * DD DU LANCEUR, calculé sur la fiche (`model/derive.ts`,
+   * `SpellcastingNumbers`) — jamais extrait du texte.
+   */
+  spellSave?: { dc: number; ability: AbilityId };
   /**
    * Types de dégâts lus dans le texte du sort (`domain/spell-damage-types.ts`)
    * — jamais un chiffre, seulement le badge coloré qui dit « feu », « froid »…

@@ -12,6 +12,7 @@ import { sortDuCercleDeLaTerre } from '../model/choix-de-classe';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreuxMontant, patronDe } from '../model/occultiste';
 import { PAS_DES_FEES_KEY } from '../domain/warlock-patron-resources';
 import { damageTypesOf } from '../domain/spell-damage-types';
+import { spellRollType } from '../domain/spell-roll-type';
 
 /**
  * Les cartes jouables d'un personnage, dérivées de sa fiche.
@@ -22,14 +23,22 @@ import { damageTypesOf } from '../domain/spell-damage-types';
  * partie.
  *
  * Ce qui est dérivable l'est ; ce qui ne l'est pas reste vide plutôt que
- * d'être inventé. En particulier, les dégâts et le bonus d'attaque : le
- * catalogue (`content/spells.js`, 389 entrées vérifiées) ne porte AUCUN champ
- * structuré pour eux, seulement le texte de règle tel qu'imprimé. Une carte
- * de sort n'affiche donc jamais de `damage` ni de `toHit` — à la différence
- * d'une attaque à l'arme (`weapon-cards.ts`), qui se calcule entièrement.
- * Extraire un chiffre du texte par expression régulière donnerait des
- * nombres faux avec l'aplomb des nombres justes — le joueur lit le texte du
- * sort, et le DD est affiché une fois pour toutes en en-tête.
+ * d'être inventé. En particulier, les DÉGÂTS : le catalogue
+ * (`content/spells.js`, 389 entrées vérifiées) ne porte AUCUN champ structuré
+ * pour eux, seulement le texte de règle tel qu'imprimé. Une carte de sort
+ * n'affiche donc jamais de `damage` — à la différence d'une attaque à l'arme
+ * (`weapon-cards.ts`), qui se calcule entièrement. Extraire un chiffre de
+ * dégâts par expression régulière donnerait des nombres faux avec l'aplomb
+ * des nombres justes : un sort change de dés selon le rang de l'emplacement
+ * choisi AU MOMENT de le lancer (« au choix » sur la carte), que le texte de
+ * base ne dit pas.
+ *
+ * `toHit` et `spellSave`, eux, s'affichent — mais ce ne sont PAS des chiffres
+ * lus dans le texte du sort : ce sont des FAITS DE FICHE (bonus d'attaque de
+ * sort, DD de sauvegarde de la classe — `derived.spellcasting.numbers`), au
+ * même titre que les PV ou la CA. Seul le texte dit LEQUEL des deux jets un
+ * sort demande (`domain/spell-roll-type.ts`, catégoriel comme les types de
+ * dégâts ci-dessous — jamais un chiffre).
  *
  * Seule exception, volontairement étroite : un bonus qui vient d'un FAIT de
  * fiche déjà exact ailleurs (Décharge agonisante ajoute le modificateur de
@@ -207,7 +216,32 @@ function noteDechargeAgonisante(sheet: CharacterSheet, cantripId: string): strin
   return `+${cha} aux dégâts par rayon (Décharge agonisante)`;
 }
 
+/**
+ * Le bonus d'attaque de sort, ou le DD de sauvegarde et sa caractéristique —
+ * jamais les deux. `spellRollType` dit LEQUEL des deux jets ce sort impose
+ * (lu dans son texte, jamais un chiffre) ; `classId` dit QUELLE classe le
+ * lance, pour lire son bonus déjà calculé sur la fiche
+ * (`derived.spellcasting.numbers`). Vide si l'une des deux info manque —
+ * jamais un nombre à moitié deviné.
+ */
+function jetDuSort(
+  spell: Spell,
+  classId: string,
+  derived: DerivedCharacter,
+): Pick<PlayableCard, 'toHit' | 'spellSave'> {
+  const type = spellRollType(spell);
+  if (!type) return {};
+  const numbers = derived.spellcasting.numbers[classId];
+  if (!numbers) return {};
+  return type.kind === 'attaque'
+    ? { toHit: numbers.attackBonus }
+    : { spellSave: { dc: numbers.saveDc, ability: type.ability } };
+}
+
 export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharacter): PlayableCard[] {
+  // Fixe : même repli que `spellbookOf` pour un sort sans classe propre
+  // (Arcanum, don du MJ) — la classe la plus haute de la fiche.
+  const mainClass = sheet.classLevels[0]?.classId ?? '';
   const cartes: PlayableCard[] = [];
 
   // Les sorts mineurs ne coûtent rien : ils passent en premier parce que ce
@@ -224,6 +258,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       category: 'magie',
       detail: noteInvocation ? `${detailOf(spell)} · ${noteInvocation}` : detailOf(spell),
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
+      ...jetDuSort(spell, chosen.sourceClass || mainClass, derived),
     });
   }
 
@@ -241,6 +276,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(paiements.length ? { resources: paiements } : {}),
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
+      ...jetDuSort(spell, entree.classId, derived),
     });
   }
 
@@ -261,6 +297,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       granted: true,
       grantedBy: `ton Arcanum de rang ${arcanum.rank}`,
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
+      ...jetDuSort(spell, 'occultiste', derived),
       ...(ressource ? {
         resources: [{
           key: ressource.key,
@@ -305,6 +342,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       granted: true,
       grantedBy: grant.source,
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
+      ...jetDuSort(spell, mainClass, derived),
       ...(ressource ? {
         resources: [{
           key: ressource.key,

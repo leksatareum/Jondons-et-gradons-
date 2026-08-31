@@ -493,7 +493,7 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
   retard?: number;
   onPlay: (card: PlayableCard) => void;
 }) {
-  const hasNumbers = card.toHit !== undefined || card.damage;
+  const hasNumbers = card.toHit !== undefined || card.damage || card.spellSave;
   // Les pastilles montrent le paiement PROPOSÉ — le premier qui reste
   // disponible. Quand il y en a plusieurs, le joueur tranchera.
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
@@ -613,6 +613,18 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
             <div>
               <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1 }}>{card.damage}</div>
               <div className="lbl" style={{ marginTop: 3 }}>dégâts</div>
+            </div>
+          )}
+          {card.spellSave && (
+            <div>
+              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, color: 'var(--accent)' }}>
+                {card.spellSave.dc}
+              </div>
+              <div className="lbl" style={{ marginTop: 3 }}>
+                {/* Le DD, puis QUI doit sauver — sans ça « DD 15 » ne dit pas
+                    à quel jet de sauvegarde de la cible il faut le comparer. */}
+                DD sauvegarde {ABILITY_ABBREVIATIONS[card.spellSave.ability]}
+              </div>
             </div>
           )}
         </div>

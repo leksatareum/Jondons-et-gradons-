@@ -110,15 +110,74 @@ describe('les cartes viennent de la fiche, pas d’une liste écrite à la main'
     expect(carte?.granted).toBe(true);
   });
 
-  it('n’invente ni dégâts ni bonus d’attaque', () => {
-    // Aucun sort du catalogue ne porte de champ structuré pour ça : deviner
-    // à partir du texte donnerait des nombres faux avec l'aplomb des nombres
-    // justes.
+  it('n’invente jamais de dégâts, même sur un sort qui porte un bonus d’attaque', () => {
+    // Trait de feu inflige « 1d10 dégâts de feu » en toutes lettres — et
+    // pourtant `damage` reste vide : le rang de l'emplacement choisi AU
+    // MOMENT de lancer changerait ce chiffre, que le texte de base ne dit
+    // pas. `toHit`, lui, s'affiche : ce n'est pas un chiffre du texte, c'est
+    // un fait de fiche (voir le test suivant).
+    const sheet = fiche({ cantrips: [{ id: 'trait-feu', sourceClass: 'druide' }] });
+    const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'trait-feu');
+    expect(carte?.damage).toBeUndefined();
+    expect(carte?.toHit).toBeDefined();
+  });
+
+  it('ni bonus d’attaque ni sauvegarde sur un sort qui n’en impose aucune', () => {
     const sheet = fiche({ spells: [{ id: 'soins', sourceClass: 'druide', prepared: true }] });
     const carte = cardsFromCharacter(sheet, deriveCharacter(sheet))
       .find((c) => c.id === 'soins');
-    expect(carte?.damage).toBeUndefined();
     expect(carte?.toHit).toBeUndefined();
+    expect(carte?.spellSave).toBeUndefined();
+  });
+
+  describe('bonus d’attaque de sort et DD de sauvegarde — un fait de fiche, jamais un chiffre du texte', () => {
+    it('un sort mineur d’attaque porte le bonus d’attaque de sa classe', () => {
+      // Druide niveau 2 (maîtrise +2), Sagesse 16 (+3) → bonus d'attaque 5.
+      const sheet = fiche({ cantrips: [{ id: 'trait-feu', sourceClass: 'druide' }] });
+      const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'trait-feu');
+      expect(carte?.toHit).toBe(5);
+      expect(carte?.spellSave).toBeUndefined();
+    });
+
+    it('un sort à sauvegarde porte le DD et la bonne caractéristique', () => {
+      // DD = 8 + 2 (maîtrise) + 3 (Sagesse) = 13. Vague tonnante : sauvegarde
+      // de Constitution.
+      const sheet = fiche({ spells: [{ id: 'vague-tonnante', sourceClass: 'druide', prepared: true }] });
+      const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'vague-tonnante');
+      expect(carte?.spellSave).toEqual({ dc: 13, ability: 'con' });
+      expect(carte?.toHit).toBeUndefined();
+    });
+
+    it('un Arcanum mystique utilise la matière de l’Occultiste', () => {
+      const sheet = fiche({
+        classLevels: [{ classId: 'occultiste', level: 3, subclass: null, subclassId: null }],
+        abilities: { str: 10, dex: 10, con: 14, int: 10, wis: 10, cha: 18 },
+        // Danse irrésistible d'Otto : sauvegarde de Sagesse — même quand elle
+        // n'est pas la caractéristique d'incantation de la classe qui la lance.
+        classChoices: { occultiste: { arcanum: ['6:danse-irresistible-otto'] } },
+      });
+      // DD = 8 + 2 (maîtrise) + 4 (Charisme) = 14.
+      const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'arcanum-6');
+      expect(carte?.spellSave).toEqual({ dc: 14, ability: 'wis' });
+    });
+
+    it('un sort accordé par le MJ utilise la classe principale de la fiche', () => {
+      const sheet = fiche({
+        grants: [{ id: 'g1', spellId: 'trait-feu', source: 'Génie du désert', uses: 1, recharge: 'long', grantedAt: '' }],
+      });
+      const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'don-g1');
+      expect(carte?.toHit).toBe(5);
+    });
+
+    it('rien sur une classe sans matière d’incantation, plutôt qu’un nombre au hasard', () => {
+      const sheet = fiche({
+        classLevels: [{ classId: 'guerrier', level: 2, subclass: null, subclassId: null }],
+        cantrips: [{ id: 'trait-feu', sourceClass: 'guerrier' }],
+      });
+      const carte = cardsFromCharacter(sheet, deriveCharacter(sheet)).find((c) => c.id === 'trait-feu');
+      expect(carte?.toHit).toBeUndefined();
+      expect(carte?.spellSave).toBeUndefined();
+    });
   });
 
   it('toute carte de sort porte la catégorie « magie » — sorts mineurs compris', () => {
