@@ -3,6 +3,7 @@ import type { CharacterSheet, InventoryItem } from '../model/character';
 import { TAB_BAR_CLEARANCE } from './TabBar';
 import { resolveHealingItem } from '../domain/consumable-ownership';
 import type { JetDeDes } from '../domain/dice';
+import { chercherObjets, SUGGESTIONS_DEPART, type EffetConnu } from '../domain/item-search';
 
 /**
  * Le sac.
@@ -161,11 +162,40 @@ function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner, onBoire }
   );
 }
 
+/**
+ * Ce que l'appli saura faire de l'objet une fois au sac.
+ *
+ * Dit au moment du CHOIX, pas après : c'est toute la différence entre la
+ * potion qui lancera ses dés toute seule et celle qu'on aura tapée à la main
+ * sans le savoir — la confusion qui a motivé tout ce catalogue.
+ */
+const LIBELLE_EFFET: Record<EffetConnu, { mot: string; couleur: string }> = {
+  soin: { mot: 'se boit', couleur: 'var(--ok)' },
+  combat: { mot: 'en combat', couleur: 'var(--accent)' },
+  arme: { mot: 's’équipe', couleur: 'var(--accent)' },
+  armure: { mot: 's’équipe', couleur: 'var(--accent)' },
+};
+
+function EtiquetteEffet({ effet }: { effet: EffetConnu }) {
+  const { mot, couleur } = LIBELLE_EFFET[effet];
+  return (
+    <span
+      className="lbl"
+      style={{
+        flexShrink: 0, padding: '2px 7px', borderRadius: 999,
+        border: `1px solid ${couleur}`, color: couleur, fontSize: 9,
+      }}
+    >
+      {mot}
+    </span>
+  );
+}
+
 export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onRetirer, onOr, onDonner, onBoire }: {
   sheet: CharacterSheet;
   /** Les autres personnages de la table à qui l'on peut donner un objet — jamais le MJ. */
   destinataires: DestinataireDon[];
-  onAjouter: (item: { name: string; qty: number }) => void;
+  onAjouter: (item: { name: string; qty: number; catalogId?: string }) => void;
   onQty: (itemId: string, qty: number) => void;
   onRetirer: (itemId: string) => void;
   onOr: (gold: number) => void;
@@ -255,7 +285,10 @@ export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onReti
           value={nom}
           onChange={(event) => setNom(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Enter') ajouter(); }}
-          placeholder="Ajouter un objet…"
+          // Court exprès : sur 390 px le champ coupait la fin d'une invite
+          // plus longue. C'est la liste en dessous (« Objets courants ») qui
+          // fait découvrir le catalogue, pas ce texte.
+          placeholder="Chercher ou ajouter…"
           autoComplete="off"
           style={{ ...champ, flexGrow: 1 }}
         />
@@ -273,6 +306,72 @@ export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onReti
           Ajouter
         </button>
       </div>
+
+      {/*
+        Le catalogue, sous le champ.
+        Sans lui, taper « potion de soin » donnait bien une ligne dans le sac,
+        mais pas une potion : ni raccourci de Combat, ni jet de soin — rien ne
+        la rattachait à l'entrée du catalogue (voir `domain/item-search.ts`).
+        Le bouton « Ajouter » à côté du champ n'a pas bougé pour autant : les
+        objets de quête n'existent dans aucun catalogue, et c'est par lui
+        qu'ils entrent.
+        Tant que rien n'est tapé, quelques objets courants s'affichent quand
+        même — c'est ce qui fait DÉCOUVRIR qu'un catalogue existe.
+      */}
+      {(() => {
+        const tape = nom.trim();
+        const resultats = tape ? chercherObjets(tape) : SUGGESTIONS_DEPART;
+        if (resultats.length === 0) {
+          return (
+            <p className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', margin: 0 }}>
+              Rien de connu sous ce nom — « Ajouter » le posera quand même dans
+              le sac, comme objet libre.
+            </p>
+          );
+        }
+        return (
+          <>
+            <div className="lbl" style={{ marginTop: 2 }}>
+              {tape ? 'Dans le catalogue' : 'Objets courants'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {resultats.map((objet) => (
+                <button
+                  key={objet.catalogId}
+                  onClick={() => { onAjouter({ name: objet.nom, qty: 1, catalogId: objet.catalogId }); setNom(''); }}
+                  className="card jg-tile"
+                  style={{
+                    textAlign: 'left', padding: '9px 11px', borderRadius: 'var(--radius-sm)',
+                    minHeight: 'var(--tap)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, flexGrow: 1, minWidth: 0 }}>{objet.nom}</span>
+                    {objet.effet && <EtiquetteEffet effet={objet.effet} />}
+                    <span className="lbl" style={{ flexShrink: 0 }}>{objet.prix}</span>
+                  </div>
+                  {objet.detail && (
+                    <div
+                      className="lbl"
+                      style={{
+                        textTransform: 'none', color: 'var(--muted)', marginTop: 2, lineHeight: 1.4,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      }}
+                    >
+                      {objet.categorie} · {objet.detail}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Le sac s'annonce depuis qu'une liste de propositions le précède :
+          sans cet intitulé, les deux s'enchaînaient sans rupture et on
+          pouvait croire que le catalogue faisait déjà partie du sac. */}
+      <div className="lbl" style={{ marginTop: 4 }}>Dans le sac</div>
 
       {sheet.inventory.length === 0 ? (
         <p className="lbl" style={{ textTransform: 'none', color: 'var(--muted)' }}>Le sac est vide.</p>

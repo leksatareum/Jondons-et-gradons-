@@ -1,3 +1,4 @@
+import { normaliserNom } from './nom-normalise';
 import { EQUIPMENT_CATALOG, type EquipmentEntry } from '../content/equipment';
 
 /**
@@ -16,11 +17,7 @@ import { EQUIPMENT_CATALOG, type EquipmentEntry } from '../content/equipment';
  * tire les dés et applique le soin.
  */
 
-const normaliser = (nom: string): string => nom
-  .normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .replace(/[‘’]/g, "'")
-  .trim()
-  .toLocaleLowerCase('fr');
+const normaliser = (nom: string): string => normaliserNom(nom);
 
 const actionnablesParNomNormalise = new Map<string, EquipmentEntry>(
   EQUIPMENT_CATALOG

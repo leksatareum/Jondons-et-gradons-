@@ -531,7 +531,7 @@ export function SheetView({
   const supprimerMessage = (id: string) => void deleteMessage(client, sync, id);
 
   // Le sac : ce que le joueur possède est une décision, jamais un calcul.
-  const ajouterObjet = (item: { name: string; qty: number }) =>
+  const ajouterObjet = (item: { name: string; qty: number; catalogId?: string }) =>
     enregistrer(addItem(donnees, item));
   const quantiteObjet = (itemId: string, qty: number) =>
     enregistrer(setItemQty(donnees, itemId, qty));

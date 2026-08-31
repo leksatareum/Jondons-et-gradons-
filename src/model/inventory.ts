@@ -14,8 +14,20 @@ import { heal } from './damage';
 
 const nouvelId = () => `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-export function addItem(sheet: CharacterSheet, item: { name: string; qty: number }): CharacterSheet {
-  const nouvel: InventoryItem = { id: nouvelId(), name: item.name, qty: Math.max(1, Math.floor(item.qty)) };
+export function addItem(
+  sheet: CharacterSheet,
+  item: { name: string; qty: number; catalogId?: string },
+): CharacterSheet {
+  const nouvel: InventoryItem = {
+    id: nouvelId(),
+    name: item.name,
+    qty: Math.max(1, Math.floor(item.qty)),
+    // Renseigné quand l'objet vient du catalogue : la reconnaissance par le
+    // nom continue de marcher pour tout ce qui a été tapé à la main, mais
+    // celle-ci reste juste même si le joueur renomme sa ligne ensuite
+    // (« Potion de soins » → « la fiole de Maître Ilbert »).
+    ...(item.catalogId ? { catalogId: item.catalogId } : {}),
+  };
   return { ...sheet, inventory: [...sheet.inventory, nouvel] };
 }
 

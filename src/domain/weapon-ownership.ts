@@ -1,4 +1,5 @@
 import { STARTING_WEAPON_ALIASES } from '../content/starting-equipment';
+import { normaliserNom } from './nom-normalise';
 import { WEAPONS, weaponById, type WeaponDef } from '../content/weapons';
 
 /**
@@ -15,12 +16,7 @@ import { WEAPONS, weaponById, type WeaponDef } from '../content/weapons';
  * en premier pour le jour où un flux le renseignera.
  */
 
-const normaliser = (nom: string): string => nom
-  .normalize('NFD').replace(/[̀-ͯ]/g, '') // accents : marques diacritiques isolées par NFD
-  .replace(/[‘’]/g, "'") // apostrophes courbes alignées sur l'apostrophe droite
-  .replace(/\s*\([^)]*\)\s*$/, '') // « Bâton de combat (focaliseur druidique) » → « Bâton de combat »
-  .trim()
-  .toLocaleLowerCase('fr');
+const normaliser = (nom: string): string => normaliserNom(nom, { sansParenthese: true });
 
 const armeParNomNormalise = new Map<string, WeaponDef>(
   WEAPONS.map((weapon) => [normaliser(weapon.name), weapon]),
