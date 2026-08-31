@@ -2,6 +2,7 @@ import { restoresAllOnShortRest } from '../domain/resource-recovery';
 import { companionsAfterLongRest } from './companions';
 import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
 import { levelInClass } from './character';
+import { type MasteryClassId } from '../domain/weapon-mastery';
 import { resilienceCeleste, resilienceCelestePourSoi } from './occultiste';
 import type { CharacterSheet } from './character';
 import type { DerivedCharacter } from './derive';
@@ -74,9 +75,14 @@ export function shortRest(sheet: CharacterSheet, derived: DerivedCharacter): Res
     : sheet.live.exhaustion;
   if (exhaustion < sheet.live.exhaustion) recovered.push('Un cran d’épuisement (Infatigable)');
 
+  // Maîtrise d'armes : le choix se fait à la fin d'un repos long, pas au fil
+  // de la journée — un repos court referme la fenêtre ouverte par le dernier
+  // repos long (PHB 2024 p. 120). Sans effet si elle était déjà fermée.
+  const weaponMasteriesLocked = true;
+
   const apres: CharacterSheet = {
     ...sheet,
-    live: { ...sheet.live, resourcesSpent, pactSlotsSpent, exhaustion },
+    live: { ...sheet.live, resourcesSpent, pactSlotsSpent, exhaustion, weaponMasteriesLocked },
   };
 
   // ── Résilience céleste : Occultiste Céleste 10+ ───────────────────
@@ -123,10 +129,23 @@ export function longRest(sheet: CharacterSheet, derived: DerivedCharacter): Rest
   const wildShapeSwapOpen = druidLevel(sheet) >= 2 ? true : undefined;
   if (wildShapeSwapOpen) recovered.push('Une forme apprise peut être échangée');
 
+  // Maîtrise d'armes : la fin d'un repos long rouvre le choix (PHB 2024
+  // p. 120). `levelInClass` >= 1, jamais `weaponMasteryCount` directement :
+  // à niveau 0, hors de la classe, elle rend quand même 2 ou 3 par
+  // construction (voir le même garde dans `choix-de-classe.ts`).
+  const classesAvecMaitrise: MasteryClassId[] = ['barbare', 'guerrier', 'paladin', 'rodeur', 'roublard'];
+  const aLaMaitriseDArmes = classesAvecMaitrise.some((classId) => levelInClass(sheet, classId) >= 1);
+  if (aLaMaitriseDArmes) recovered.push('Maîtrise d’armes à choisir');
+
   const avantCompagnons = sheet.companions ?? [];
   const apresRepos = companionsAfterLongRest({
     ...sheet,
-    live: { ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {}, hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 }, concentration: null, wildShapeSwapOpen, wildResurgenceTurn: null, huntersMark: null },
+    live: {
+      ...live, damageTaken: 0, temporaryHp: 0, spellSlotsSpent: {}, pactSlotsSpent: 0, resourcesSpent: {},
+      hitDiceSpent, exhaustion: Math.max(0, live.exhaustion - 1), deathSaves: { success: 0, fail: 0 },
+      concentration: null, wildShapeSwapOpen, wildResurgenceTurn: null, huntersMark: null,
+      weaponMasteriesLocked: false,
+    },
   });
   for (const companion of avantCompagnons) {
     if (companion.expiresOnLongRest && !apresRepos.companions?.some((c) => c.id === companion.id)) {

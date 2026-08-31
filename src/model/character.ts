@@ -143,6 +143,16 @@ export interface LiveState {
    * traversé (voir `SheetView`).
    */
   levelUpUnlocked?: boolean;
+  /**
+   * Maîtrise d'armes verrouillée depuis le dernier repos long — PHB 2024
+   * p. 120 (« tu détermines les armes concernées à la fin de chaque repos
+   * long ») : le choix se fait au réveil, pas au fil de la journée. Absent
+   * ou `false` : ouvert — une fiche fraîchement créée doit pouvoir choisir
+   * sans qu'on lui impose d'abord un repos long fictif. Se referme au
+   * premier repos court (le temps a passé dans la journée d'aventure) et se
+   * rouvre à chaque repos long.
+   */
+  weaponMasteriesLocked?: boolean;
 }
 
 /**

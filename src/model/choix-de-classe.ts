@@ -269,7 +269,7 @@ export function decisionsDeClasse(
     decisions.push({
       classId, key: 'weaponMasteries',
       label: `Maîtrise d'armes (${nombre})`,
-      help: `Choisis jusqu'à ${nombre} arme${nombre > 1 ? 's' : ''} parmi celles que tu possèdes — leur maîtrise ne s'applique qu'à elles. Rechoisissable à la fin de chaque repos long.`,
+      help: `Choisis jusqu'à ${nombre} arme${nombre > 1 ? 's' : ''} parmi celles que tu possèdes — leur maîtrise ne s'applique qu'à elles. Se reverrouille au premier repos court ; se rouvre à chaque repos long.`,
       options: possedees.map((weapon) => ({
         id: weapon.id, name: weapon.name,
         desc: `${weapon.mastery} — ${WEAPON_MASTERIES[weapon.mastery]?.desc ?? ''}`,
@@ -284,9 +284,17 @@ export function decisionsDeClasse(
   // Une décision qui ne se rechoisit pas et qui est prise est verrouillée.
   // La règle est la même pour toutes : c'est `rechoisissable` qui la porte,
   // pas une liste à tenir à jour ailleurs.
-  return decisions.map((decision) => (
-    decision.choisi && !decision.rechoisissable ? { ...decision, verrouillee: true } : decision
-  ));
+  //
+  // La Maîtrise d'armes est à part : un choix MULTIPLE (`choisis`, jamais
+  // `choisi`), donc la règle ci-dessus ne la verrouille jamais — et à raison,
+  // ce n'est pas « prise pour de bon » qui la ferme, mais le repos long qui
+  // vient de s'écouler (voir `rest.ts`, `weaponMasteriesLocked`).
+  return decisions.map((decision) => {
+    if (decision.key === 'weaponMasteries') {
+      return sheet.live.weaponMasteriesLocked ? { ...decision, verrouillee: true } : decision;
+    }
+    return decision.choisi && !decision.rechoisissable ? { ...decision, verrouillee: true } : decision;
+  });
 }
 
 /** Le Chasseur, quelle que soit la façon dont la fiche le nomme. */

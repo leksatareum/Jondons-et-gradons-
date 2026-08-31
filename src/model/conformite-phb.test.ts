@@ -1478,6 +1478,41 @@ describe('p. 120 — Maîtrise d’armes : deux armes possédées, rechoisies au
     const arc = weaponCardsFromCharacter(sheet, derived2).find((c) => c.id === 'arme-arccourt');
     expect(arc?.detail).not.toContain('maîtrise');
   });
+
+  it('un repos long ouvre le choix, un repos court le reverrouille jusqu’au suivant', () => {
+    let sheet = rodeurArme([arme('arccourt', 'Arc court'), arme('epeecourte', 'Épée courte')]);
+    sheet = choisirDeClasse(sheet, 'rodeur', 'weaponMasteries', 'arccourt');
+
+    // Fraîchement choisi, sans avoir reposé : encore ouvert.
+    expect(decisionsDeClasse(sheet).find((d) => d.key === 'weaponMasteries')?.verrouillee).toBeFalsy();
+
+    const { sheet: apresReposCourt } = shortRest(sheet, deriveCharacter(sheet));
+    expect(decisionsDeClasse(apresReposCourt).find((d) => d.key === 'weaponMasteries')?.verrouillee).toBe(true);
+
+    // Verrouillé : le joueur ne peut plus changer son choix.
+    const tentative = choisirDeClasse(apresReposCourt, 'rodeur', 'weaponMasteries', 'epeecourte');
+    expect(decisionsDeClasse(tentative).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['arccourt']);
+
+    // Le MJ, lui, peut corriger.
+    const correction = choisirDeClasse(apresReposCourt, 'rodeur', 'weaponMasteries', 'epeecourte', { parLeMj: true });
+    expect(decisionsDeClasse(correction).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['arccourt', 'epeecourte']);
+
+    // Le prochain repos long rouvre le choix.
+    const { sheet: apresReposLong } = longRest(apresReposCourt, deriveCharacter(apresReposCourt));
+    expect(decisionsDeClasse(apresReposLong).find((d) => d.key === 'weaponMasteries')?.verrouillee).toBeFalsy();
+    const rechoisi = choisirDeClasse(apresReposLong, 'rodeur', 'weaponMasteries', 'epeecourte');
+    expect(decisionsDeClasse(rechoisi).find((d) => d.key === 'weaponMasteries')?.choisis).toEqual(['arccourt', 'epeecourte']);
+  });
+
+  it('un repos long signale la Maîtrise d’armes à choisir — jamais pour une classe qui n’y a pas droit', () => {
+    const sheet = rodeurArme([arme('arccourt', 'Arc court')]);
+    const { recovered } = longRest(sheet, deriveCharacter(sheet));
+    expect(recovered).toContain('Maîtrise d’armes à choisir');
+
+    const mage = fiche([{ classId: 'magicien', level: 3, subclass: null, subclassId: null }]);
+    const { recovered: recoveredMage } = longRest(mage, deriveCharacter(mage));
+    expect(recoveredMage).not.toContain('Maîtrise d’armes à choisir');
+  });
 });
 
 describe('p. 121 — Explorateur agile : expertise sur une compétence déjà maîtrisée', () => {

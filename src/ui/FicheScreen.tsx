@@ -216,15 +216,20 @@ export function FicheScreen({
             {decisions.map((decision) => {
               const cle = `${decision.classId}-${decision.key}`;
               // Choix multiple (Maîtrise d'armes…) : plusieurs options actives
-              // à la fois, jamais verrouillé — c'est `choisis`, pas `choisi`,
-              // qui dit ce qui est retenu.
+              // à la fois — c'est `choisis`, pas `choisi`, qui dit ce qui est
+              // retenu, mais elle se verrouille comme les autres (voir
+              // `choix-de-classe.ts` : entre deux repos longs pour la
+              // Maîtrise d'armes, au lieu de « prise pour de bon »).
               const multiple = Boolean(decision.max && decision.max > 1);
-              // Verrouillée : le choix est fait et définitif. On n'affiche
-              // alors QUE l'option retenue — montrer l'autre en grisé, c'est
+              // Verrouillée : le choix est fait et définitif — ou, pour la
+              // Maîtrise d'armes, fait pour cette journée. On n'affiche alors
+              // QUE ce qui est retenu — montrer le reste en grisé, c'est
               // proposer un geste qui n'aboutira pas.
-              const fige = !multiple && Boolean(decision.verrouillee) && !aCorriger.has(cle);
+              const fige = Boolean(decision.verrouillee) && !aCorriger.has(cle);
               const montrees = fige
-                ? decision.options.filter((option) => option.id === decision.choisi)
+                ? decision.options.filter((option) => (
+                  multiple ? decision.choisis?.includes(option.id) : option.id === decision.choisi
+                ))
                 : decision.options;
               const nombreChoisi = decision.choisis?.length ?? 0;
               return (
