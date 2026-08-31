@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  ENCOUNTER_TEMPLATES_TABLE, ENCOUNTERS_TABLE, JOURNAL_TABLE, MESSAGES_TABLE, NOTES_TABLE, SHEETS_TABLE,
-  type CampaignSync,
+  ENCOUNTER_TEMPLATES_TABLE, ENCOUNTERS_TABLE, ITEM_TRANSFERS_TABLE, JOURNAL_TABLE, MESSAGES_TABLE, NOTES_TABLE,
+  SHEETS_TABLE, type CampaignSync,
 } from './campaign-sync';
 import type { SyncRow } from './supabase-transport';
 import type { SouscriptionPush } from '../notifications/push';
@@ -202,6 +202,45 @@ export const deleteMessage = (
   sync: CampaignSync | null,
   id: string,
 ): Promise<void> => deleteRow(client, sync, MESSAGES_TABLE, id);
+
+/**
+ * Dépose un objet en transit vers le sac d'un autre joueur (migration
+ * 0014_dons_objets.sql) — l'appelant a déjà retiré l'objet de son propre
+ * sac (`model/inventory.ts`, `donnerItem`) avant d'appeler ceci.
+ */
+export async function createItemTransfer(
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  campaignId: string,
+  senderId: string,
+  transfer: { recipientId: string; name: string; qty: number; note?: string; catalogId?: string },
+): Promise<SyncRow> {
+  const { data, error } = await client
+    .from(ITEM_TRANSFERS_TABLE)
+    .insert({
+      campaign_id: campaignId,
+      sender_id: senderId,
+      recipient_id: transfer.recipientId,
+      item_name: transfer.name,
+      item_note: transfer.note ?? null,
+      item_catalog_id: transfer.catalogId ?? null,
+      qty: transfer.qty,
+    })
+    .select()
+    .single();
+  if (error) throw new WriteError(ITEM_TRANSFERS_TABLE, error.message);
+  if (!data) throw new WriteError(ITEM_TRANSFERS_TABLE, 'envoi refusé');
+  const row = data as SyncRow;
+  sync?.ingest(ITEM_TRANSFERS_TABLE, row);
+  return row;
+}
+
+/** Le destinataire consomme le don en l'ajoutant à son sac, puis efface la ligne — la RLS n'autorise que lui. */
+export const deleteItemTransfer = (
+  client: SupabaseClient,
+  sync: CampaignSync | null,
+  id: string,
+): Promise<void> => deleteRow(client, sync, ITEM_TRANSFERS_TABLE, id);
 
 export async function createEncounter(
   client: SupabaseClient,

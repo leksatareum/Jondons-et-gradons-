@@ -13,8 +13,10 @@ import { chargerAppartenances, choisirCampagne, type Appartenance } from '../syn
 import { withParty } from './roster';
 import {
   createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
-  deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry, saveSheet,
+  deleteItemTransfer, deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry,
+  saveSheet,
 } from '../sync/mutations';
+import { recevoirItem } from '../model/inventory';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
@@ -141,6 +143,45 @@ function Table({ client, compte, campagne }: {
       .map((f) => ({ id: f.ownerId, nom: f.data.name })),
     [snapshot.sheets, compte.userId],
   );
+
+  /**
+   * À qui un joueur peut donner un objet de son sac : les autres personnages
+   * de la table, jamais le MJ — il n'a pas de sac où le déposer.
+   */
+  const autresPersonnages = useMemo(
+    () => snapshot.sheets
+      .filter((f) => f.ownerId !== compte.userId && f.ownerId !== campagne.gmId)
+      .map((f) => ({ id: f.ownerId, nom: f.data.name })),
+    [snapshot.sheets, compte.userId, campagne.gmId],
+  );
+
+  /**
+   * Réception automatique des dons : dès qu'un relais (`jg_item_transfers`)
+   * m'attend, l'objet rejoint mon sac et le relais s'efface. Toutes les
+   * lignes en attente sont pliées dans UNE seule écriture de fiche — les
+   * traiter une par une partirait chacune de la même fiche non encore
+   * confirmée et s'écraseraient l'une l'autre.
+   *
+   * `enCoursDeReception` évite de retraiter un relais dont la suppression
+   * n'est pas encore revenue de la base : sans lui, un rendu entre-temps
+   * redéposerait le même objet une seconde fois.
+   */
+  const enCoursDeReception = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!maFiche) return;
+    const aRecevoir = snapshot.itemTransfers.filter(
+      (t) => t.recipientId === compte.userId && !enCoursDeReception.current.has(t.id),
+    );
+    if (aRecevoir.length === 0) return;
+    for (const t of aRecevoir) enCoursDeReception.current.add(t.id);
+    const suivante = aRecevoir.reduce(
+      (fiche, t) => recevoirItem(fiche, { name: t.itemName, qty: t.qty, note: t.itemNote ?? undefined, catalogId: t.itemCatalogId ?? undefined }),
+      maFiche.data,
+    );
+    void saveSheet(client, sync, maFiche.id, suivante)
+      .then(() => Promise.all(aRecevoir.map((t) => deleteItemTransfer(client, sync, t.id))))
+      .finally(() => { for (const t of aRecevoir) enCoursDeReception.current.delete(t.id); });
+  }, [snapshot.itemTransfers, maFiche, client, sync, compte.userId]);
 
   if (campagne.estMj) {
     const ouverte = snapshot.sheets.find((fiche) => fiche.id === ficheOuverte);
@@ -272,6 +313,7 @@ function Table({ client, compte, campagne }: {
         notes={snapshot.notes}
         messages={snapshot.messages}
         correspondants={correspondantsDuJoueur}
+        destinatairesDon={autresPersonnages}
       />
     </>
   );

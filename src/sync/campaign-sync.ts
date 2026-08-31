@@ -42,6 +42,13 @@ export interface CampaignSnapshot {
    * initiative ni tour, elles attendent d'être déclenchées.
    */
   encounterTemplates: StoredEncounterTemplate[];
+  /**
+   * Dons d'objets en transit — de mon sac vers celui d'un autre joueur, ou
+   * l'inverse. Le destinataire les ajoute à sa fiche et efface la ligne dès
+   * qu'il les voit ; ce tableau ne contient donc jamais que ce qui n'a pas
+   * encore été récupéré.
+   */
+  itemTransfers: ItemTransfer[];
 }
 
 export interface StoredSheet {
@@ -100,12 +107,30 @@ export interface Message {
   createdAt: string;
 }
 
+/**
+ * Un objet donné, en transit entre deux sacs — voir la migration
+ * 0014_dons_objets.sql : ni l'un ni l'autre joueur ne peut écrire la fiche
+ * de l'autre, cette ligne sert de relais entre les deux écritures.
+ */
+export interface ItemTransfer {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  itemName: string;
+  itemNote: string | null;
+  itemCatalogId: string | null;
+  qty: number;
+  version: number;
+  createdAt: string;
+}
+
 export const SHEETS_TABLE = 'jg_sheets';
 export const ENCOUNTERS_TABLE = 'jg_encounters';
 export const ENCOUNTER_TEMPLATES_TABLE = 'jg_encounter_templates';
 export const JOURNAL_TABLE = 'jg_journal_entries';
 export const NOTES_TABLE = 'jg_notes';
 export const MESSAGES_TABLE = 'jg_messages';
+export const ITEM_TRANSFERS_TABLE = 'jg_item_transfers';
 
 /**
  * Choisit la rencontre courante. Une campagne accumule ses rencontres passées ;
@@ -172,6 +197,18 @@ const toMessage = (row: SyncRow): Message => ({
   createdAt: String(row.created_at ?? ''),
 });
 
+const toItemTransfer = (row: SyncRow): ItemTransfer => ({
+  id: row.id,
+  senderId: String(row.sender_id ?? ''),
+  recipientId: String(row.recipient_id ?? ''),
+  itemName: String(row.item_name ?? ''),
+  itemNote: (row.item_note as string | null) ?? null,
+  itemCatalogId: (row.item_catalog_id as string | null) ?? null,
+  qty: Number(row.qty ?? 1),
+  version: row.version,
+  createdAt: String(row.created_at ?? ''),
+});
+
 export interface CampaignSyncOptions {
   client: SupabaseClient;
   campaignId: string;
@@ -197,13 +234,15 @@ export class CampaignSync {
 
   private readonly messages = new VersionedStore<SyncRow>();
 
+  private readonly itemTransfers = new VersionedStore<SyncRow>();
+
   private readonly listeners = new Set<() => void>();
 
   private readonly connection: SyncConnection<SyncEvent>;
 
   private snapshot: CampaignSnapshot = {
     status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [], messages: [],
-    encounterTemplates: [],
+    encounterTemplates: [], itemTransfers: [],
   };
 
   constructor(options: CampaignSyncOptions) {
@@ -214,6 +253,7 @@ export class CampaignSync {
       { name: JOURNAL_TABLE, store: this.journal },
       { name: NOTES_TABLE, store: this.notes },
       { name: MESSAGES_TABLE, store: this.messages },
+      { name: ITEM_TRANSFERS_TABLE, store: this.itemTransfers },
     ];
 
     const transport = createSupabaseTransport({
@@ -277,6 +317,7 @@ export class CampaignSync {
       case JOURNAL_TABLE: return this.journal;
       case NOTES_TABLE: return this.notes;
       case MESSAGES_TABLE: return this.messages;
+      case ITEM_TRANSFERS_TABLE: return this.itemTransfers;
       default: return null;
     }
   }
@@ -295,6 +336,7 @@ export class CampaignSync {
       notes: this.notes.all().map(toNote),
       messages: this.messages.all().map(toMessage),
       encounterTemplates: this.encounterTemplates.all().map(toEncounterTemplate),
+      itemTransfers: this.itemTransfers.all().map(toItemTransfer),
     };
     // `useSyncExternalStore` compare par identité : republier un instantané
     // identique ferait re-rendre tous les écrans à chaque battement de canal.
@@ -325,5 +367,6 @@ function sameSnapshot(a: CampaignSnapshot, b: CampaignSnapshot): boolean {
     && sameVersions(a.journalEntries, b.journalEntries)
     && sameVersions(a.notes, b.notes)
     && sameVersions(a.messages, b.messages)
-    && sameVersions(a.encounterTemplates, b.encounterTemplates);
+    && sameVersions(a.encounterTemplates, b.encounterTemplates)
+    && sameVersions(a.itemTransfers, b.itemTransfers);
 }

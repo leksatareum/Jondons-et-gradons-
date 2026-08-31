@@ -29,6 +29,48 @@ export function removeItem(sheet: CharacterSheet, itemId: string): CharacterShee
   return { ...sheet, inventory: sheet.inventory.filter((entry) => entry.id !== itemId) };
 }
 
+/** Ce qu'un don d'objet transporte — jamais l'id local de l'expéditeur, qui n'a aucun sens dans le sac du destinataire. */
+export interface ObjetDonne {
+  name: string;
+  qty: number;
+  note?: string;
+  catalogId?: string;
+}
+
+/**
+ * Retire tout ou partie d'un objet du sac pour l'envoyer à quelqu'un —
+ * jamais plus qu'il n'en reste. `envoye` vaut `null` si l'objet n'existe
+ * plus ou si `qty` ne veut rien dire (0 ou moins) : rien à faire, rien à
+ * donner.
+ */
+export function donnerItem(
+  sheet: CharacterSheet, itemId: string, qty: number,
+): { sheet: CharacterSheet; envoye: ObjetDonne | null } {
+  const item = sheet.inventory.find((entry) => entry.id === itemId);
+  const quantiteDemandee = Math.floor(qty);
+  if (!item || quantiteDemandee <= 0) return { sheet, envoye: null };
+  const quantiteEnvoyee = Math.min(item.qty, quantiteDemandee);
+  const suivant = quantiteEnvoyee >= item.qty ? removeItem(sheet, itemId) : setItemQty(sheet, itemId, item.qty - quantiteEnvoyee);
+  return {
+    sheet: suivant,
+    envoye: { name: item.name, qty: quantiteEnvoyee, note: item.note, catalogId: item.catalogId },
+  };
+}
+
+/**
+ * Ajoute un objet reçu — toujours une nouvelle ligne, jamais fondue dans une
+ * pile existante : même choix que `addItem`, le joueur reste maître de
+ * regrouper ou non depuis le Sac lui-même.
+ */
+export function recevoirItem(sheet: CharacterSheet, objet: ObjetDonne): CharacterSheet {
+  const nouvel: InventoryItem = {
+    id: nouvelId(), name: objet.name, qty: Math.max(1, Math.floor(objet.qty)),
+    ...(objet.note ? { note: objet.note } : {}),
+    ...(objet.catalogId ? { catalogId: objet.catalogId } : {}),
+  };
+  return { ...sheet, inventory: [...sheet.inventory, nouvel] };
+}
+
 /** Jamais sous 0 : une dette n'a pas de sens en pièces d'or comptées à la table. */
 export function setGold(sheet: CharacterSheet, gold: number): CharacterSheet {
   return { ...sheet, gold: Math.max(0, Math.floor(gold)) };

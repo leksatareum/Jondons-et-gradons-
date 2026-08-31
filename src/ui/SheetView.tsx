@@ -4,7 +4,7 @@ import { CombatScreen } from './CombatScreen';
 import { SpellbookScreen } from './SpellbookScreen';
 import { FicheScreen } from './FicheScreen';
 import { JournalScreen, type Correspondant } from './JournalScreen';
-import { InventoryScreen } from './InventoryScreen';
+import { InventoryScreen, type DestinataireDon } from './InventoryScreen';
 import { RestScreen } from './RestScreen';
 import { RulesScreen } from './RulesScreen';
 import { SettingsScreen } from './SettingsScreen';
@@ -19,9 +19,9 @@ import { recuperationNaturelle, type ChoixRecuperation } from '../model/druide';
 import { finMarque, marquer, MARQUE_CHASSEUR_SPELL_ID, transfererMarque, type CibleMarquee } from '../model/rodeur';
 import { BENEDICTION_TENEBREUX_CARD_ID, benedictionDuTenebreux, RUSE_MAGIQUE_KEY, utiliserRuseMagique } from '../model/occultiste';
 import { heal, takeDamage } from '../model/damage';
-import { addItem, removeItem, setGold, setItemQty } from '../model/inventory';
+import { addItem, donnerItem, removeItem, setGold, setItemQty } from '../model/inventory';
 import {
-  createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
+  createItemTransfer, createJournalEntry, createMessage, createNote, deleteJournalEntry, deleteMessage,
   deleteNote, saveJournalEntry, saveNote, saveSheet,
 } from '../sync/mutations';
 import { uploadPortrait } from '../sync/portraits';
@@ -64,7 +64,7 @@ export type SheetTab = MainTab;
 
 export function SheetView({
   client, sync, fiche, rencontre, encounterId, onglet, onOnglet, entete, estMj,
-  campaignId, userId, userEmail, gmId, journalEntries, notes, messages, correspondants,
+  campaignId, userId, userEmail, gmId, journalEntries, notes, messages, correspondants, destinatairesDon,
 }: {
   client: SupabaseClient;
   sync: CampaignSync;
@@ -95,6 +95,12 @@ export function SheetView({
   messages: Message[];
   /** À qui l'on peut écrire depuis cette fiche : le MJ et les autres joueurs, ou le seul joueur dont le MJ regarde la fiche. */
   correspondants: Correspondant[];
+  /**
+   * À qui l'on peut donner un objet du sac — les autres personnages de la
+   * table, jamais le MJ, qui n'a pas de sac. Vide côté fiche que le MJ
+   * consulte : ce n'est pas à lui de donner les objets d'un joueur.
+   */
+  destinatairesDon?: DestinataireDon[];
 }) {
   const [donEnCours, setDonEnCours] = useState(false);
   /** Un jet de sauvegarde de concentration à faire à la table, DD déjà calculé. */
@@ -458,6 +464,15 @@ export function SheetView({
     enregistrer(removeItem(donnees, itemId));
   const fixerOr = (gold: number) =>
     enregistrer(setGold(donnees, gold));
+  // Donner : on retire d'abord de son propre sac (une écriture qu'on a le
+  // droit de faire), puis on dépose un relais que le destinataire consomme
+  // lui-même — la RLS interdit d'écrire directement dans son sac à lui.
+  const donnerObjet = (itemId: string, recipientId: string, qty: number) => {
+    const { sheet: suivante, envoye } = donnerItem(donnees, itemId, qty);
+    if (!envoye) return;
+    enregistrer(suivante);
+    void createItemTransfer(client, sync, campaignId, userId, { recipientId, ...envoye });
+  };
 
   const dialogues = (
     <>
@@ -587,10 +602,12 @@ export function SheetView({
       return (
         <InventoryScreen
           sheet={donnees}
+          destinataires={destinatairesDon ?? []}
           onAjouter={ajouterObjet}
           onQty={quantiteObjet}
           onRetirer={retirerObjet}
           onOr={fixerOr}
+          onDonner={donnerObjet}
         />
       );
     }

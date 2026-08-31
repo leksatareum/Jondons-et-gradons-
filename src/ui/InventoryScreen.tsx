@@ -8,7 +8,19 @@ import { TAB_BAR_CLEARANCE } from './TabBar';
  * Ce que le joueur possède est une décision, pas un calcul : cet écran ne
  * dérive ni poids ni prix, il ne fait qu'écrire une liste et un nombre de
  * pièces d'or, tels que le joueur les tient à jour lui-même.
+ *
+ * Donner un objet à quelqu'un d'autre passe par un relais (voir
+ * `sync/mutations.ts`, `createItemTransfer`) : la RLS interdit d'écrire la
+ * fiche d'un autre joueur, donc cet écran ne fait que retirer l'objet d'ICI
+ * et déposer ce qu'il envoie — jamais l'inverse d'ajouter directement chez
+ * quelqu'un d'autre.
  */
+
+/** Quelqu'un à qui l'on peut donner un objet — un autre personnage de la table, jamais le MJ, qui n'a pas de sac. */
+export interface DestinataireDon {
+  id: string;
+  nom: string;
+}
 
 const champ: React.CSSProperties = {
   minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 'var(--radius-sm)',
@@ -22,14 +34,18 @@ const carte: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10,
 };
 
-function Pas({ onClick, children, label }: { onClick: () => void; children: React.ReactNode; label: string }) {
+function Pas({ onClick, disabled, children, label }: {
+  onClick: () => void; disabled?: boolean; children: React.ReactNode; label: string;
+}) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       style={{
         width: 32, height: 32, borderRadius: 8, flexShrink: 0,
         border: '1px solid var(--gold-dim)', color: 'var(--gold)', fontSize: 16, fontWeight: 700,
+        opacity: disabled ? 0.4 : 1,
       }}
     >
       {children}
@@ -37,39 +53,112 @@ function Pas({ onClick, children, label }: { onClick: () => void; children: Reac
   );
 }
 
-function LigneObjet({ item, onQty, onRetirer }: {
+function LigneObjet({ item, onQty, onRetirer, destinataires, onDonner }: {
   item: InventoryItem;
   onQty: (qty: number) => void;
   onRetirer: () => void;
+  /** Vide : personne à qui donner pour l'instant — le lien « Donner » ne s'affiche pas. */
+  destinataires: DestinataireDon[];
+  onDonner?: (recipientId: string, qty: number) => void;
 }) {
+  const [donOuvert, setDonOuvert] = useState(false);
+  const [destinataire, setDestinataire] = useState(destinataires[0]?.id ?? '');
+  const [quantite, setQuantite] = useState(1);
+
+  const ouvrirDon = () => {
+    setDestinataire(destinataires[0]?.id ?? '');
+    setQuantite(1);
+    setDonOuvert(true);
+  };
+
+  const envoyer = () => {
+    if (!destinataire) return;
+    onDonner?.(destinataire, quantite);
+    setDonOuvert(false);
+  };
+
   return (
-    <div className="jg-tile" style={carte}>
-      <div style={{ flexGrow: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>{item.name}</div>
-        {item.note && <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{item.note}</div>}
+    <div className="jg-tile" style={{ borderRadius: 'var(--radius)' }}>
+      <div style={carte}>
+        <div style={{ flexGrow: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{item.name}</div>
+          {item.note && <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>{item.note}</div>}
+          {destinataires.length > 0 && (
+            <button
+              onClick={() => (donOuvert ? setDonOuvert(false) : ouvrirDon())}
+              className="lbl"
+              style={{ color: 'var(--accent)', marginTop: 4 }}
+            >
+              {donOuvert ? 'Annuler' : 'Donner'}
+            </button>
+          )}
+        </div>
+        <Pas onClick={() => onQty(item.qty - 1)} label={`Retirer un ${item.name}`}>−</Pas>
+        <div className="num" style={{ width: 28, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>
+          {item.qty}
+        </div>
+        <Pas onClick={() => onQty(item.qty + 1)} label={`Ajouter un ${item.name}`}>+</Pas>
+        <button
+          onClick={onRetirer}
+          aria-label={`Supprimer ${item.name} du sac`}
+          style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, color: 'var(--muted)', fontSize: 16 }}
+        >
+          ✕
+        </button>
       </div>
-      <Pas onClick={() => onQty(item.qty - 1)} label={`Retirer un ${item.name}`}>−</Pas>
-      <div className="num" style={{ width: 28, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>
-        {item.qty}
-      </div>
-      <Pas onClick={() => onQty(item.qty + 1)} label={`Ajouter un ${item.name}`}>+</Pas>
-      <button
-        onClick={onRetirer}
-        aria-label={`Supprimer ${item.name} du sac`}
-        style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, color: 'var(--muted)', fontSize: 16 }}
-      >
-        ✕
-      </button>
+
+      {donOuvert && (
+        <div style={{
+          padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <select
+            value={destinataire}
+            onChange={(event) => setDestinataire(event.target.value)}
+            style={{ ...champ, fontSize: 15 }}
+          >
+            {destinataires.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
+          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Pas
+              onClick={() => setQuantite((q) => Math.max(1, q - 1))}
+              disabled={quantite <= 1}
+              label="Diminuer la quantité à donner"
+            >
+              −
+            </Pas>
+            <div className="num" style={{ width: 28, textAlign: 'center', fontSize: 15, fontWeight: 700 }}>
+              {quantite}
+            </div>
+            <Pas
+              onClick={() => setQuantite((q) => Math.min(item.qty, q + 1))}
+              disabled={quantite >= item.qty}
+              label="Augmenter la quantité à donner"
+            >
+              +
+            </Pas>
+            <button
+              onClick={envoyer}
+              className="jg-btn-hot"
+              style={{ flexGrow: 1, minHeight: 'var(--tap)', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 14 }}
+            >
+              Envoyer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export function InventoryScreen({ sheet, onAjouter, onQty, onRetirer, onOr }: {
+export function InventoryScreen({ sheet, destinataires, onAjouter, onQty, onRetirer, onOr, onDonner }: {
   sheet: CharacterSheet;
+  /** Les autres personnages de la table à qui l'on peut donner un objet — jamais le MJ. */
+  destinataires: DestinataireDon[];
   onAjouter: (item: { name: string; qty: number }) => void;
   onQty: (itemId: string, qty: number) => void;
   onRetirer: (itemId: string) => void;
   onOr: (gold: number) => void;
+  onDonner?: (itemId: string, recipientId: string, qty: number) => void;
 }) {
   const [nom, setNom] = useState('');
   const [orEnEdition, setOrEnEdition] = useState<string | null>(null);
@@ -143,8 +232,10 @@ export function InventoryScreen({ sheet, onAjouter, onQty, onRetirer, onOr }: {
           <LigneObjet
             key={item.id}
             item={item}
+            destinataires={destinataires}
             onQty={(qty) => onQty(item.id, qty)}
             onRetirer={() => onRetirer(item.id)}
+            onDonner={onDonner ? (recipientId, qty) => onDonner(item.id, recipientId, qty) : undefined}
           />
         ))
       )}
