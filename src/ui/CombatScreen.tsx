@@ -485,12 +485,10 @@ export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
   );
 }
 
-function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
+function ActionCard({ card, playable, retard = 0, onPlay }: {
   card: PlayableCard;
   /** Jouable maintenant : pleinement lisible et actionnable. */
   playable: boolean;
-  /** Première carte jouable : ses chiffres passent en grand. */
-  hero: boolean;
   /** Décalage d'entrée, en ms — le rang de la carte dans la pile. */
   retard?: number;
   onPlay: (card: PlayableCard) => void;
@@ -509,12 +507,16 @@ function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
       className={`card jg-tile${playable ? ' jg-anim-rise' : ''}`}
       style={{
         animationDelay: playable ? `${retard}ms` : undefined,
-        // La première carte jouable se distingue par sa bordure et ses
-        // grands chiffres — jamais par un bouton plein, des cabochons ou une
-        // lueur qui pulse : ça la faisait ressembler à une recommandation de
-        // l'appli, alors que ce n'est qu'un tri par économie d'action.
-        borderColor: hero ? 'var(--gold-bright)' : 'var(--gold-dim)',
-        borderWidth: hero ? 1.5 : 1,
+        // AUCUNE carte n'est mise en avant. La première jouable avait
+        // longtemps une bordure claire, un titre plus grand et ses chiffres
+        // en gros : ça la faisait lire comme une recommandation de l'appli,
+        // alors que ce n'est qu'un tri par économie d'action — l'ordre suffit
+        // à le dire. Ses chiffres n'ont pas disparu pour autant, ils sont
+        // passés sur TOUTES les cartes qui en ont (voir plus bas) : les
+        // enlever avec la mise en avant aurait fait perdre les dégâts d'une
+        // arme, qui ne s'affichent nulle part ailleurs.
+        borderColor: 'var(--gold-dim)',
+        borderWidth: 1,
         borderStyle: card.granted ? 'dashed' : 'solid',
         borderRadius: 12,
         padding: playable ? 14 : '12px 14px',
@@ -524,11 +526,13 @@ function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <DamageTypeIcons types={card.damageTypes} size={hero ? 17 : 15} />
+        {/* Presque le double de l'ancienne taille (15 px), à la demande :
+            à 15 px les médaillons se lisaient mal en pleine partie. */}
+        <DamageTypeIcons types={card.damageTypes} size={28} />
         <div
           className="ttl"
           style={{
-            fontSize: hero ? 17 : 15, flexGrow: 1, minWidth: 0,
+            fontSize: 15, flexGrow: 1, minWidth: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}
         >
@@ -572,7 +576,7 @@ function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
       </div>
 
       <div className="lbl" style={{ marginTop: 3 }}>
-        <span style={{ color: hero ? 'var(--accent)' : undefined }}>{ECONOMY_LABEL[card.economy]}</span>
+        <span>{ECONOMY_LABEL[card.economy]}</span>
         {card.detail && (
           <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
         )}
@@ -593,11 +597,13 @@ function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
         </div>
       )}
 
-      {hero && hasNumbers && (
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 18, margin: '11px 0 13px' }}>
+      {hasNumbers && (
+        // Plus petits qu'au temps de la carte mise en avant (27 px) : ils
+        // informent, ils ne proclament plus.
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, margin: '8px 0 2px' }}>
           {card.toHit !== undefined && (
             <div>
-              <div className="num" style={{ fontSize: 27, fontWeight: 700, lineHeight: 1, color: 'var(--accent)' }}>
+              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1, color: 'var(--accent)' }}>
                 {sign(card.toHit)}
               </div>
               <div className="lbl" style={{ marginTop: 3 }}>touche</div>
@@ -605,7 +611,7 @@ function ActionCard({ card, playable, hero, retard = 0, onPlay }: {
           )}
           {card.damage && (
             <div>
-              <div className="num" style={{ fontSize: 27, fontWeight: 700, lineHeight: 1 }}>{card.damage}</div>
+              <div className="num" style={{ fontSize: 19, fontWeight: 700, lineHeight: 1 }}>{card.damage}</div>
               <div className="lbl" style={{ marginTop: 3 }}>dégâts</div>
             </div>
           )}
@@ -1177,7 +1183,7 @@ export function CombatScreen({
           // Le décalage s'arrête à la sixième : au-delà, la dernière carte
           // attendrait plus longtemps que le temps qu'on met à la lire.
           <ActionCard
-            key={card.id} card={card} playable hero={index === 0}
+            key={card.id} card={card} playable
             retard={Math.min(index, 5) * 55} onPlay={play}
           />
         ))}
@@ -1191,7 +1197,7 @@ export function CombatScreen({
           </div>
         )}
         {!aTerre && muted.map((card) => (
-          <ActionCard key={card.id} card={card} playable={false} hero={false} onPlay={play} />
+          <ActionCard key={card.id} card={card} playable={false} onPlay={play} />
         ))}
 
         {!aTerre && featured.length === 0 && muted.length === 0 && (

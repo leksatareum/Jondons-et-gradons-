@@ -61,7 +61,7 @@ function Fiche({ spell, onFermer }: { spell: Spell; onFermer: () => void }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flexGrow: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <DamageTypeIcons types={damageTypesOf(spell)} size={17} />
+              <DamageTypeIcons types={damageTypesOf(spell)} size={30} />
               <h2 className="ttl" style={{ margin: 0, fontSize: 19, lineHeight: 1.2 }}>{spell.name}</h2>
             </div>
             <div className="lbl" style={{ marginTop: 4, textTransform: 'none' }}>
@@ -136,7 +136,7 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
         style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <DamageTypeIcons types={damageTypesOf(spell)} size={15} />
+          <DamageTypeIcons types={damageTypesOf(spell)} size={28} />
           <div style={{ fontSize: 15, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {spell.name}
           </div>
@@ -440,7 +440,7 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
                   style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <DamageTypeIcons types={damageTypesOf(spell)} size={15} />
+                    <DamageTypeIcons types={damageTypesOf(spell)} size={28} />
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{spell.name}</div>
                   </div>
                   <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
