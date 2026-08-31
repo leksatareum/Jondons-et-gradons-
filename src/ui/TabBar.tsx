@@ -63,6 +63,18 @@ export function TabBar({ actif, onChanger }: { actif: MainTab; onChanger: (ongle
         borderTop: '1.5px solid var(--gold-dim, var(--line))',
         boxShadow: 'var(--raise)',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        // Bug WebKit connu : un élément `position: fixed` posé à côté d'un
+        // conteneur en défilement inertiel (`-webkit-overflow-scrolling:
+        // touch`, sur tous les écrans de la fiche) peut se faire « emporter »
+        // par le défilement pendant une glissade rapide — il réapparaît alors
+        // au milieu du contenu, décalé de sa vraie position tant que
+        // l'affichage n'a pas rattrapé le retard. Le geste tombe alors à côté
+        // : on croit taper la barre, on tape le contenu resté dessous. Le
+        // forcer sur son propre calque GPU (`translateZ(0)`) évite que
+        // Safari ne le laisse en retard du défilement.
+        transform: 'translateZ(0)',
+        WebkitTransform: 'translateZ(0)',
+        willChange: 'transform',
       }}
     >
       {TABS.map(([clef, libelle]) => (

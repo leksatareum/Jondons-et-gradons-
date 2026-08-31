@@ -94,6 +94,12 @@ export function ToastStack({ toasts, onFermer }: { toasts: Toast[]; onFermer: (i
       style={{
         position: 'fixed', top: 'calc(8px + env(safe-area-inset-top))', left: 8, right: 8, zIndex: 60,
         display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none',
+        // Même correctif que `TabBar.tsx` : sur son propre calque, pour ne
+        // pas se faire décaler par le défilement inertiel d'un écran en
+        // dessous pendant une glissade rapide.
+        transform: 'translateZ(0)',
+        WebkitTransform: 'translateZ(0)',
+        willChange: 'transform',
       }}
     >
       {toasts.map((toast) => (
