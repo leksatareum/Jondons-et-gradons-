@@ -109,25 +109,56 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: #1a0705;
   box-shadow: inset 0 8px 22px rgba(0, 0, 0, .95), inset 0 -3px 10px rgba(255, 120, 90, .14);
 }
+/**
+ * Le liquide, c'est une IMAGE de plasma (`--jg-orb-plasma`, posée par
+ * `CombatScreen`) — plus un dégradé plat.
+ *
+ * Le mécanisme n'a pas changé d'un pouce : c'est toujours la HAUTEUR de ce
+ * bloc qui dit les points de vie. Mais l'image est ancrée en bas et haute
+ * comme l'ORBE ENTIÈRE (`--jg-orb-size`), pas comme le bloc : sans ça, elle
+ * s'écraserait à mesure que les PV descendent, et le plasma se tasserait en
+ * une bouillie de plus en plus dense au lieu de baisser comme un liquide.
+ */
 .jg-orb-fill {
   position: absolute; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, #f0574a 0%, #c22c26 55%, #7d130f 100%);
+  background: var(--jg-orb-plasma, linear-gradient(180deg, #f0574a 0%, #c22c26 55%, #7d130f 100%))
+    bottom center / 100% var(--jg-orb-size, 100%) no-repeat;
   transition: height 400ms ease;
 }
+/**
+ * Les vagues sont volontairement DISCRÈTES depuis que le liquide a une
+ * texture : à leur ancienne opacité (.5) elles couvraient le plasma d'un
+ * bandeau plat, et à bas niveau il ne restait presque plus rien à voir.
+ * Leur travail est d'agiter la SURFACE, pas de teindre le liquide.
+ */
 .jg-wave {
   position: absolute; left: 50%; width: 260px; height: 260px; border-radius: 43%;
-  background: rgba(255, 150, 120, .5);
+  background: rgba(255, 180, 150, .18);
 }
-.jg-wave-a { top: -238px; animation: jg-roll 7s linear infinite; }
-.jg-wave-b { top: -244px; background: rgba(120, 10, 10, .5); animation: jg-roll 11s linear infinite reverse; }
+.jg-wave-a { top: -240px; }
+.jg-wave-b { top: -245px; background: rgba(90, 0, 0, .22); }
+/* Le roulement est sous `prefers-reduced-motion`, comme la pulsation de
+   l'anneau juste en dessous — il ne l'était pas, seul mouvement de l'appli à
+   tourner quoi qu'on ait demandé. Sans lui les vagues restent en place :
+   la surface est dessinée, elle ne bouge simplement plus. */
+@media (prefers-reduced-motion: no-preference) {
+  .jg-wave-a { animation: jg-roll 7s linear infinite; }
+  .jg-wave-b { animation: jg-roll 11s linear infinite reverse; }
+}
 @keyframes jg-roll {
   from { transform: translateX(-50%) rotate(0turn); }
   to   { transform: translateX(-50%) rotate(1turn); }
 }
+/**
+ * Le verre : une image de coque (`--jg-orb-verre`), son opacité déjà cuite
+ * dedans — plus le reflet en dégradé, que la coque porte désormais
+ * elle-même. Seule la vignette reste en CSS : elle assombrit le bord quel
+ * que soit ce qu'il y a derrière.
+ */
 .jg-orb-glass {
   position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
   background:
-    radial-gradient(ellipse 46% 30% at 32% 17%, rgba(255, 255, 255, .4), transparent 70%),
+    var(--jg-orb-verre, linear-gradient(transparent, transparent)) center / 100% 100% no-repeat,
     radial-gradient(ellipse 90% 90% at 50% 50%, transparent 52%, rgba(0, 0, 0, .55) 100%);
 }
 .jg-orb-ring {

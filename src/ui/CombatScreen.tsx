@@ -17,6 +17,8 @@ import { NombreQuiRoule } from './NombreQuiRoule';
 import { DeathSavesPanel } from './DeathSavesPanel';
 import type { EtatDeMort, ResultatJet } from '../model/death-state';
 import type { JetDeDes } from '../domain/dice';
+import plasmaOrbe from '../assets/orbe/plasma.jpg';
+import verreOrbe from '../assets/orbe/verre.webp';
 
 /**
  * Écran de combat du joueur.
@@ -33,6 +35,9 @@ import type { JetDeDes } from '../domain/dice';
  */
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
+
+/** Le diamètre de l'orbe de vie, en pixels — le CSS en a besoin aussi. */
+const TAILLE_ORBE = 76;
 
 /**
  * Ce que les états actifs imposent, en une phrase.
@@ -298,7 +303,22 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
     <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
       <div style={{ position: 'relative' }}>
         <div className="jg-orb-ring">
-          <div ref={orbe} className="jg-orb" style={{ width: 76, height: 76 }}>
+          {/* La taille est posée ICI, en pixels, et redite au CSS : le liquide
+              est une image ancrée en bas qu'il faut dimensionner sur l'ORBE
+              (voir `--jg-orb-size` dans `theme.css`), pas sur la hauteur
+              variable du remplissage. */}
+          <div
+            ref={orbe}
+            className="jg-orb"
+            style={{
+              width: TAILLE_ORBE, height: TAILLE_ORBE,
+              ...{
+                '--jg-orb-size': `${TAILLE_ORBE}px`,
+                '--jg-orb-plasma': `url(${plasmaOrbe})`,
+                '--jg-orb-verre': `url(${verreOrbe})`,
+              } as React.CSSProperties,
+            }}
+          >
             <div className="jg-orb-fill" style={{ height: `${hauteur}%` }}>
               <div className="jg-wave jg-wave-a" />
               <div className="jg-wave jg-wave-b" />
