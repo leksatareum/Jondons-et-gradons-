@@ -7,9 +7,14 @@ import { SettingsScreen } from './SettingsScreen';
 import { ToastStack, useToastsDeCampagne } from './notifications-toast';
 import { PreparedEncountersScreen } from './PreparedEncountersScreen';
 import { SignInScreen } from './SignInScreen';
+import { NewPasswordScreen } from './NewPasswordScreen';
 import { SyncBanner } from './SyncBanner';
 import { useCampaign } from './useCampaign';
-import { observerCompte, seConnecter, seDeconnecter, type CompteConnecte } from '../sync/session';
+import {
+  definirMotDePasse, demanderReinitialisation, lireLienDeRecuperation, observerCompte,
+  observerRecuperation, seConnecter, seDeconnecter,
+  type CompteConnecte, type EtatRecuperation,
+} from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
 import { withParty } from './roster';
 import {
@@ -38,16 +43,72 @@ import { GmRestDialog, reposDeGroupe } from './GmRestDialog';
 
 export function App({ client }: { client: SupabaseClient }) {
   const [compte, setCompte] = useState<CompteConnecte | null | undefined>(undefined);
+  /**
+   * Retour d'un lien « mot de passe oublié ».
+   *
+   * Lu à la PREMIÈRE image, avant tout abonnement : le client Supabase digère
+   * l'URL puis la nettoie, et l'événement `PASSWORD_RECOVERY` peut partir
+   * avant qu'on soit là pour l'entendre (`observerRecuperation` reste branché
+   * en second filet). Sans cette lecture, le lien ouvrirait simplement une
+   * session — on entrerait dans sa fiche sans avoir changé quoi que ce soit,
+   * et le mot de passe oublié le resterait.
+   */
+  const [recuperation, setRecuperation] = useState<EtatRecuperation>(
+    () => lireLienDeRecuperation(window.location.hash, window.location.search),
+  );
 
   useEffect(() => observerCompte(client, setCompte), [client]);
+  useEffect(
+    () => observerRecuperation(client, () => setRecuperation('a-choisir')),
+    [client],
+  );
 
   const connecter = useCallback(
     async (email: string, motDePasse: string) => { await seConnecter(client, email, motDePasse); },
     [client],
   );
 
+  const oublier = useCallback(
+    async (email: string) => {
+      // Le retour se fait sur CETTE origine : le mail est lu sur le téléphone
+      // qui a demandé le lien, c'est là que la session doit s'ouvrir.
+      await demanderReinitialisation(client, email, window.location.origin);
+    },
+    [client],
+  );
+
+  const changerMotDePasse = useCallback(
+    async (motDePasse: string) => {
+      await definirMotDePasse(client, motDePasse);
+      // Le lien a déjà ouvert la session : une fois le mot de passe posé, il
+      // n'y a plus rien à faire qu'entrer normalement.
+      setRecuperation('aucune');
+    },
+    [client],
+  );
+
+  const abandonnerLaRecuperation = useCallback(async () => {
+    setRecuperation('aucune');
+    // La session ouverte par le lien n'a servi qu'à ça : on la referme, sinon
+    // « Annuler » ferait entrer dans l'appli sans mot de passe connu.
+    await seDeconnecter(client);
+  }, [client]);
+
+  if (recuperation === 'a-choisir') {
+    return <NewPasswordScreen onValider={changerMotDePasse} onAbandonner={abandonnerLaRecuperation} />;
+  }
   if (compte === undefined) return <Attente>Ouverture…</Attente>;
-  if (compte === null) return <SignInScreen onSubmit={connecter} />;
+  if (compte === null) {
+    return (
+      <SignInScreen
+        onSubmit={connecter}
+        onMotDePasseOublie={oublier}
+        avis={recuperation === 'lien-expire'
+          ? 'Ce lien a expiré ou a déjà servi. Demande-en un nouveau.'
+          : null}
+      />
+    );
+  }
   return <Connecte client={client} compte={compte} />;
 }
 

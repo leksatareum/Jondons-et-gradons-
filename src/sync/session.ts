@@ -37,6 +37,16 @@ export function messageDeConnexion(brut: string): string {
   if (texte.includes('failed to fetch') || texte.includes('network')) {
     return 'Pas de réseau. Vérifie ta connexion.';
   }
+  // Propres au changement de mot de passe.
+  if (texte.includes('should be at least') || texte.includes('password is too short')) {
+    return 'Mot de passe trop court.';
+  }
+  if (texte.includes('different from the old password')) {
+    return 'Choisis un mot de passe différent de l’ancien.';
+  }
+  if (texte.includes('session') && texte.includes('missing')) {
+    return 'Ce lien n’est plus valable. Redemande-en un.';
+  }
   return brut;
 }
 
@@ -66,6 +76,98 @@ export async function seConnecter(
 
 export async function seDeconnecter(client: SupabaseClient): Promise<void> {
   await client.auth.signOut();
+}
+
+/**
+ * ═══ Mot de passe oublié ═══
+ *
+ * Le seul mail que l'appli envoie. L'en-tête de ce fichier explique pourquoi
+ * la connexion, elle, n'en envoie aucun : le service d'envoi par défaut de
+ * Supabase est limité à quelques mails par heure, et trois joueurs qui se
+ * connectent en début de séance suffiraient à le saturer. Un mot de passe
+ * oublié, lui, n'arrive pas trois fois par soirée — la même limite devient
+ * acceptable. Elle reste réelle : deux demandes coup sur coup peuvent être
+ * refusées, et `messageDeConnexion` traduit ce refus.
+ */
+
+/** Ce qu'un lien de récupération raconte en revenant sur l'appli. */
+export type EtatRecuperation =
+  /** Rien à voir : ouverture normale de l'appli. */
+  | 'aucune'
+  /** Le lien est bon, la personne doit choisir son nouveau mot de passe. */
+  | 'a-choisir'
+  /** Lien périmé ou déjà utilisé — Supabase le dit dans l'URL, pas en erreur. */
+  | 'lien-expire';
+
+/**
+ * Lit l'URL de retour du mail.
+ *
+ * Supabase renvoie sur l'appli avec ses jetons dans le FRAGMENT (`#type=
+ * recovery&access_token=…`), et ses échecs parfois dans le fragment, parfois
+ * dans la requête (`?error=access_denied&error_code=otp_expired`) — d'où les
+ * deux lectures.
+ *
+ * Pourquoi lire l'URL plutôt que d'attendre l'événement `PASSWORD_RECOVERY`
+ * du client : ce dernier part dès que le client a fini de digérer l'URL, ce
+ * qui peut arriver AVANT que l'écran ne se soit abonné. L'URL, elle, est là
+ * dès la première ligne de code — on ne peut pas la rater. L'événement reste
+ * écouté en second filet (`observerRecuperation`).
+ */
+export function lireLienDeRecuperation(hash: string, search = ''): EtatRecuperation {
+  const fragment = new URLSearchParams(hash.replace(/^#/, ''));
+  const requete = new URLSearchParams(search.replace(/^\?/, ''));
+  const valeur = (clef: string) => fragment.get(clef) ?? requete.get(clef);
+
+  if (valeur('error') || valeur('error_code')) {
+    const code = `${valeur('error_code') ?? ''} ${valeur('error_description') ?? ''}`.toLowerCase();
+    // Seul le lien périmé nous intéresse ici : c'est le seul échec qu'un
+    // joueur peut corriger lui-même, en redemandant un mail.
+    return code.includes('expired') || code.includes('invalid') ? 'lien-expire' : 'aucune';
+  }
+  return valeur('type') === 'recovery' ? 'a-choisir' : 'aucune';
+}
+
+/**
+ * Demande le mail de réinitialisation.
+ *
+ * Ne dit JAMAIS si l'adresse existe : même silence que `messageDeConnexion`
+ * sur « mail ou mot de passe incorrect ». L'écran affichera la même phrase
+ * dans les deux cas — Supabase, de son côté, répond déjà sans erreur pour une
+ * adresse inconnue.
+ */
+export async function demanderReinitialisation(
+  client: SupabaseClient,
+  email: string,
+  redirectTo: string,
+): Promise<void> {
+  const { error } = await client.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    { redirectTo },
+  );
+  if (error) throw new ErreurDeConnexion(error.message);
+}
+
+/** Pose le nouveau mot de passe, sur la session ouverte par le lien du mail. */
+export async function definirMotDePasse(
+  client: SupabaseClient,
+  motDePasse: string,
+): Promise<void> {
+  const { error } = await client.auth.updateUser({ password: motDePasse });
+  if (error) throw new ErreurDeConnexion(error.message);
+}
+
+/**
+ * Second filet : l'événement `PASSWORD_RECOVERY`, pour le cas où l'URL aurait
+ * déjà été nettoyée par le client avant qu'on ait pu la lire.
+ */
+export function observerRecuperation(
+  client: SupabaseClient,
+  listener: () => void,
+): () => void {
+  const { data } = client.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') listener();
+  });
+  return () => data.subscription.unsubscribe();
 }
 
 /**

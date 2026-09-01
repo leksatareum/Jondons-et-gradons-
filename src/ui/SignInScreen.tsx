@@ -15,15 +15,27 @@ import { useState, type FormEvent } from 'react';
 
 interface Props {
   onSubmit: (email: string, motDePasse: string) => Promise<void>;
+  /** Envoie le mail de réinitialisation. Absent : le lien « oublié » ne s'affiche pas. */
+  onMotDePasseOublie?: (email: string) => Promise<void>;
   /** Nom de la table, s'il est connu. Purement rassurant : on est au bon endroit. */
   titre?: string;
+  /** Message posé par l'appli elle-même — un lien de récupération périmé, par exemple. */
+  avis?: string | null;
 }
 
-export function SignInScreen({ onSubmit, titre = 'Jondons et gradons' }: Props) {
+export function SignInScreen({
+  onSubmit, onMotDePasseOublie, titre = 'Jondons et gradons', avis = null,
+}: Props) {
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
+  /**
+   * L'oubli se joue SUR cet écran, pas ailleurs : « mot de passe oublié » ne
+   * remplace que le champ du mot de passe par un bouton d'envoi. Le mail
+   * déjà tapé reste tapé — c'est le même qu'on allait utiliser pour entrer.
+   */
+  const [oubli, setOubli] = useState<'non' | 'demande' | 'envoye'>('non');
 
   const valide = email.trim().length > 0 && motDePasse.length > 0;
 
@@ -40,6 +52,19 @@ export function SignInScreen({ onSubmit, titre = 'Jondons et gradons' }: Props) 
     }
     // En cas de succès on ne relâche pas `enCours` : l'écran disparaît, et un
     // bouton qui redevient actif juste avant de s'effacer clignote.
+  };
+
+  const envoyerLoubli = async () => {
+    if (email.trim().length === 0 || enCours || !onMotDePasseOublie) return;
+    setEnCours(true);
+    setErreur(null);
+    try {
+      await onMotDePasseOublie(email);
+      setOubli('envoye');
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : String(cause));
+    }
+    setEnCours(false);
   };
 
   return (
@@ -64,23 +89,58 @@ export function SignInScreen({ onSubmit, titre = 'Jondons et gradons' }: Props) 
             />
           </label>
 
-          <label style={champ}>
-            <span className="lbl">Mot de passe</span>
-            <input
-              type="password"
-              value={motDePasse}
-              onChange={(event) => setMotDePasse(event.target.value)}
-              autoComplete="current-password"
-              style={saisie}
-            />
-          </label>
+          {oubli === 'non' && (
+            <label style={champ}>
+              <span className="lbl">Mot de passe</span>
+              <input
+                type="password"
+                value={motDePasse}
+                onChange={(event) => setMotDePasse(event.target.value)}
+                autoComplete="current-password"
+                style={saisie}
+              />
+            </label>
+          )}
 
-          <button type="submit" disabled={!valide || enCours} style={bouton(valide && !enCours)}>
-            {enCours ? 'Connexion…' : 'Entrer'}
-          </button>
+          {oubli === 'non' ? (
+            <button type="submit" disabled={!valide || enCours} style={bouton(valide && !enCours)}>
+              {enCours ? 'Connexion…' : 'Entrer'}
+            </button>
+          ) : oubli === 'demande' ? (
+            <button
+              type="button"
+              onClick={envoyerLoubli}
+              disabled={email.trim().length === 0 || enCours}
+              style={bouton(email.trim().length > 0 && !enCours)}
+            >
+              {enCours ? 'Envoi…' : 'Envoyer le lien'}
+            </button>
+          ) : (
+            /*
+              Même phrase que l'adresse existe ou non : dire « ce compte est
+              inconnu » révélerait qui a un compte à la table. C'est la même
+              retenue que `messageDeConnexion` sur « mail ou mot de passe
+              incorrect » (voir `sync/session.ts`).
+            */
+            <p role="status" style={confirmation}>
+              Si un compte existe pour cette adresse, un lien vient d’y être envoyé.
+              Ouvre-le depuis ce téléphone.
+            </p>
+          )}
+
+          {onMotDePasseOublie && oubli !== 'envoye' && (
+            <button
+              type="button"
+              onClick={() => { setOubli(oubli === 'non' ? 'demande' : 'non'); setErreur(null); }}
+              style={lien}
+            >
+              {oubli === 'non' ? 'Mot de passe oublié ?' : 'Revenir à la connexion'}
+            </button>
+          )}
 
           {/* `role="alert"` : l'erreur est annoncée, pas seulement affichée. */}
           {erreur && <p role="alert" style={alerte}>{erreur}</p>}
+          {avis && !erreur && <p role="status" style={alerte}>{avis}</p>}
         </form>
       </div>
     </main>
@@ -131,4 +191,24 @@ const alerte: React.CSSProperties = {
   background: 'var(--vital-wash)',
   color: 'var(--vital)',
   fontSize: 13,
+};
+
+const lien: React.CSSProperties = {
+  justifySelf: 'start',
+  padding: '6px 0',
+  fontSize: 13,
+  color: 'var(--accent)',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+};
+
+const confirmation: React.CSSProperties = {
+  margin: 0,
+  padding: '10px 12px',
+  borderRadius: 'var(--radius-sm)',
+  background: 'var(--accent-wash)',
+  border: '1px solid var(--gold-dim)',
+  color: 'var(--ink)',
+  fontSize: 13,
+  lineHeight: 1.45,
 };
