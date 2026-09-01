@@ -567,10 +567,11 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {/* Le nom est TOUJOURS le premier élément de la ligne — c'est ce qui
             le fait démarrer au même endroit d'une carte à l'autre. Les
-            médaillons vivaient ici avant lui : une carte à deux types les
-            décalait plus loin qu'une carte sans type, et les noms ne
-            s'alignaient plus d'une carte à la suivante. Ils vivent
-            maintenant sur la ligne du dessous (voir plus bas). */}
+            médaillons le SUIVENT (ils l'ont précédé un temps : une carte à
+            deux types décalait alors son nom plus loin qu'une carte sans
+            type, et les noms ne s'alignaient plus). Comme le nom prend toute
+            la place libre, ils se rangent juste avant les pastilles, au même
+            endroit sur chaque carte. */}
         <div
           className="ttl"
           style={{
@@ -580,6 +581,7 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
         >
           {card.name}
         </div>
+        <DamageTypeIcons types={card.damageTypes} size={22} />
         {playable && paiementAffiche && (
           // Le rappel d'emplacement rejoint la ligne du nom — à côté du
           // bouton, plutôt qu'en dessous : c'est ce qui gardait ces cartes
@@ -618,12 +620,6 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
       </div>
 
       <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        {/* 22 px : 28 débordait, 16 ne se lisait plus. Ils vivent ici plutôt
-            que sur la ligne du nom, où leur largeur variable (0, 1 ou 2
-            médaillons) décalait le nom d'une carte à l'autre — voir la ligne
-            au-dessus. Cette ligne-ci ne porte aucun texte à aligner d'une
-            carte à la suivante : leur taille y est libre. */}
-        <DamageTypeIcons types={card.damageTypes} size={22} />
         <span style={{ flexGrow: 1, minWidth: 0 }}>
           <span>{ECONOMY_LABEL[card.economy]}</span>
           {card.detail && (
