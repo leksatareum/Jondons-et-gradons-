@@ -16,6 +16,9 @@ import {
   type CompteConnecte, type EtatRecuperation,
 } from '../sync/session';
 import { chargerAppartenances, choisirCampagne, type Appartenance } from '../sync/membership';
+import {
+  ecrireAppartenances, lireAppartenances, oublierTout, stockageDuNavigateur,
+} from '../sync/cache-local';
 import { withParty } from './roster';
 import {
   createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
@@ -119,9 +122,24 @@ function Connecte({ client, compte }: { client: SupabaseClient; compte: CompteCo
 
   useEffect(() => {
     let vivant = true;
+    const stockage = stockageDuNavigateur();
     chargerAppartenances(client, compte.userId)
-      .then((liste) => { if (vivant) setAppartenances(liste); })
-      .catch((cause: unknown) => { if (vivant) setErreur(String(cause)); });
+      .then((liste) => {
+        if (!vivant) return;
+        setAppartenances(liste);
+        // Gardée pour le prochain démarrage sans réseau : sans elle, l'appli
+        // s'ouvrirait bien hors ligne mais ne saurait pas à quelle table.
+        if (stockage) ecrireAppartenances(stockage, compte.userId, liste);
+      })
+      .catch((cause: unknown) => {
+        if (!vivant) return;
+        const gardees = stockage ? lireAppartenances(stockage, compte.userId) : null;
+        // Le réseau manque, mais on sait déjà à quelle table on joue : autant
+        // entrer et laisser la campagne montrer ce qu'elle a gardé, plutôt
+        // que d'afficher un échec là où il y a quelque chose à lire.
+        if (gardees && gardees.length > 0) setAppartenances(gardees);
+        else setErreur(String(cause));
+      });
     return () => { vivant = false; };
   }, [client, compte.userId]);
 
@@ -183,7 +201,14 @@ function Table({ client, compte, campagne }: {
     [snapshot.sheets, compte.userId],
   );
 
-  const bandeau = <SyncBanner status={snapshot.status} onRefresh={() => sync.refresh()} />;
+  const bandeau = (
+    <SyncBanner
+      status={snapshot.status}
+      onRefresh={() => sync.refresh()}
+      depuisLeCache={snapshot.depuisLeCache}
+      dateDuCache={snapshot.dateDuCache}
+    />
+  );
   const rencontre = snapshot.encounter?.state;
 
   /**

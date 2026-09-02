@@ -4,6 +4,7 @@ import './theme.css';
 import { App } from './App';
 import { DemoScreens } from './DemoScreens';
 import { createJgClient, readConfig } from '../sync/supabase-client';
+import { installerServiceWorker } from '../sync/service-worker';
 
 /**
  * Point de montage.
@@ -39,3 +40,7 @@ const bandeau: React.CSSProperties = {
 };
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{racine()}</StrictMode>);
+
+// Après le rendu, jamais avant : ce qu'il installe sert à la PROCHAINE
+// ouverture, pas à celle-ci, et rien ici ne doit retarder le premier écran.
+installerServiceWorker();

@@ -1,4 +1,5 @@
 import { SyncConnection, type SyncEnvironment, type SyncStatus } from './connection';
+import type { CacheDeCampagne } from './cache-local';
 import { applySyncEvent, createSupabaseTransport, type SyncEvent, type SyncRow } from './supabase-transport';
 import { VersionedStore } from './versioned-store';
 import type { CharacterSheet } from '../model/character';
@@ -16,6 +17,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  */
 export interface CampaignSnapshot {
   status: SyncStatus;
+  /**
+   * Vrai tant que rien n'est encore arrivé du réseau dans cette session : ce
+   * qui est affiché vient du téléphone, tel qu'il l'a vu la dernière fois.
+   * Bascule à faux à la première lecture réseau complète, et n'y revient
+   * jamais — une coupure en cours de séance laisse des données fraîches,
+   * qu'il n'y a aucune raison de désavouer.
+   */
+  depuisLeCache: boolean;
+  /** Quand ce cache a été enregistré. `null` : rien de gardé sur ce téléphone. */
+  dateDuCache: number | null;
   sheets: StoredSheet[];
   /**
    * La rencontre à afficher. Quand plusieurs existent, c'est celle qui tourne ;
@@ -214,7 +225,21 @@ export interface CampaignSyncOptions {
   campaignId: string;
   environment: SyncEnvironment;
   onDiagnostic?: (message: string) => void;
+  /**
+   * Le dernier état connu, gardé sur le téléphone. Absent : on se comporte
+   * comme avant, c'est-à-dire qu'il faut du réseau pour voir quoi que ce soit.
+   */
+  cache?: CacheDeCampagne;
 }
+
+/**
+ * Écrire le cache à chaque changement coûterait une sérialisation complète de
+ * la campagne à chaque point de vie retiré. Une fois par seconde suffit
+ * largement : ce qu'on protège, c'est la perte du réseau, pas la dernière
+ * demi-seconde de jeu — et la dernière écriture part de toute façon, le
+ * minuteur en attente étant toujours relancé sur l'état le plus récent.
+ */
+export const DELAI_ECRITURE_CACHE_MS = 1000;
 
 /**
  * Assemble les pièces déjà testées séparément — dépôts versionnés, transport
@@ -241,11 +266,29 @@ export class CampaignSync {
   private readonly connection: SyncConnection<SyncEvent>;
 
   private snapshot: CampaignSnapshot = {
-    status: 'idle', sheets: [], encounter: null, journalEntries: [], notes: [], messages: [],
+    status: 'idle', depuisLeCache: false, dateDuCache: null,
+    sheets: [], encounter: null, journalEntries: [], notes: [], messages: [],
     encounterTemplates: [], itemTransfers: [],
   };
 
+  private readonly cache: CacheDeCampagne | null;
+
+  private readonly environment: SyncEnvironment;
+
+  /** Tables suivies, gardées pour relire et réécrire le cache. */
+  private readonly tables: { name: string; store: VersionedStore<SyncRow> }[];
+
+  /** Faux tant qu'aucune lecture réseau complète n'a abouti dans cette session. */
+  private depuisLeCache = false;
+
+  private dateDuCache: number | null = null;
+
+  private minuterieCache: unknown = null;
+
   constructor(options: CampaignSyncOptions) {
+    this.cache = options.cache ?? null;
+    this.environment = options.environment;
+
     const tables = [
       { name: SHEETS_TABLE, store: this.sheets },
       { name: ENCOUNTERS_TABLE, store: this.encounters },
@@ -255,12 +298,19 @@ export class CampaignSync {
       { name: MESSAGES_TABLE, store: this.messages },
       { name: ITEM_TRANSFERS_TABLE, store: this.itemTransfers },
     ];
+    this.tables = tables;
 
     const transport = createSupabaseTransport({
       client: options.client,
       campaignId: options.campaignId,
       tables,
-      onChanged: () => this.publish(),
+      // `onChanged` n'est appelé QUE par la relecture complète (voir
+      // `createSupabaseTransport`) : c'est donc le signal exact de « le réseau
+      // a répondu », celui qui périme le cache affiché.
+      onChanged: () => {
+        this.depuisLeCache = false;
+        this.publish();
+      },
     });
 
     this.connection = new SyncConnection<SyncEvent>({
@@ -272,11 +322,59 @@ export class CampaignSync {
       // peut pas s'afficher si personne n'est prévenu de la bascule.
       onStatusChange: () => this.publish(),
     });
+
+    this.hydraterDepuisLeCache();
+  }
+
+  /**
+   * Remplit les dépôts avec ce que le téléphone a gardé, avant toute
+   * connexion. Sans réseau, c'est ce qui s'affiche ; avec, ça ne dure que le
+   * temps de la première lecture, qui écrase tout (`applySnapshot` fait
+   * autorité) — et les versions portées par les lignes empêchent de toute
+   * façon un cache périmé de reprendre le dessus.
+   */
+  private hydraterDepuisLeCache(): void {
+    const garde = this.cache?.lire();
+    if (!garde) return;
+    let quelqueChose = false;
+    for (const { name, store } of this.tables) {
+      const lignes = garde.tables[name];
+      if (!Array.isArray(lignes) || lignes.length === 0) continue;
+      store.applySnapshot(lignes);
+      quelqueChose = true;
+    }
+    if (!quelqueChose) return;
+    this.depuisLeCache = true;
+    this.dateDuCache = garde.enregistreLe;
+    this.publish();
+  }
+
+  /**
+   * Enregistre l'état courant sur le téléphone, au plus une fois par seconde.
+   *
+   * Jamais tant que le réseau n'a pas répondu : réécrire le cache à partir du
+   * cache ne sert à rien, et le faire à partir de dépôts encore vides
+   * effacerait un cache valable au premier battement.
+   */
+  private planifierEcritureCache(): void {
+    if (!this.cache || this.depuisLeCache || this.minuterieCache !== null) return;
+    this.minuterieCache = this.environment.setTimeout(() => {
+      this.minuterieCache = null;
+      const tables: Record<string, SyncRow[]> = {};
+      for (const { name, store } of this.tables) tables[name] = store.all();
+      this.cache?.ecrire(tables, this.environment.now());
+    }, DELAI_ECRITURE_CACHE_MS);
   }
 
   start(): void { this.connection.start(); }
 
-  stop(): void { this.connection.stop(); }
+  stop(): void {
+    this.connection.stop();
+    if (this.minuterieCache !== null) {
+      this.environment.clearTimeout(this.minuterieCache);
+      this.minuterieCache = null;
+    }
+  }
 
   /** Force une relecture complète — le bouton « rafraîchir » du bandeau. */
   refresh(): void { this.connection.refresh(); }
@@ -330,6 +428,8 @@ export class CampaignSync {
   private publish(): void {
     const next: CampaignSnapshot = {
       status: this.connection.getStatus(),
+      depuisLeCache: this.depuisLeCache,
+      dateDuCache: this.dateDuCache,
       sheets: this.sheets.all().map(toSheet),
       encounter: currentEncounter(this.encounters.all().map(toEncounter)),
       journalEntries: this.journal.all().map(toJournalEntry),
@@ -342,6 +442,7 @@ export class CampaignSync {
     // identique ferait re-rendre tous les écrans à chaque battement de canal.
     if (sameSnapshot(this.snapshot, next)) return;
     this.snapshot = next;
+    this.planifierEcritureCache();
     for (const listener of this.listeners) listener();
   }
 }
@@ -361,6 +462,10 @@ function sameVersions(a: { id: string; version: number }[], b: { id: string; ver
 
 function sameSnapshot(a: CampaignSnapshot, b: CampaignSnapshot): boolean {
   if (a.status !== b.status) return false;
+  // Sans cette ligne, une campagne inchangée depuis la dernière séance
+  // garderait son bandeau « hors ligne » après la reconnexion : les versions
+  // seraient identiques, donc l'instantané jugé identique.
+  if (a.depuisLeCache !== b.depuisLeCache) return false;
   if (a.encounter?.id !== b.encounter?.id) return false;
   if (a.encounter?.version !== b.encounter?.version) return false;
   return sameVersions(a.sheets, b.sheets)

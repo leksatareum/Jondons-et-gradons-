@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   definirMotDePasse, demanderReinitialisation, ErreurDeConnexion, lireLienDeRecuperation,
-  messageDeConnexion, observerCompte, seConnecter,
+  messageDeConnexion, observerCompte, seConnecter, seDeconnecter,
 } from './session';
 
 function fakeAuth(resultat: { data: any; error: { message: string } | null }) {
@@ -177,5 +177,30 @@ describe('messageDeConnexion — les refus propres au mot de passe', () => {
   it('traduit un mot de passe identique à l’ancien', () => {
     expect(messageDeConnexion('New password should be different from the old password.'))
       .toBe('Choisis un mot de passe différent de l’ancien.');
+  });
+});
+
+describe('déconnexion — le téléphone ne garde plus rien de la table', () => {
+  it('efface le cache hors-ligne, et rien d’autre, avant de fermer la session', async () => {
+    // Les clés sont des propriétés énumérables, les méthodes non : c'est la
+    // forme d'un vrai `localStorage`, dont `Object.keys` ne rend que le contenu.
+    const faux = Object.create(Object.defineProperties({}, {
+      getItem: { value: (c: string) => (c in faux ? faux[c] : null) },
+      setItem: { value: (c: string, v: string) => { faux[c] = v; } },
+      removeItem: { value: (c: string) => { delete faux[c]; } },
+    })) as Record<string, string>;
+    faux['jg.cache.campagne.c1'] = '{"format":1}';
+    faux['jg.cache.tables.moi'] = '{"format":1}';
+    faux['sb-auth-token'] = 'ne me touche pas';
+
+    vi.stubGlobal('window', { localStorage: faux });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+
+    await seDeconnecter({ auth: { signOut } } as never);
+
+    expect(signOut).toHaveBeenCalled();
+    expect(Object.keys(faux).filter((c) => c.startsWith('jg.cache.'))).toEqual([]);
+    expect(faux['sb-auth-token']).toBe('ne me touche pas');
+    vi.unstubAllGlobals();
   });
 });

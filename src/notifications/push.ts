@@ -1,3 +1,7 @@
+// Le même que celui déjà installé au démarrage pour le hors-ligne : deux
+// chemins voudraient dire deux programmes de fond concurrents.
+import { CHEMIN_SERVICE_WORKER } from '../sync/service-worker';
+
 /**
  * Notifications push : le navigateur détient une souscription (une adresse
  * `endpoint`, deux clés) que le serveur utilise pour réveiller l'appareil,
@@ -19,7 +23,6 @@
 
 export const VAPID_PUBLIC_KEY = 'BMbUdvw3uNb6RkKRS6ixhfpJ5BV1M26QQjnXgHN85jTtXRypRYdH9PUCVoVagNPw5Syzr7ZYP6dlL6tPAet9dVM';
 
-const CHEMIN_SERVICE_WORKER = '/sw.js';
 
 export function pushDisponible(): boolean {
   return typeof window !== 'undefined'

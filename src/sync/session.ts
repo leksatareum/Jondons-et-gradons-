@@ -1,4 +1,5 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import { oublierTout, stockageDuNavigateur } from './cache-local';
 
 /**
  * Entrée dans l'application : mail et mot de passe.
@@ -74,7 +75,17 @@ export async function seConnecter(
   return compte;
 }
 
+/**
+ * Se déconnecter efface aussi ce que le téléphone a gardé pour le hors-ligne.
+ *
+ * Ici plutôt qu'aux quatre endroits qui appellent cette fonction : un cinquième
+ * bouton « se déconnecter » ajouté un jour hériterait sinon d'un oubli
+ * silencieux, et les fiches de la table resteraient lisibles sur un téléphone
+ * qui vient d'en sortir.
+ */
 export async function seDeconnecter(client: SupabaseClient): Promise<void> {
+  const stockage = stockageDuNavigateur();
+  if (stockage) oublierTout(stockage);
   await client.auth.signOut();
 }
 

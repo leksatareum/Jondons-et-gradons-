@@ -2,6 +2,7 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CampaignSync, type CampaignSnapshot } from '../sync/campaign-sync';
 import { createBrowserEnvironment } from '../sync/browser-environment';
+import { cacheDeCampagne, stockageDuNavigateur } from '../sync/cache-local';
 
 /**
  * Branche un écran sur la campagne.
@@ -17,7 +18,17 @@ export function useCampaign(client: SupabaseClient, campaignId: string): {
   sync: CampaignSync;
 } {
   const sync = useMemo(
-    () => new CampaignSync({ client, campaignId, environment: createBrowserEnvironment() }),
+    () => {
+      // Sans stockage utilisable (mode privé, réglage restrictif), on repart
+      // simplement sur le comportement d'avant : il faut du réseau.
+      const stockage = stockageDuNavigateur();
+      return new CampaignSync({
+        client,
+        campaignId,
+        environment: createBrowserEnvironment(),
+        cache: stockage ? cacheDeCampagne(stockage, campaignId) : undefined,
+      });
+    },
     [client, campaignId],
   );
 

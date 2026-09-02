@@ -49,11 +49,57 @@ function useStatutAffiche(status: SyncStatus): SyncStatus {
   return affiche;
 }
 
-export function SyncBanner({ status, onRefresh }: {
+/**
+ * « Hier 21:40 », « 14:05 », « 28/08 » — la précision utile et rien de plus.
+ *
+ * Ce que la joueuse veut savoir tient en une question : est-ce que ce que je
+ * lis date d'il y a dix minutes ou de la séance d'avant ? Une date complète
+ * demanderait un calcul mental au moment où l'on cherche justement à ne pas
+ * réfléchir.
+ */
+export function dateDuCacheLisible(quand: number, maintenant: number): string {
+  const jour = (instant: number) => {
+    const date = new Date(instant);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  };
+  const heure = new Date(quand).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const ecart = (jour(maintenant) - jour(quand)) / 86_400_000;
+  if (ecart <= 0) return heure;
+  if (ecart === 1) return `hier ${heure}`;
+  return new Date(quand).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+}
+
+export function SyncBanner({ status, onRefresh, depuisLeCache = false, dateDuCache = null }: {
   status: SyncStatus;
   onRefresh: () => void;
+  /** Ce qui est affiché vient du téléphone, pas du réseau. */
+  depuisLeCache?: boolean;
+  dateDuCache?: number | null;
 }) {
   const affiche = useStatutAffiche(status);
+
+  /*
+    Le cache passe AVANT le statut, et sans le délai d'affichage.
+
+    Sans réseau, la machine à reconnexion reste longtemps en « connecting » :
+    afficher « Reconnexion… » sur des données de la veille laisserait croire
+    qu'on regarde l'état réel de la partie. Ce qui compte alors n'est pas où
+    en est le canal, mais ce qu'on a sous les yeux.
+  */
+  if (depuisLeCache) {
+    const quand = dateDuCache ? dateDuCacheLisible(dateDuCache, Date.now()) : null;
+    return (
+      <div role="status" style={{ ...barre, background: 'var(--surface-raised)' }}>
+        <span style={{ color: 'var(--muted)' }}>
+          {quand ? `Hors ligne — état du ${quand}` : 'Hors ligne — dernier état connu'}
+        </span>
+        <button onClick={onRefresh} style={{ ...bouton, borderColor: 'var(--line)', color: 'var(--muted)' }}>
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
   const texte = libelle[affiche];
   if (!texte) return null;
 

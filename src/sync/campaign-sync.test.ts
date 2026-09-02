@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CampaignSync, currentEncounter, type StoredEncounter } from './campaign-sync';
+import type { CampagneEnCache } from './cache-local';
 import type { SyncEnvironment } from './connection';
 import type { SyncRow } from './supabase-transport';
 
@@ -180,5 +181,154 @@ describe('journal et notes dans l’instantané', () => {
     const { sync } = await connected({ jg_journal_entries: [journalRow('j1', 'mj1', 'Séance 1')] });
     sync.ingestDelete('jg_journal_entries', 'j1', 1);
     expect(sync.getSnapshot().journalEntries).toEqual([]);
+  });
+});
+
+/** Un cache en mémoire, avec l'interface qu'attend `CampaignSync`. */
+function cacheEnMemoire(depart: CampagneEnCache | null = null) {
+  let garde = depart;
+  const ecritures: number[] = [];
+  return {
+    ecritures,
+    get contenu() { return garde; },
+    cache: {
+      lire: () => garde,
+      ecrire: (tables: Record<string, SyncRow[]>, maintenant: number) => {
+        garde = { enregistreLe: maintenant, tables, partiel: false };
+        ecritures.push(maintenant);
+      },
+    },
+  };
+}
+
+/** Campagne montée SANS réseau : le canal ne s'ouvre jamais. */
+function horsLigne(cache?: { lire(): CampagneEnCache | null; ecrire(t: Record<string, SyncRow[]>, n: number): void }) {
+  const fake = fakeClient({});
+  const env = makeEnvironment();
+  const sync = new CampaignSync({ client: fake.client, campaignId: 'c1', environment: env.environment, cache });
+  return { fake, env, sync };
+}
+
+describe('hors ligne — l’appli ouvre sur ce que le téléphone a gardé', () => {
+  const gardeDuSoir: CampagneEnCache = {
+    enregistreLe: 1_700_000_000,
+    partiel: false,
+    tables: {
+      jg_sheets: [sheetRow('s1', 'moi', 'Aldric', 4)],
+      jg_encounters: [encounterRow('e1', 2, 3)],
+    },
+  };
+
+  it('affiche les fiches gardées avant même d’avoir démarré', () => {
+    const memoire = cacheEnMemoire(gardeDuSoir);
+    const { sync } = horsLigne(memoire.cache);
+    // Pas de `start()` : c'est l'état du tout premier rendu de React.
+    const vue = sync.getSnapshot();
+    expect(vue.sheets.map((f) => f.data.name)).toEqual(['Aldric']);
+    expect(vue.encounter?.id).toBe('e1');
+  });
+
+  it('annonce que ces données viennent du cache, et de quand', () => {
+    const memoire = cacheEnMemoire(gardeDuSoir);
+    const { sync } = horsLigne(memoire.cache);
+    expect(sync.getSnapshot().depuisLeCache).toBe(true);
+    expect(sync.getSnapshot().dateDuCache).toBe(1_700_000_000);
+  });
+
+  it('sans rien de gardé, se comporte comme avant : vide, et sans mentir', () => {
+    const { sync } = horsLigne(cacheEnMemoire(null).cache);
+    expect(sync.getSnapshot().sheets).toEqual([]);
+    expect(sync.getSnapshot().depuisLeCache).toBe(false);
+    expect(sync.getSnapshot().dateDuCache).toBeNull();
+  });
+
+  it('un cache vide n’est pas présenté comme une donnée gardée', () => {
+    const memoire = cacheEnMemoire({ enregistreLe: 42, partiel: false, tables: { jg_sheets: [] } });
+    const { sync } = horsLigne(memoire.cache);
+    expect(sync.getSnapshot().depuisLeCache).toBe(false);
+  });
+
+  it('n’écrase JAMAIS un cache valable avec des dépôts encore vides', () => {
+    const memoire = cacheEnMemoire(gardeDuSoir);
+    const { sync, env } = horsLigne(memoire.cache);
+    sync.start();
+    env.advance(60_000);
+    expect(memoire.ecritures).toEqual([]);
+    expect(memoire.contenu?.tables.jg_sheets).toHaveLength(1);
+  });
+});
+
+describe('retour du réseau', () => {
+  it('la lecture réseau périme le cache affiché', async () => {
+    const memoire = cacheEnMemoire({
+      enregistreLe: 1, partiel: false,
+      tables: { jg_sheets: [sheetRow('s1', 'moi', 'nom périmé', 1)] },
+    });
+    const fake = fakeClient({ jg_sheets: [sheetRow('s1', 'moi', 'nom frais', 2)] });
+    const env = makeEnvironment();
+    const sync = new CampaignSync({
+      client: fake.client, campaignId: 'c1', environment: env.environment, cache: memoire.cache,
+    });
+    expect(sync.getSnapshot().depuisLeCache).toBe(true);
+
+    sync.start();
+    fake.emitStatus('SUBSCRIBED');
+    await vi.waitFor(() => expect(sync.getSnapshot().status).toBe('live'));
+
+    expect(sync.getSnapshot().depuisLeCache).toBe(false);
+    expect(sync.getSnapshot().sheets[0]?.data.name).toBe('nom frais');
+  });
+
+  it('une campagne identique à la dernière séance quitte quand même l’état « cache »', async () => {
+    // Versions inchangées : sans comparaison explicite, l'instantané serait
+    // jugé identique et le bandeau resterait affiché à tort.
+    const memeLigne = sheetRow('s1', 'moi', 'Aldric', 7);
+    const memoire = cacheEnMemoire({ enregistreLe: 1, partiel: false, tables: { jg_sheets: [memeLigne] } });
+    const fake = fakeClient({ jg_sheets: [memeLigne] });
+    const env = makeEnvironment();
+    const sync = new CampaignSync({
+      client: fake.client, campaignId: 'c1', environment: env.environment, cache: memoire.cache,
+    });
+    sync.start();
+    fake.emitStatus('SUBSCRIBED');
+    await vi.waitFor(() => expect(sync.getSnapshot().depuisLeCache).toBe(false));
+  });
+
+  it('enregistre ce qui vient du réseau, une seule fois par seconde', async () => {
+    const memoire = cacheEnMemoire(null);
+    const fake = fakeClient({ jg_sheets: [sheetRow('s1', 'moi', 'Aldric', 1)] });
+    const env = makeEnvironment();
+    const sync = new CampaignSync({
+      client: fake.client, campaignId: 'c1', environment: env.environment, cache: memoire.cache,
+    });
+    sync.start();
+    fake.emitStatus('SUBSCRIBED');
+    await vi.waitFor(() => expect(sync.getSnapshot().status).toBe('live'));
+
+    // Trois changements rapprochés, comme trois points de vie retirés d'affilée.
+    sync.ingest('jg_sheets', sheetRow('s1', 'moi', 'Aldric', 2));
+    sync.ingest('jg_sheets', sheetRow('s1', 'moi', 'Aldric', 3));
+    sync.ingest('jg_sheets', sheetRow('s1', 'moi', 'Aldric', 4));
+    env.advance(1000);
+
+    expect(memoire.ecritures).toHaveLength(1);
+    // Et c'est bien le DERNIER état qui part, pas le premier.
+    expect(memoire.contenu?.tables.jg_sheets?.[0]?.version).toBe(4);
+  });
+
+  it('un arrêt annule l’écriture en attente au lieu de la laisser courir', async () => {
+    const memoire = cacheEnMemoire(null);
+    const fake = fakeClient({ jg_sheets: [sheetRow('s1', 'moi', 'Aldric', 1)] });
+    const env = makeEnvironment();
+    const sync = new CampaignSync({
+      client: fake.client, campaignId: 'c1', environment: env.environment, cache: memoire.cache,
+    });
+    sync.start();
+    fake.emitStatus('SUBSCRIBED');
+    await vi.waitFor(() => expect(sync.getSnapshot().status).toBe('live'));
+
+    sync.stop();
+    env.advance(5000);
+    expect(memoire.ecritures).toEqual([]);
   });
 });
