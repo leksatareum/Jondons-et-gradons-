@@ -47,7 +47,9 @@ export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
 }) {
   const coin = (style: React.CSSProperties, retard: number) => (
     <img
-      src={cornerOrnament} alt="" aria-hidden width={68} height={71}
+      // Dimensions du PNG recadré sur son dessin : il portait une large marge
+      // transparente qui l'écartait de son coin.
+      src={cornerOrnament} alt="" aria-hidden width={71} height={61}
       className="jg-anim-rise"
       style={{
         position: 'absolute', opacity: 0.85, pointerEvents: 'none',
@@ -75,10 +77,16 @@ export function LevelUpCelebration({ nom, theme, niveau, gains, onContinuer }: {
         } as React.CSSProperties,
       }}
     >
-      {coin({ top: 14, left: 14 }, TEMPS.coins)}
-      {coin({ top: 14, right: 14, transform: 'scaleX(-1)' }, TEMPS.coins + 70)}
-      {coin({ bottom: 14, left: 14, transform: 'scaleY(-1)' }, TEMPS.coins + 140)}
-      {coin({ bottom: 14, right: 14, transform: 'scale(-1, -1)' }, TEMPS.coins + 210)}
+      {/*
+        L'image est dessinée pour le coin HAUT-DROIT : son coude est en haut à
+        droite, un bras part vers la gauche, l'autre vers le bas. C'est donc
+        elle qui ne porte pas de miroir, et les trois autres qui en portent.
+        L'inverse était fait, et les volutes tournaient le dos à leur coin.
+      */}
+      {coin({ top: 14, left: 14, transform: 'scaleX(-1)' }, TEMPS.coins)}
+      {coin({ top: 14, right: 14 }, TEMPS.coins + 70)}
+      {coin({ bottom: 14, left: 14, transform: 'scale(-1, -1)' }, TEMPS.coins + 140)}
+      {coin({ bottom: 14, right: 14, transform: 'scaleY(-1)' }, TEMPS.coins + 210)}
 
       <div
         className="lbl jg-anim-rise"
