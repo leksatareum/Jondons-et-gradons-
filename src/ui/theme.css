@@ -154,12 +154,20 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
  * dedans — plus le reflet en dégradé, que la coque porte désormais
  * elle-même. Seule la vignette reste en CSS : elle assombrit le bord quel
  * que soit ce qu'il y a derrière.
+ *
+ * La vignette est RENTRÉE (transparente jusqu'à 68 %, et jamais tout à fait
+ * noire) parce qu'elle mangeait le bord. Avec l'ancienne — opaque dès 52 % —
+ * la coque de verre s'arrêtait dans une bande sombre, et l'orbe paraissait
+ * trop petite pour son anneau : un jour visible tout autour. La coque, elle,
+ * a été recadrée sur son dessin (elle portait 10 px de vide transparent de
+ * chaque côté sur 240, soit 3 px de trop sur une orbe de 76). Les deux
+ * défauts s'additionnaient ; il fallait corriger les deux.
  */
 .jg-orb-glass {
   position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
   background:
     var(--jg-orb-verre, linear-gradient(transparent, transparent)) center / 100% 100% no-repeat,
-    radial-gradient(ellipse 90% 90% at 50% 50%, transparent 52%, rgba(0, 0, 0, .55) 100%);
+    radial-gradient(ellipse 100% 100% at 50% 50%, transparent 68%, rgba(0, 0, 0, .42) 100%);
 }
 .jg-orb-ring {
   position: relative; padding: 5px; border-radius: 50%;
