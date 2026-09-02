@@ -1,4 +1,5 @@
-import { normaliserNom } from './nom-normalise';
+import { formeTolerante, normaliserNom } from './nom-normalise';
+import { SYNONYMES_EQUIPEMENT } from '../content/synonymes-objets';
 import { EQUIPMENT_CATALOG, type EquipmentEntry } from '../content/equipment';
 
 /**
@@ -19,10 +20,20 @@ import { EQUIPMENT_CATALOG, type EquipmentEntry } from '../content/equipment';
 
 const normaliser = (nom: string): string => normaliserNom(nom);
 
+const actionnables = EQUIPMENT_CATALOG.filter((entry) => entry.actionSlot);
+
 const actionnablesParNomNormalise = new Map<string, EquipmentEntry>(
-  EQUIPMENT_CATALOG
-    .filter((entry) => entry.actionSlot)
-    .map((entry) => [normaliser(entry.name), entry]),
+  actionnables.map((entry) => [normaliser(entry.name), entry]),
+);
+
+/**
+ * Deuxième chance sur la forme tolérante — un « s » de trop, un contenant en
+ * tête. C'est là que « Potion de soin » retrouve la « Potion de soins », et
+ * « Flasque d'huile » l'« Huile » : deux objets qui dormaient dans des sacs
+ * de la campagne sans que rien ne le signale.
+ */
+const actionnablesParFormeTolerante = new Map<string, EquipmentEntry>(
+  actionnables.map((entry) => [formeTolerante(entry.name), entry]),
 );
 
 /** L'entrée du catalogue si cet objet coûte une action de combat reconnue — sinon `undefined`. */
@@ -31,7 +42,16 @@ export function resolveActionableItem(item: { name: string; catalogId?: string }
     const parCatalogue = EQUIPMENT_CATALOG.find((entry) => entry.id === item.catalogId);
     if (parCatalogue?.actionSlot) return parCatalogue;
   }
-  return actionnablesParNomNormalise.get(normaliser(item.name));
+  const exacte = actionnablesParNomNormalise.get(normaliser(item.name));
+  if (exacte) return exacte;
+
+  const tolerante = formeTolerante(item.name);
+  const parForme = actionnablesParFormeTolerante.get(tolerante);
+  if (parForme) return parForme;
+
+  const synonyme = SYNONYMES_EQUIPEMENT[tolerante];
+  const parSynonyme = synonyme ? EQUIPMENT_CATALOG.find((entry) => entry.id === synonyme) : undefined;
+  return parSynonyme?.actionSlot ? parSynonyme : undefined;
 }
 
 /** L'entrée du catalogue si cet objet est un consommable de soin reconnu — sinon `undefined`. */

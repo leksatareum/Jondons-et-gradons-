@@ -24,3 +24,42 @@ export function normaliserNom(
     : base;
   return coupe.trim().toLocaleLowerCase('fr');
 }
+
+/**
+ * Forme TOLÉRANTE, essayée seulement quand la forme exacte n'a rien trouvé.
+ *
+ * Écrite contre des sacs réels, pas contre des cas imaginés. Dans la campagne
+ * en cours, trois objets bien présents ne servaient à rien faute d'un « s » ou
+ * d'un mot de contenant :
+ *
+ * · « Potion de soin » — au singulier — n'était pas la « Potion de soins » du
+ *   catalogue. Une potion inerte dans le sac, sans jet de dés ni raccourci,
+ *   pendant que les deux autres joueurs avaient la leur.
+ * · « Flasque d'huile » n'était pas « Huile ». Trois flasques sans usage.
+ * · Une « Fiole d'acide » aurait subi le même sort.
+ *
+ * Deux transformations, toutes deux réversibles de tête — c'est le critère :
+ * on doit pouvoir expliquer un rapprochement à la table en une phrase.
+ *
+ * 1. Le pluriel français se replie sur le singulier (« soins » → « soin »).
+ * 2. Un contenant explicite en tête tombe (« flasque d'huile » → « huile »),
+ *    mais SEULEMENT devant « de/d' » : « Flasque en argent avec symbole »,
+ *    qui est un objet de quête et non un contenant d'autre chose, reste
+ *    intacte.
+ *
+ * Ce qui ne s'explique pas ainsi n'a rien à faire ici : les vrais synonymes
+ * (« Bâton » pour « Bâton de combat ») vivent dans une table nommée, pas dans
+ * une astuce d'orthographe.
+ */
+const CONTENANTS = /^(?:flasque|fiole|pot|bouteille|flacon)\s+(?:de\s+|d')/;
+
+export function formeTolerante(nom: string, options: { sansParenthese?: boolean } = {}): string {
+  const base = normaliserNom(nom, options).replace(CONTENANTS, '');
+  return base
+    .split(/\s+/)
+    // Un mot de deux lettres ou moins n'a pas de pluriel à retirer : « as »,
+    // « os », « du » perdraient leur sens.
+    .map((mot) => (mot.length > 2 ? mot.replace(/[sx]$/, '') : mot))
+    .join(' ')
+    .trim();
+}

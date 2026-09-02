@@ -1,5 +1,6 @@
 import { STARTING_WEAPON_ALIASES } from '../content/starting-equipment';
-import { normaliserNom } from './nom-normalise';
+import { formeTolerante, normaliserNom } from './nom-normalise';
+import { SYNONYMES_ARMES } from '../content/synonymes-objets';
 import { WEAPONS, weaponById, type WeaponDef } from '../content/weapons';
 
 /**
@@ -17,9 +18,20 @@ import { WEAPONS, weaponById, type WeaponDef } from '../content/weapons';
  */
 
 const normaliser = (nom: string): string => normaliserNom(nom, { sansParenthese: true });
+const tolerer = (nom: string): string => formeTolerante(nom, { sansParenthese: true });
 
 const armeParNomNormalise = new Map<string, WeaponDef>(
   WEAPONS.map((weapon) => [normaliser(weapon.name), weapon]),
+);
+
+/**
+ * Deuxième chance : la même table, mais indexée sur la forme tolérante. Une
+ * fiche qui porte « Batons » ou « Épee courte » désigne sans ambiguïté une
+ * arme du catalogue ; refuser de la reconnaître ne prive pas d'une subtilité,
+ * ça prive d'une carte d'attaque.
+ */
+const armeParFormeTolerante = new Map<string, WeaponDef>(
+  WEAPONS.map((weapon) => [tolerer(weapon.name), weapon]),
 );
 
 /** Résout un objet du sac en arme du catalogue, ou `undefined` si ce n'en est pas une. */
@@ -33,7 +45,14 @@ export function resolveWeaponFromItem(item: { name: string; catalogId?: string }
     const parAlias = weaponById(aliasId);
     if (parAlias) return parAlias;
   }
-  return armeParNomNormalise.get(normaliser(item.name));
+  const exacte = armeParNomNormalise.get(normaliser(item.name));
+  if (exacte) return exacte;
+
+  // Les deux replis, dans cet ordre : l'orthographe d'abord (mécanique et
+  // sans surprise), le synonyme ensuite (une décision écrite à la main).
+  const tolerante = tolerer(item.name);
+  return armeParFormeTolerante.get(tolerante)
+    ?? (SYNONYMES_ARMES[tolerante] ? weaponById(SYNONYMES_ARMES[tolerante]) : undefined);
 }
 
 /** Les armes que possède réellement le personnage, une seule fois chacune — le sac ne compte pas les doublons. */

@@ -21,7 +21,19 @@ describe('reconnaître une arme dans le sac', () => {
 
   it('un objet qui n’est pas une arme ne résout à rien', () => {
     expect(resolveWeaponFromItem({ name: 'Livre de savoir occulte' })).toBeUndefined();
-    expect(resolveWeaponFromItem({ name: 'Bâton' })).toBeUndefined(); // le focaliseur seul, pas l’arme
+    expect(resolveWeaponFromItem({ name: 'Focaliseur druidique' })).toBeUndefined();
+  });
+
+  /*
+    « Bâton » résolvait à rien, au motif que c'était « le focaliseur seul, pas
+    l'arme ». Décision retournée, sur constat puis arbitrage du MJ : le
+    focaliseur porte son propre nom au catalogue (« Focaliseur druidique »,
+    testé juste au-dessus), et deux joueuses de la campagne ont ajouté
+    « Bâton » à la main — il ne vient d'aucun kit de départ. Elles désignaient
+    bien l'arme, et n'avaient aucune carte d'attaque pour elle.
+  */
+  it('« Bâton » est le bâton de combat — la synonymie est écrite, pas devinée', () => {
+    expect(resolveWeaponFromItem({ name: 'Bâton' })?.id).toBe('baton');
   });
 });
 
