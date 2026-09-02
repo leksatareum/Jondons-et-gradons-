@@ -151,3 +151,63 @@ describe('repos long — forme sauvage et créatures liées', () => {
     expect(recovered.join(' ')).toContain('Grisounet disparaît');
   });
 });
+
+describe('réserves des neuf autres classes — bout en bout', () => {
+  it('un Barbare de niveau 6 voit ses quatre rages', () => {
+    const derived = deriveCharacter(fiche('barbare', 6));
+    expect(derived.resources.find((r) => r.key === 'barbare:rage')?.max).toBe(4);
+  });
+
+  it('le repos court rend UNE rage, pas toutes', () => {
+    const sheet = fiche('barbare', 6, { resourcesSpent: { 'barbare:rage': 3 } });
+    const { sheet: apres, recovered } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['barbare:rage']).toBe(2);
+    expect(recovered).toContain('Une utilisation de Rage');
+  });
+
+  it('le repos long les rend toutes', () => {
+    const sheet = fiche('barbare', 6, { resourcesSpent: { 'barbare:rage': 4 } });
+    const { sheet: apres } = longRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['barbare:rage']).toBeUndefined();
+  });
+
+  it('un repos court sur une réserve intacte ne raconte rien', () => {
+    const sheet = fiche('barbare', 6);
+    expect(shortRest(sheet, deriveCharacter(sheet)).recovered).not.toContain('Une utilisation de Rage');
+  });
+
+  it('les points de concentration du Moine reviennent entiers au repos court', () => {
+    const sheet = fiche('moine', 8, { resourcesSpent: { 'moine:concentration': 7 } });
+    const { sheet: apres, recovered } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['moine:concentration']).toBeUndefined();
+    expect(recovered).toContain('Points de concentration');
+  });
+
+  it('l’Imposition des mains du Paladin ne revient PAS au repos court', () => {
+    const sheet = fiche('paladin', 5, { resourcesSpent: { 'paladin:imposition-des-mains': 12 } });
+    const { sheet: apres } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['paladin:imposition-des-mains']).toBe(12);
+  });
+
+  it('… et revient entièrement au repos long', () => {
+    const sheet = fiche('paladin', 5, { resourcesSpent: { 'paladin:imposition-des-mains': 12 } });
+    const { sheet: apres } = longRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['paladin:imposition-des-mains']).toBeUndefined();
+  });
+
+  it('une réserve dépensée à fond se lit comme épuisée, jamais négative', () => {
+    const sheet = fiche('guerrier', 2, { resourcesSpent: { 'guerrier:fougue-guerriere': 5 } });
+    const fougue = deriveCharacter(sheet).resources.find((r) => r.key === 'guerrier:fougue-guerriere');
+    expect(fougue?.remaining).toBe(0);
+    expect(fougue?.spent).toBe(1);
+  });
+
+  it('la Forme sauvage garde son comportement d’avant la généralisation', () => {
+    // Elle passe désormais par la règle commune (`shortRecovery`) au lieu d'un
+    // cas particulier : ce test existe pour que ça reste invisible du joueur.
+    const sheet = fiche('druide', 5, { resourcesSpent: { 'druide:forme-sauvage': 2 } });
+    const { sheet: apres, recovered } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['druide:forme-sauvage']).toBe(1);
+    expect(recovered).toContain('Une utilisation de Forme sauvage');
+  });
+});

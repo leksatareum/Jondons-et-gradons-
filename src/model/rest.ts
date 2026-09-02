@@ -1,6 +1,6 @@
 import { restoresAllOnShortRest } from '../domain/resource-recovery';
 import { companionsAfterLongRest } from './companions';
-import { druidLevel, WILD_SHAPE_RESOURCE_KEY } from './wild-shape';
+import { druidLevel } from './wild-shape';
 import { levelInClass } from './character';
 import { type MasteryClassId } from '../domain/weapon-mastery';
 import { resilienceCeleste, resilienceCelestePourSoi } from './occultiste';
@@ -44,22 +44,28 @@ export function shortRest(sheet: CharacterSheet, derived: DerivedCharacter): Res
   const resourcesSpent = { ...sheet.live.resourcesSpent };
 
   for (const resource of derived.resources) {
-    if (!restoresAllOnShortRest(resource.recharge)) continue;
-    if ((resourcesSpent[resource.key] ?? 0) === 0) continue;
-    delete resourcesSpent[resource.key];
-    recovered.push(resource.name);
-  }
+    const dues = resourcesSpent[resource.key] ?? 0;
+    if (dues === 0) continue;
 
-  // ── Forme sauvage : EXACTEMENT une utilisation ────────────────────
-  // PHB 2024, Druide 2 : un repos court rend une seule utilisation
-  // dépensée (le repos long les rend toutes). Une recharge générique
-  // « court ou long » rendrait toute la réserve — c'est pourquoi cette
-  // capacité ne passe pas par la boucle ci-dessus.
-  const formeSauvageDues = resourcesSpent[WILD_SHAPE_RESOURCE_KEY] ?? 0;
-  if (formeSauvageDues > 0) {
-    if (formeSauvageDues === 1) delete resourcesSpent[WILD_SHAPE_RESOURCE_KEY];
-    else resourcesSpent[WILD_SHAPE_RESOURCE_KEY] = formeSauvageDues - 1;
-    recovered.push('Une utilisation de Forme sauvage');
+    if (restoresAllOnShortRest(resource.recharge)) {
+      delete resourcesSpent[resource.key];
+      recovered.push(resource.name);
+      continue;
+    }
+
+    // ── Réserves qui n'en rendent qu'une PARTIE ─────────────────────
+    // PHB 2024 : plusieurs capacités rendent une seule utilisation au repos
+    // court et toute la réserve au repos long — la Forme sauvage du Druide,
+    // la Rage du Barbare, le Second souffle du Guerrier. Une recharge
+    // « court » rendrait tout, une recharge « long » ne rendrait rien :
+    // ni l'une ni l'autre ne dit la vérité, d'où `shortRecovery`.
+    const rendues = Math.min(resource.shortRecovery ?? 0, dues);
+    if (rendues <= 0) continue;
+    if (rendues === dues) delete resourcesSpent[resource.key];
+    else resourcesSpent[resource.key] = dues - rendues;
+    recovered.push(rendues === 1
+      ? `Une utilisation de ${resource.name}`
+      : `${rendues} utilisations de ${resource.name}`);
   }
 
   const pacte = derived.spellcasting.slots.some((slot) => slot.pact);

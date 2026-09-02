@@ -25,6 +25,7 @@ import { armorById } from '../content/armor';
 import { bonusBouclier } from '../domain/armor-ownership';
 import { speciesById, speciesMagicFor, speciesResistancesFor } from '../content/species';
 import { speciesResourcesFor } from '../domain/species-resources';
+import { classResourcesFor } from '../content/class-resources';
 import { wildShapeUses } from '../domain/druid-resources';
 import { hunterMarkFreeCastUses, natureVeilUses } from '../domain/ranger-resources';
 import { ruseMagiqueRecoverableSlots } from '../domain/warlock-resources';
@@ -50,6 +51,14 @@ export interface DerivedResource {
   spent: number;
   remaining: number;
   recharge: 'court' | 'long' | 'court_ou_long';
+  /**
+   * Utilisations rendues par un repos court quand ce n'est PAS toute la
+   * réserve — la Forme sauvage en rend une, la Rage aussi, et plusieurs
+   * capacités 2024 suivent la même règle. Sans ce champ il faudrait choisir
+   * entre en rendre trop (`court`) et n'en rendre aucune (`long`) : deux
+   * façons de fausser une partie.
+   */
+  shortRecovery?: number;
   sourceClass: string;
 }
 
@@ -179,14 +188,22 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
   const push = (
     key: string, name: string, max: number,
     recharge: DerivedResource['recharge'], sourceClass: string,
+    shortRecovery?: number,
   ) => {
     if (max <= 0) return;
     const used = Math.max(0, spent[key] ?? 0);
-    out.push({ key, name, max, spent: Math.min(used, max), remaining: Math.max(0, max - used), recharge, sourceClass });
+    out.push({
+      key, name, max, spent: Math.min(used, max), remaining: Math.max(0, max - used),
+      recharge, shortRecovery, sourceClass,
+    });
   };
 
   const druide = levelInClass(sheet, 'druide');
-  if (druide) push('druide:forme-sauvage', 'Forme sauvage', wildShapeUses(druide), 'long', 'druide');
+  // `shortRecovery: 1` — PHB 2024, Druide 2 : le repos court rend UNE
+  // utilisation, le repos long toutes. Cette règle vivait dans un cas
+  // particulier de `shortRest` ; elle est désormais dite ici, avec la réserve
+  // qu'elle concerne, et partagée avec la Rage et le Second souffle.
+  if (druide) push('druide:forme-sauvage', 'Forme sauvage', wildShapeUses(druide), 'long', 'druide', 1);
 
   // ── Cercles druidiques ────────────────────────────────────────────
   // Ces réserves existaient dans les tables du domaine sans jamais être
@@ -291,6 +308,17 @@ const derivedResources = (sheet: CharacterSheet, abilities: AbilityScores): Deri
     speciesAncestry: sheet.ancestryId, level: totalLevel(sheet),
   })) {
     push(resource.resourceKey, resource.name, resource.max, resource.recharge, 'species');
+  }
+
+  /*
+    Les réserves du tronc commun des NEUF autres classes, déclarées en données
+    (`content/class-resources.ts`). En dernier, et sans recouvrement possible :
+    ce fichier ne couvre ni le Druide, ni le Rôdeur, ni l'Occultiste, dont les
+    réserves sont écrites à la main plus haut parce qu'elles dépendent de
+    sous-classes et de dons.
+  */
+  for (const resource of classResourcesFor(sheet.classLevels, abilities)) {
+    push(resource.key, resource.name, resource.max, resource.recharge, resource.classId, resource.shortRecovery);
   }
   return out;
 };
