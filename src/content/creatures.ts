@@ -1,3 +1,5 @@
+import { CREATURES_MM_2024 } from './creatures-mm-2024';
+
 export type CreatureTemplate = {
   id: string;
   name: string;
@@ -563,9 +565,19 @@ const BEAST_COMBAT: Record<string, Pick<CreatureTemplate, 'actions' | 'traits' |
   ] },
 };
 
-export const PHB_CREATURES: CreatureTemplate[] = RAW_PHB_CREATURES.map((creature) => ({
-  ...creature,
-  ...(BEAST_PHYSICAL[creature.id] || {}),
-  ...(MONSTER_ABILITIES[creature.id] || {}),
-  ...(BEAST_COMBAT[creature.id] || {}),
-}));
+export const PHB_CREATURES: CreatureTemplate[] = [
+  ...RAW_PHB_CREATURES.map((creature) => ({
+    ...creature,
+    ...(BEAST_PHYSICAL[creature.id] || {}),
+    ...(MONSTER_ABILITIES[creature.id] || {}),
+    ...(BEAST_COMBAT[creature.id] || {}),
+  })),
+  /*
+    Le renfort lu dans le Monster Manual 2024 arrive tel quel : ces entrées
+    portent déjà leurs caractéristiques et leurs attaques dans un seul objet,
+    au lieu d'être recomposées depuis trois tables. La découpe ci-dessus est
+    historique — elle vient de l'import de l'ancienne appli — et il n'y a
+    aucune raison de la reproduire pour ce qu'on écrit aujourd'hui.
+  */
+  ...CREATURES_MM_2024,
+];

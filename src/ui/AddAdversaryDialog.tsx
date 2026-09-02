@@ -207,7 +207,10 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
           id="recherche-bestiaire"
           value={recherche}
           onChange={(event) => setRecherche(event.target.value)}
-          placeholder="Nom d’une bête du PHB…"
+          // Plus seulement les bêtes du PHB depuis que le Manuel des Monstres
+          // y est entré : dire « bête » ferait chercher ailleurs un garde ou
+          // une momie qui sont pourtant là.
+          placeholder="Garde, Manticore, Gobelin…"
           autoComplete="off"
           style={champ}
         />
