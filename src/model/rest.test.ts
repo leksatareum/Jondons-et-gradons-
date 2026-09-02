@@ -211,3 +211,38 @@ describe('réserves des neuf autres classes — bout en bout', () => {
     expect(recovered).toContain('Une utilisation de Forme sauvage');
   });
 });
+
+describe('Inspiration bardique — le repos court ne l’ouvre qu’au niveau 5', () => {
+  it('un barde de niveau 4 ne récupère rien au repos court', () => {
+    const sheet = fiche('barde', 4, { resourcesSpent: { 'barde:inspiration': 2 } });
+    const { sheet: apres } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['barde:inspiration']).toBe(2);
+  });
+
+  it('… mais récupère tout au repos long', () => {
+    const sheet = fiche('barde', 4, { resourcesSpent: { 'barde:inspiration': 2 } });
+    const { sheet: apres } = longRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['barde:inspiration']).toBeUndefined();
+  });
+
+  it('à partir du niveau 5, Source d’inspiration rend tout au repos court', () => {
+    const sheet = fiche('barde', 5, { resourcesSpent: { 'barde:inspiration': 2 } });
+    const { sheet: apres, recovered } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['barde:inspiration']).toBeUndefined();
+    expect(recovered).toContain('Inspiration bardique');
+  });
+});
+
+describe('Conduit divin — une utilisation au repos court, jamais toute la réserve', () => {
+  it('le Clerc en récupère une seule', () => {
+    const sheet = fiche('clerc', 6, { resourcesSpent: { 'clerc:conduit-divin': 3 } });
+    const { sheet: apres } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['clerc:conduit-divin']).toBe(2);
+  });
+
+  it('le Paladin aussi', () => {
+    const sheet = fiche('paladin', 11, { resourcesSpent: { 'paladin:conduit-divin': 3 } });
+    const { sheet: apres } = shortRest(sheet, deriveCharacter(sheet));
+    expect(apres.live.resourcesSpent['paladin:conduit-divin']).toBe(2);
+  });
+});

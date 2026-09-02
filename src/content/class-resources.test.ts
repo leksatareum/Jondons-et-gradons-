@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CLASS_RESOURCES, classResourcesFor, RESSOURCES_A_VERIFIER } from './class-resources';
+import { CLASS_RESOURCES, classResourcesFor } from './class-resources';
 import { CLASSES } from './classes';
 import type { AbilityScores } from '../model/character';
 
 /**
- * Chaque chiffre est épinglé ici, palier par palier.
+ * Chaque chiffre est épinglé ici, palier par palier, contre le PHB 2024 —
+ * table de progression et texte de la capacité, page par page (les numéros
+ * sont dans `class-resources.ts`).
  *
- * C'est le but : ces valeurs sont écrites de mémoire du PHB 2024 (voir
- * l'en-tête de `class-resources.ts`), donc une correction doit se voir. Un
- * test qui casse quand on change un palier n'est pas une gêne, c'est la
+ * Un test qui casse quand on change un palier n'est pas une gêne : c'est la
  * fonction de ce fichier.
  */
 
@@ -47,8 +47,10 @@ describe('cohérence de la table', () => {
     }
   });
 
-  it('n’annonce comme sûr que ce qui l’est, et documente le reste', () => {
-    for (const definition of RESSOURCES_A_VERIFIER) expect(definition.note).toBeTruthy();
+  it('cite la page du livre pour chaque réserve — une valeur sans source se revérifie mal', () => {
+    for (const definition of CLASS_RESOURCES) {
+      expect(definition.page).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -58,7 +60,11 @@ describe('Barbare — Rage', () => {
     (niveau, attendu) => expect(max('barbare', niveau, 'barbare:rage')).toBe(attendu),
   );
 
-  it('revient entièrement au repos long, une seule au repos court', () => {
+  it('reste à six au niveau 20 : la table ne dit nulle part « illimité »', () => {
+    expect(max('barbare', 20, 'barbare:rage')).toBe(6);
+  });
+
+  it('revient entièrement au repos long, une seule au repos court (p. 51)', () => {
     const rage = reserve('barbare', 5, 'barbare:rage');
     expect(rage?.recharge).toBe('long');
     expect(rage?.shortRecovery).toBe(1);
@@ -80,6 +86,16 @@ describe('Barde — Inspiration bardique', () => {
   it('existe dès le niveau 1', () => {
     expect(reserve('barde', 1, 'barde:inspiration')).toBeDefined();
   });
+
+  it('ne revient PAS au repos court avant le niveau 5 (p. 59)', () => {
+    expect(reserve('barde', 1, 'barde:inspiration')?.recharge).toBe('long');
+    expect(reserve('barde', 4, 'barde:inspiration')?.recharge).toBe('long');
+  });
+
+  it('… et y revient à partir du niveau 5, par Source d’inspiration (p. 61)', () => {
+    expect(reserve('barde', 5, 'barde:inspiration')?.recharge).toBe('court_ou_long');
+    expect(reserve('barde', 20, 'barde:inspiration')?.recharge).toBe('court_ou_long');
+  });
 });
 
 describe('Clerc — Conduit divin', () => {
@@ -91,6 +107,18 @@ describe('Clerc — Conduit divin', () => {
     'niveau %i : %i utilisations',
     (niveau, attendu) => expect(max('clerc', niveau, 'clerc:conduit-divin')).toBe(attendu),
   );
+
+  it('rend UNE utilisation au repos court, pas toute la réserve (p. 70)', () => {
+    const conduit = reserve('clerc', 6, 'clerc:conduit-divin');
+    expect(conduit?.recharge).toBe('long');
+    expect(conduit?.shortRecovery).toBe(1);
+  });
+
+  it('Intervention divine : rien avant 10, puis une fois par repos long (p. 71)', () => {
+    expect(reserve('clerc', 9, 'clerc:intervention-divine')).toBeUndefined();
+    expect(max('clerc', 10, 'clerc:intervention-divine')).toBe(1);
+    expect(reserve('clerc', 10, 'clerc:intervention-divine')?.recharge).toBe('long');
+  });
 });
 
 describe('Guerrier', () => {
@@ -122,8 +150,13 @@ describe('Moine — Points de concentration', () => {
     expect(max('moine', 20, 'moine:concentration')).toBe(20);
   });
 
-  it('revient entièrement au repos court', () => {
+  it('revient entièrement au repos court (p. 102)', () => {
     expect(reserve('moine', 5, 'moine:concentration')?.recharge).toBe('court_ou_long');
+  });
+
+  it('Métabolisme surnaturel : une fois par repos long, dès le niveau 2', () => {
+    expect(reserve('moine', 1, 'moine:metabolisme')).toBeUndefined();
+    expect(max('moine', 2, 'moine:metabolisme')).toBe(1);
   });
 });
 
@@ -139,6 +172,10 @@ describe('Paladin', () => {
     expect(max('paladin', 3, 'paladin:conduit-divin')).toBe(2);
     expect(max('paladin', 11, 'paladin:conduit-divin')).toBe(3);
   });
+
+  it('… et rend UNE utilisation au repos court (p. 110)', () => {
+    expect(reserve('paladin', 3, 'paladin:conduit-divin')?.shortRecovery).toBe(1);
+  });
 });
 
 describe('Ensorceleur — Points de sorcellerie', () => {
@@ -146,6 +183,15 @@ describe('Ensorceleur — Points de sorcellerie', () => {
     expect(reserve('ensorceleur', 1, 'ensorceleur:points-sorcellerie')).toBeUndefined();
     expect(max('ensorceleur', 2, 'ensorceleur:points-sorcellerie')).toBe(2);
     expect(max('ensorceleur', 20, 'ensorceleur:points-sorcellerie')).toBe(20);
+  });
+
+  it('Sorcellerie innée : deux fois, dès le niveau 1 (p. 140)', () => {
+    expect(max('ensorceleur', 1, 'ensorceleur:sorcellerie-innee')).toBe(2);
+  });
+
+  it('Restauration sorcelière : rien avant 5, puis une fois par repos long', () => {
+    expect(reserve('ensorceleur', 4, 'ensorceleur:restauration')).toBeUndefined();
+    expect(max('ensorceleur', 5, 'ensorceleur:restauration')).toBe(1);
   });
 });
 
