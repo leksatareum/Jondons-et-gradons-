@@ -77,6 +77,8 @@ describe('cohérence du renfort', () => {
 describe('les valeurs lues au livre', () => {
   it.each([
     ['garde', 15, 11, '1/8'],
+    ['cultiste', 12, 9, '1/8'],
+    ['espion', 12, 27, '1'],
     ['acolyte', 13, 11, '1/4'],
     ['eclaireur', 13, 16, '1/2'],
     ['dur-a-cuire', 12, 32, '1/2'],
@@ -109,6 +111,12 @@ describe('les valeurs lues au livre', () => {
 
   it('la momie est lente : 6 m, c’est ce qui la rend jouable', () => {
     expect(par('momie')!.speed).toBe('6 m');
+  });
+
+  it('les deux armes de l’espion sont empoisonnées — c’est là qu’est sa menace', () => {
+    const attaques = par('espion')!.actions!.filter((a) => a.kind === 'attack');
+    expect(attaques).toHaveLength(2);
+    for (const attaque of attaques) expect(attaque.detail).toMatch(/poison/i);
   });
 });
 

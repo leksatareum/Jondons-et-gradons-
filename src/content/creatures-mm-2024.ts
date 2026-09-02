@@ -88,6 +88,36 @@ export const CREATURES_MM_2024: CreatureTemplate[] = [
 
   // ── Ce qu'on croise au niveau 2-4 ──────────────────────────────────
   {
+    id: 'cultiste', name: 'Cultiste', ac: 12, hp: 9, speed: '9 m', cr: '1/8',
+    kind: 'humanoïde', size: 'M', theme: ['culte'],
+    abilities: { str: 11, dex: 12, con: 10, int: 10, wis: 11, cha: 10 },
+    skillBonuses: { Tromperie: 2, Religion: 2 },
+    senses: 'Perception passive 10',
+    // p. 87. Neuf points de vie : c'est de la piétaille, et c'est le but —
+    // une foule d'encapuchonnés se joue par le nombre, pas par la résistance.
+    // Les PV en 2d8 sans bonus confirment la Constitution de 10.
+    actions: [
+      { name: 'Serpe rituelle', kind: 'attack', toHit: 3, reach: '1,50 m', damage: '1d4+1', damageType: 'tranchants', detail: 'Plus 1 dégât nécrotique.' },
+    ],
+  },
+  {
+    id: 'espion', name: 'Espion', ac: 12, hp: 27, speed: '9 m · escalade 9 m', cr: '1',
+    kind: 'humanoïde', size: 'M', theme: ['bandit', 'ville'],
+    abilities: { str: 10, dex: 15, con: 10, int: 12, wis: 14, cha: 16 },
+    skillBonuses: {
+      Tromperie: 5, Intuition: 4, Investigation: 5, Perception: 6, Escamotage: 4, Discrétion: 6,
+    },
+    senses: 'Perception passive 16',
+    // p. 298. Ses deux armes sont empoisonnées : 7 (2d6) de poison en plus à
+    // chaque coup, soit plus que l'arme elle-même. C'est là qu'est sa menace,
+    // pas dans son bonus d'attaque.
+    actions: [
+      { name: 'Épée courte', kind: 'attack', toHit: 4, reach: '1,50 m', damage: '1d6+2', damageType: 'perforants', detail: 'Plus 7 (2d6) dégâts de poison.' },
+      { name: 'Arbalète de poing', kind: 'attack', toHit: 4, reach: '9/36 m', damage: '1d6+2', damageType: 'perforants', detail: 'Plus 7 (2d6) dégâts de poison.' },
+      { name: 'Action rusée', kind: 'utility', detail: 'Action bonus : Foncer, Se désengager ou Se cacher.' },
+    ],
+  },
+  {
     id: 'berserker', name: 'Berserker', ac: 13, hp: 67, speed: '9 m', cr: '2',
     kind: 'humanoïde', size: 'M', theme: ['bandit'],
     abilities: { str: 16, dex: 12, con: 17, int: 9, wis: 11, cha: 9 },
