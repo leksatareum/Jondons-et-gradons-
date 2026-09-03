@@ -33,6 +33,7 @@ import { poserEtat } from '../model/etats';
 import { ETAT_AUTO_AU_LANCER } from '../model/spell-self-etat';
 import { heal, takeDamage } from '../model/damage';
 import { deriveCharacter } from '../model/derive';
+import { totalLevel } from '../model/character';
 import { GmRestDialog, reposDeGroupe } from './GmRestDialog';
 
 /**
@@ -615,6 +616,22 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
   }, [snapshot.sheets]);
 
   /**
+   * Le groupe réel, tel que la campagne le connaît — pour que la jauge de
+   * difficulté des rencontres n'ait rien à demander au MJ.
+   *
+   * Le niveau retenu est le niveau MOYEN, arrondi : le budget du Guide du
+   * Maître suppose un groupe homogène, et c'est la seule lecture honnête
+   * quand un personnage traîne d'un niveau. Une campagne sans fiche donne un
+   * effectif nul, et la jauge le dit au lieu de calculer sur du vide.
+   */
+  const groupe = useMemo(() => {
+    const niveaux = snapshot.sheets.map((fiche) => totalLevel(fiche.data)).filter((n) => n > 0);
+    if (niveaux.length === 0) return { niveau: 0, taille: 0 };
+    const moyenne = niveaux.reduce((somme, n) => somme + n, 0) / niveaux.length;
+    return { niveau: Math.round(moyenne), taille: niveaux.length };
+  }, [snapshot.sheets]);
+
+  /**
    * Déclencher une rencontre préparée : ses créatures rejoignent la rencontre
    * en cours — celle-là même que `GmCombatScreen` édite, avec le groupe déjà
    * dedans (`affiche`). Marche aussi bien avant que le combat ne soit lancé
@@ -680,6 +697,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
       ) : (
         <PreparedEncountersScreen
           templates={snapshot.encounterTemplates}
+          groupe={groupe}
           onCreer={creerRencontre}
           onModifier={modifierRencontre}
           onSupprimer={supprimerRencontre}

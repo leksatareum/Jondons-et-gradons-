@@ -5,16 +5,24 @@ import type { CreatureTemplate } from '../content/creatures';
 const creature = (id: string, cr: string, theme?: string[]): CreatureTemplate =>
   ({ id, name: id, ac: 10, hp: 10, speed: '9 m', cr, kind: 'humanoïde', ...(theme ? { theme } : {}) });
 
-describe('budget de rencontre (DMG 2024, niveaux 1 à 5)', () => {
+describe('budget de rencontre (Guide du Maître 2024, niveaux 1 à 20)', () => {
   it('multiplie le budget par personnage par la taille du groupe', () => {
     expect(budgetDeRencontre(1, 4, 'faible')).toBe(200);
     expect(budgetDeRencontre(2, 3, 'moderee')).toBe(450);
     expect(budgetDeRencontre(5, 1, 'elevee')).toBe(1100);
   });
 
-  it('refuse plutôt que d’inventer au-delà du niveau 5', () => {
-    expect(budgetDeRencontre(6, 4, 'faible')).toBeNull();
-    expect(budgetDeRencontre(20, 4, 'elevee')).toBeNull();
+  /*
+    Cette attente disait « refuse au-delà du niveau 5 ». Elle n'énonçait pas
+    une règle : elle constatait qu'on n'avait pas le livre. Le Guide du Maître
+    est arrivé, sa table va jusqu'au niveau 20, et l'attente devient donc
+    l'inverse — on la remplace au lieu de la supprimer, pour que la limite
+    RÉELLE (rien au-delà de 20) reste tenue par un test.
+  */
+  it('couvre les vingt niveaux, et refuse au-delà', () => {
+    expect(budgetDeRencontre(6, 4, 'faible')).toBe(2400);
+    expect(budgetDeRencontre(20, 4, 'elevee')).toBe(88000);
+    expect(budgetDeRencontre(21, 4, 'faible')).toBeNull();
   });
 
   it('refuse un groupe vide', () => {
@@ -28,8 +36,14 @@ describe('points d’expérience par facteur de puissance', () => {
     expect(xpDuFP('2')).toBe(450);
   });
 
-  it('renvoie 0 pour un FP hors table, plutôt qu’une estimation', () => {
-    expect(xpDuFP('10')).toBe(0);
+  /*
+    Même histoire : « FP 10 vaut 0 » disait que la table s'arrêtait à 5, pas
+    qu'un FP 10 ne vaut rien. Le Manuel des Monstres p. 8 la donne jusqu'au
+    FP 30 ; seul un FP MAL FORMÉ vaut encore 0.
+  */
+  it('couvre les FP 0 à 30, et renvoie 0 pour un FP mal formé', () => {
+    expect(xpDuFP('10')).toBe(5900);
+    expect(xpDuFP('30')).toBe(155000);
     expect(xpDuFP('n’importe quoi')).toBe(0);
   });
 });

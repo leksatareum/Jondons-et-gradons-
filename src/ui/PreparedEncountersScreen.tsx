@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { AddAdversaryDialog, attaquesDuTemplate, caracteristiquesDuTemplate, competencesDuTemplate, dexModOf, maitriseDuTemplate, sauvegardesDuTemplate } from './AddAdversaryDialog';
 import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
-import { budgetDeRencontre, suggererComposition, THEMES_RENCONTRE, type Difficulte } from '../domain/encounter-generator';
+import {
+  budgetDeRencontre, creaturesHostiles, evaluerRencontre, LEVIERS_DE_SCENE,
+  SENS_DIFFICULTE, suggererComposition, THEMES_RENCONTRE, xpDuFP,
+  type Difficulte, type EvaluationRencontre,
+} from '../domain/encounter-generator';
 import type { StoredEncounterTemplate } from '../sync/campaign-sync';
 import { dupliquerCombatant, withDistinctNames, type Combatant } from '../domain/encounter';
 import { TAB_BAR_CLEARANCE } from './TabBar';
@@ -60,13 +64,22 @@ const DIFFICULTES: [Difficulte, string][] = [['faible', 'Faible'], ['moderee', '
 
 /**
  * Suggère une composition homogène dans le budget du DMG 2024 (niveaux 1 à
- * 5, seule plage vérifiée). Ajoute au lot en cours — n'y touche jamais tant
+ * 20, toute la table du Guide). Ajoute au lot en cours — n'y touche jamais tant
  * que le MJ n'a pas cliqué : la répartition fine (chef + sbires, embuscade…)
  * reste à lui, une case à cocher ne sait pas lire une scène.
  */
-function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatant[]) => void }) {
-  const [niveau, setNiveau] = useState('2');
-  const [taille, setTaille] = useState('4');
+function SuggestionAutomatique({ groupe, onGenerer }: {
+  /**
+   * Le vrai groupe, en valeur de départ. Les deux cases restent MODIFIABLES —
+   * un MJ prépare parfois pour un joueur de plus, ou pour trois niveaux plus
+   * tard — mais elles ne partent plus d'un « 4 personnages de niveau 2 »
+   * inventé, qui contredisait la jauge de difficulté juste en dessous.
+   */
+  groupe: { niveau: number; taille: number };
+  onGenerer: (combatants: Combatant[]) => void;
+}) {
+  const [niveau, setNiveau] = useState(String(groupe.niveau || 2));
+  const [taille, setTaille] = useState(String(groupe.taille || 4));
   const [difficulte, setDifficulte] = useState<Difficulte>('moderee');
   const [theme, setTheme] = useState<string | null>(null);
 
@@ -155,7 +168,7 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
 
       {budget === null ? (
         <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
-          Vérifié seulement du niveau 1 à 5.
+          Le Guide s’arrête au niveau 20.
         </div>
       ) : themeIntrouvable ? (
         <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
@@ -181,15 +194,176 @@ function SuggestionAutomatique({ onGenerer }: { onGenerer: (combatants: Combatan
   );
 }
 
-function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
+/** L'étiquette et la couleur d'une bande de difficulté. */
+const BANDE: Record<Difficulte | 'au-dela' | 'aucune', { label: string; couleur: string }> = {
+  aucune: { label: 'vide', couleur: 'var(--muted)' },
+  faible: { label: 'faible', couleur: 'var(--ok)' },
+  moderee: { label: 'modérée', couleur: 'var(--gold-bright)' },
+  elevee: { label: 'élevée', couleur: 'var(--accent)' },
+  'au-dela': { label: 'au-delà', couleur: 'var(--vital)' },
+};
+
+/**
+ * La difficulté de ce qu'on est en train de composer, en direct.
+ *
+ * C'est le geste que fait vraiment un MJ : il pose trois gobelins et un chef
+ * parce que la scène le demande, PUIS il se demande si ça va tuer quelqu'un.
+ * Le générateur automatique répond à l'autre question, plus rare — et il
+ * obligeait à choisir sa difficulté AVANT de savoir ce qu'on allait mettre.
+ *
+ * Le niveau et la taille du groupe ne se saisissent pas : l'appli connaît les
+ * fiches. Un MJ qui doit retaper « 3 joueurs de niveau 2 » à chaque rencontre
+ * finit par ne plus s'en servir.
+ */
+function JaugeDeDifficulte({ evaluation, niveau, taille, sansProfil }: {
+  evaluation: EvaluationRencontre;
+  niveau: number;
+  taille: number;
+  /** Créatures saisies à la main, sans modèle du bestiaire : leur FP est inconnu. */
+  sansProfil: number;
+}) {
+  const { xp, budgets, difficulte, avertissements } = evaluation;
+  const bande = difficulte ? BANDE[difficulte] : null;
+
+  return (
+    <div className="card" style={{ marginTop: 14, padding: '11px 13px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div className="lbl" style={{ flexGrow: 1, fontSize: 9 }}>
+          Difficulté · {taille} joueur{taille > 1 ? 's' : ''} de niveau {niveau}
+        </div>
+        <div className="num" style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-bright)' }}>
+          {xp} PX
+        </div>
+      </div>
+
+      {budgets && bande ? (
+        <>
+          <div className="ttl" style={{ marginTop: 4, fontSize: 18, color: bande.couleur }}>
+            {bande.label}
+          </div>
+
+          {/* Les trois seuils, à l'échelle : c'est la POSITION dans la bande
+              qui dit s'il reste de la marge, pas le seul nom de la bande. */}
+          <div style={{ marginTop: 9 }}>
+            <div style={{
+              height: 6, borderRadius: 999, overflow: 'hidden', display: 'flex',
+              background: 'rgba(0,0,0,.45)',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,.8), 0 0 0 1px rgba(150,116,58,.25)',
+            }}>
+              <div style={{
+                width: `${Math.min(100, (xp / budgets.elevee) * 100)}%`,
+                background: bande.couleur, boxShadow: `0 0 8px -1px ${bande.couleur}`,
+              }} />
+            </div>
+            <div style={{ display: 'flex', marginTop: 4 }}>
+              {(['faible', 'moderee', 'elevee'] as const).map((clef) => (
+                <div key={clef} style={{ flex: 1, textAlign: clef === 'faible' ? 'left' : clef === 'elevee' ? 'right' : 'center' }}>
+                  <span className="lbl" style={{ fontSize: 8 }}>{BANDE[clef].label} </span>
+                  <span className="num" style={{ fontSize: 10, color: 'var(--muted)' }}>{budgets[clef]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {difficulte !== 'aucune' && (
+            <p style={{ margin: '9px 0 0', fontSize: 12, lineHeight: 1.45, color: 'var(--muted)' }}>
+              {SENS_DIFFICULTE[difficulte === 'au-dela' || difficulte === null ? 'elevee' : difficulte]}
+            </p>
+          )}
+        </>
+      ) : (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)' }}>
+          Aucune fiche de joueur dans la campagne : impossible de calculer un budget.
+        </p>
+      )}
+
+      {sansProfil > 0 && (
+        <p style={{ margin: '8px 0 0', fontSize: 11.5, lineHeight: 1.45, color: 'var(--muted)' }}>
+          {sansProfil} créature{sansProfil > 1 ? 's' : ''} saisie{sansProfil > 1 ? 's' : ''} à la main,
+          sans profil du bestiaire : son facteur de puissance est inconnu, elle ne compte pas dans le total.
+        </p>
+      )}
+
+      {avertissements.map((avertissement) => (
+        <div
+          key={avertissement.texte}
+          style={{
+            marginTop: 9, padding: '7px 9px', borderRadius: 8,
+            background: 'rgba(0,0,0,.3)',
+            boxShadow: `0 0 0 1px ${avertissement.gravite === 'danger' ? 'var(--vital)' : 'var(--gold-dim)'}`,
+            fontSize: 11.5, lineHeight: 1.45,
+            color: avertissement.gravite === 'danger' ? 'var(--vital)' : 'var(--muted)',
+          }}
+        >
+          {avertissement.texte}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Les leviers de scène du Guide du Maître, dépliables sous la jauge.
+ *
+ * Ils sont là parce que c'est le seul autre levier que le livre met en face
+ * du budget : deux gobelins sur un balcon coûtent exactement le même nombre
+ * de PX que deux gobelins dans un couloir vide, et ne jouent pas pareil. Au
+ * moment où on compose, pas rangés dans un écran de règles qu'on n'ouvre
+ * jamais.
+ */
+function LeviersDeScene() {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button
+        onClick={() => setOuvert((v) => !v)}
+        aria-expanded={ouvert}
+        style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 34, color: 'var(--gold)' }}
+      >
+        <span className="lbl" style={{ fontSize: 9, color: 'inherit' }}>
+          Rendre la scène intéressante
+        </span>
+        <span aria-hidden style={{ fontSize: 10 }}>{ouvert ? '▲' : '▼'}</span>
+      </button>
+      {ouvert && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
+          {LEVIERS_DE_SCENE.map((levier) => (
+            <div key={levier.titre} className="card" style={{ padding: '8px 11px' }}>
+              <div className="ttl" style={{ fontSize: 13 }}>{levier.titre}</div>
+              <div style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--muted)', marginTop: 2 }}>
+                {levier.texte}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NouvelleRencontre({ modele, groupe, onEnregistrer, onFermer }: {
   /** Présent en édition : préremplit le formulaire avec une rencontre déjà enregistrée. */
   modele?: StoredEncounterTemplate;
+  /** Le vrai groupe de la campagne — jamais saisi à la main (voir `JaugeDeDifficulte`). */
+  groupe: { niveau: number; taille: number };
   onEnregistrer: (name: string, combatants: Combatant[]) => void;
   onFermer: () => void;
 }) {
   const [nom, setNom] = useState(modele?.name ?? '');
   const [combatants, setCombatants] = useState<Combatant[]>(modele?.combatants ?? []);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
+
+  /**
+   * Ce qui compte dans le budget : les créatures hostiles QUI VIENNENT DU
+   * BESTIAIRE. Une créature tapée à la main n'a pas de facteur de puissance,
+   * donc pas de coût en PX — on ne l'invente pas, on dit qu'elle manque.
+   */
+  const hostiles = creaturesHostiles(combatants);
+  const profils = hostiles
+    .map((combatant) => PHB_CREATURES.find((creature) => creature.id === combatant.templateId))
+    .filter((creature): creature is CreatureTemplate => Boolean(creature));
+  const sansProfil = hostiles.length - profils.length;
+  const evaluation = evaluerRencontre(profils, groupe.niveau, groupe.taille);
 
   const ajouter = (combatant: Omit<Combatant, 'id'>) => {
     setCombatants((liste) => withDistinctNames([...liste, { ...combatant, id: nouvelId() }]));
@@ -258,7 +432,18 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
           </button>
         </div>
 
-        <SuggestionAutomatique onGenerer={(suggestion) => setCombatants((liste) => withDistinctNames([...liste, ...suggestion]))} />
+        <SuggestionAutomatique
+          groupe={groupe}
+          onGenerer={(suggestion) => setCombatants((liste) => withDistinctNames([...liste, ...suggestion]))}
+        />
+
+        <JaugeDeDifficulte
+          evaluation={evaluation}
+          niveau={groupe.niveau}
+          taille={groupe.taille}
+          sansProfil={sansProfil}
+        />
+        <LeviersDeScene />
 
         {combatants.length === 0 ? (
           <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
@@ -324,7 +509,15 @@ function NouvelleRencontre({ modele, onEnregistrer, onFermer }: {
   );
 }
 
-export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSupprimer, onDeclencher }: {
+export function PreparedEncountersScreen({ templates, groupe, onCreer, onModifier, onSupprimer, onDeclencher }: {
+  /**
+   * Le groupe réel de la campagne, calculé sur les fiches (voir `App`) : son
+   * niveau moyen et son effectif. C'est ce qui permet à la jauge de
+   * difficulté de ne rien demander au MJ — il connaît déjà sa table, l'appli
+   * aussi, et le lui faire retaper à chaque rencontre est le meilleur moyen
+   * qu'il cesse de s'en servir.
+   */
+  groupe: { niveau: number; taille: number };
   templates: StoredEncounterTemplate[];
   onCreer: (name: string, combatants: Combatant[]) => void;
   onModifier: (id: string, name: string, combatants: Combatant[]) => void;
@@ -402,6 +595,7 @@ export function PreparedEncountersScreen({ templates, onCreer, onModifier, onSup
       {edition && (
         <NouvelleRencontre
           modele={edition === 'nouvelle' ? undefined : edition}
+          groupe={groupe}
           onEnregistrer={(name, combatants) => {
             if (edition === 'nouvelle') onCreer(name, combatants);
             else onModifier(edition.id, name, combatants);

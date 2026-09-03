@@ -79,6 +79,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
   const [maitrise, setMaitrise] = useState('');
   const [sauvegardes, setSauvegardes] = useState<LigneSauvegarde[]>([]);
   const [competences, setCompetences] = useState<LigneCompetence[]>([]);
+  const [modeleId, setModeleId] = useState<string | null>(null);
 
   const resultats = useMemo(() => {
     const q = recherche.trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('fr');
@@ -88,6 +89,11 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
   }, [recherche]);
 
   const choisir = (template: CreatureTemplate) => {
+    // Retenir d'où vient la créature. `templateId` existe dans le type depuis
+    // toujours mais n'était jamais rempli : sans lui, une créature posée sur
+    // la table ne sait plus d'où elle vient — donc ni son FP, ni son coût en
+    // PX, et le budget d'une rencontre déjà composée restait incalculable.
+    setModeleId(template.id);
     setNom(template.name);
     setCa(String(template.ac));
     setPv(String(template.hp));
@@ -171,6 +177,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
       ...(maitrise !== '' ? { proficiencyBonus: Number(maitrise) } : {}),
       ...(Object.keys(savingThrows).length > 0 ? { savingThrows } : {}),
       ...(Object.keys(skills).length > 0 ? { skills } : {}),
+      ...(modeleId ? { templateId: modeleId } : {}),
     });
   };
 
