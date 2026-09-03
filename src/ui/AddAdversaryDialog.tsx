@@ -176,13 +176,13 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 30, background: 'var(--bg)',
+      position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(13,15,18,.95)',
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Ajouter un adversaire</h2>
@@ -223,7 +223,6 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
                 className="card"
                 style={{
                   textAlign: 'left', padding: '9px 12px', minHeight: 'var(--tap)',
-                  borderRadius: 'var(--radius)', border: '1px solid var(--gold-dim)', background: 'var(--surface)',
                 }}
               >
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{template.name}</div>
@@ -416,8 +415,7 @@ export function AddAdversaryDialog({ onAjouter, onFermer }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
           {attaques.map((attaque) => (
             <div key={attaque.id} className="card" style={{
-              padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+              padding: '10px 12px',
             }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input

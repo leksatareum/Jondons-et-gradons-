@@ -30,13 +30,13 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 20, background: 'var(--bg)',
+      position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(13,15,18,.95)',
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Règles</h2>
@@ -112,8 +112,7 @@ export function RulesScreen({ onRetour }: { onRetour: () => void }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {resultats.map((regle) => (
               <div key={regle.id} className="card" style={{
-                padding: '12px 14px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+                padding: '12px 14px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div className="ttl" style={{ fontSize: 15, flexGrow: 1 }}>{regle.title}</div>

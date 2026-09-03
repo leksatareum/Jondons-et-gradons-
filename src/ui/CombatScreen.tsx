@@ -450,7 +450,8 @@ export function AbilityScoresStrip({ abilities, modifiers }: {
         <div
           key={ability}
           title={ABILITY_NAMES[ability]}
-          style={{ textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gold-dim)' }}
+          className="card"
+          style={{ textAlign: 'center', padding: '5px 0', borderRadius: 'var(--radius-sm)' }}
         >
           <div className="lbl" style={{ fontSize: 9 }}>{ABILITY_ABBREVIATIONS[ability]}</div>
           <div className="num" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{abilities[ability]}</div>
@@ -475,6 +476,10 @@ export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
           title={ABILITY_NAMES[skill.ability]}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '4px 7px', borderRadius: 8,
+            // `--accent-wash`, pas `--accent-glow` : le halo, essayé ici, est
+            // plus CLAIR que l'aplat sourd et transformait dix lignes
+            // maîtrisées en dix barres violettes plus visibles que les noms
+            // qu'elles servent à marquer.
             background: skill.proficient ? 'var(--accent-wash)' : 'transparent',
           }}
         >
@@ -970,16 +975,12 @@ export function CombatScreen({
     <div style={{
       height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       paddingBottom: TAB_BAR_CLEARANCE, boxSizing: 'border-box',
-      // Une braise en haut, une ombre en bas, sur un fond qui s'assombrit :
-      // l'écran a une source de lumière, et tout ce qui y est posé — l'orbe
-      // d'abord, les cartes ensuite — s'éloigne d'elle en descendant. C'est
+      // Aucun fond ici : la braise en haut et l'ombre en bas sont désormais
+      // portées par la dalle de pierre commune à toute l'appli (`body::before`
+      // dans `theme.css`). L'écran s'y pose au lieu de la recouvrir — c'est
       // ce dégradé, plus qu'une bordure, qui sépare le haut « objet » du bas
-      // « liste » : l'en-tête n'a donc plus de fond ni de trait à lui.
-      background: `
-        radial-gradient(120% 60% at 50% -8%, rgba(224,122,106,.13), transparent 60%),
-        radial-gradient(90% 50% at 50% 108%, rgba(0,0,0,.85), transparent),
-        linear-gradient(#15171b, #0e1013)
-      `,
+      // « liste », et l'en-tête n'a donc ni fond ni trait à lui.
+      background: 'radial-gradient(90% 40% at 50% 104%, rgba(0,0,0,.7), transparent)',
       // Surcharge la matière socle par celle de la classe — seuls ces jetons
       // bougent (voir `theme.css`) : la structure et le rouge vital restent
       // fixes, quelle que soit la classe regardée. `--accent-wash` reste
@@ -1208,10 +1209,7 @@ export function CombatScreen({
         la racine, et garde les onglets visibles en permanence — un
         avantage, pas une concession.
       */}
-      <div style={{
-        flexShrink: 0, borderBottom: '1px solid var(--line)',
-        padding: '0 14px', display: 'flex',
-      }}>
+      <div className="jg-onglets" style={{ flexShrink: 0, padding: '0 14px' }}>
         {/*
           Des onglets soulignés, pas des boutons encadrés. Quatre cadres dorés
           côte à côte juste sous l'orbe se disputaient l'attention avec elle,
@@ -1223,11 +1221,7 @@ export function CombatScreen({
             key={id}
             onClick={() => setOnglet(id)}
             aria-pressed={onglet === id}
-            style={{
-              flex: 1, minHeight: 'var(--tap)', padding: '9px 0', background: 'none',
-              border: 'none', borderBottom: `2px solid ${onglet === id ? 'var(--gold)' : 'transparent'}`,
-              color: onglet === id ? 'var(--gold-bright)' : 'var(--muted)',
-            }}
+            className="jg-onglet"
           >
             <span className="ttl" style={{ fontSize: 12, letterSpacing: '.01em' }}>
               {label}{comptesParCategorie[id] > 0 ? ` ${comptesParCategorie[id]}` : ''}

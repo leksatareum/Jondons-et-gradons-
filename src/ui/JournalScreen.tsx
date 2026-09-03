@@ -189,21 +189,15 @@ function SousOnglets({ actif, onChanger }: {
   onChanger: (section: JournalSection) => void;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+    <div className="jg-onglets" style={{ marginBottom: 8 }}>
       {SECTIONS.map(([clef, libelle]) => (
         <button
           key={clef}
           onClick={() => onChanger(clef)}
-          className="lbl"
-          style={{
-            flex: 1, minHeight: 34, borderRadius: 999,
-            background: actif === clef ? 'var(--accent)' : 'transparent',
-            color: actif === clef ? 'var(--accent-ink)' : 'var(--muted)',
-            border: actif === clef ? 'none' : '1px solid var(--gold-dim)',
-            fontWeight: 700, fontSize: 10.5,
-          }}
+          aria-pressed={actif === clef}
+          className="jg-onglet"
         >
-          {libelle}
+          <span className="ttl" style={{ fontSize: 12, letterSpacing: '.01em' }}>{libelle}</span>
         </button>
       ))}
     </div>

@@ -21,14 +21,14 @@ export function FicheDeSort({ spell, onFermer }: { spell: Spell; onFermer: () =>
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 20, background: 'var(--bg)',
+        position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(13,15,18,.95)',
         display: 'flex', flexDirection: 'column',
       }}
     >
       <header style={{
         flexShrink: 0, padding: '14px 16px 12px',
         paddingTop: 'calc(14px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--line)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--line)',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flexGrow: 1, minWidth: 0 }}>

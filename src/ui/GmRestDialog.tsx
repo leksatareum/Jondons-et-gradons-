@@ -42,13 +42,13 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 30, background: 'var(--bg)',
+      position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(13,15,18,.95)',
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Repos</h2>
@@ -116,7 +116,7 @@ export function GmRestDialog({ sheets, onAppliquer, onFermer }: {
                   className="card"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-                    padding: '10px 12px', borderRadius: 'var(--radius)',
+                    padding: '10px 12px',
                     border: `1px solid ${coche ? 'var(--accent)' : 'var(--gold-dim)'}`,
                     background: coche ? 'var(--accent-wash)' : 'var(--surface)',
                   }}

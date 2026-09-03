@@ -50,8 +50,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer, onEquiper
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         {attaques.map((attaque) => (
           <div key={attaque.id} className="card" style={{
-            padding: '10px 12px', borderRadius: 'var(--radius)',
-            border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+            padding: '10px 12px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -125,8 +124,7 @@ export function WeaponsScreen({ sheet, derived, onEquiper, onDegainer, onEquiper
           mentiraient dès que le sac en contient un autre. */}
       {bouclier && (
         <div className="card" style={{
-          marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius)',
-          border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+          marginTop: 12, padding: '10px 12px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flexGrow: 1, minWidth: 0 }}>

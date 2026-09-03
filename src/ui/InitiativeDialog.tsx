@@ -45,14 +45,14 @@ export function InitiativeDialog({ state, onLancer, onFermer }: {
       role="dialog"
       aria-label="Initiatives"
       style={{
-        position: 'fixed', inset: 0, zIndex: 30, background: 'var(--bg)',
+        position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(13,15,18,.95)',
         display: 'flex', flexDirection: 'column',
       }}
     >
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>

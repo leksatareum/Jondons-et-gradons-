@@ -81,7 +81,6 @@ function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenShee
       style={{
         background: active ? 'var(--surface-raised)' : 'var(--surface)',
         border: active ? '1.5px solid var(--accent)' : '1px solid var(--gold-dim)',
-        borderRadius: 'var(--radius)',
         padding: active ? '13px 14px' : '10px 12px',
         opacity: down ? 0.45 : 1,
       }}

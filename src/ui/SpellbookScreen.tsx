@@ -3,7 +3,7 @@ import { preparedBudget, spellbookOf, spellChoices, type BookEntry, type ChoiceS
 import { detailOf, economyOf, sourceLisible } from './spell-cards';
 import { FicheDeSort } from './FicheDeSort';
 import { damageTypesOf } from '../domain/spell-damage-types';
-import { DamageTypeIcons } from './damage-type-icon';
+import { DamageTypeSlot } from './damage-type-icon';
 import { grantedSpells, grantResourceKey } from '../model/spell-grants';
 import { cantripBudget, cantripChoices, grantedCantrips } from '../model/spellbook';
 import type { Spell } from '../content/spell-catalogue';
@@ -45,7 +45,22 @@ const COULEUR: Record<ChoiceState['kind'], string> = {
   'budget-plein': 'var(--muted)',
 };
 
-/** Le détail d'un sort, description comprise — c'est ce qu'on vient y lire. */
+/**
+ * Une carte de sort du grimoire — composée exactement comme celle de l'écran
+ * de combat (`ActionCard`).
+ *
+ * C'est le même objet vu deux fois : le même sort, la même image, le même
+ * geste pour ouvrir sa fiche. Deux compositions différentes obligeaient à
+ * réapprendre où lire quoi en changeant d'onglet. Donc, dans les deux :
+ *
+ *   [médaillon] [nom / ce que ça coûte] [jeton rond]
+ *
+ * Le médaillon PRÉCÈDE le nom, dans un emplacement de largeur fixe
+ * (`DamageTypeSlot`) : c'est cette largeur constante qui garde les titres
+ * alignés d'une carte à l'autre, y compris pour les sorts sans dégâts. Le
+ * corps de la carte ouvre la fiche, le jeton rond prépare ou retire — deux
+ * gestes, deux cibles, comme en combat.
+ */
 function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
   spell: Spell;
   etat: ChoiceState;
@@ -55,58 +70,72 @@ function Ligne({ spell, etat, origine, onOuvrir, onBasculer }: {
   onBasculer: (() => void) | null;
 }) {
   const attenue = etat.kind === 'budget-plein';
+  const economie = economyOf(spell) === 'bonus' ? 'action bonus'
+    : economyOf(spell) === 'reaction' ? 'réaction'
+    : economyOf(spell) === 'action' ? 'action' : spell.castingTime.toLocaleLowerCase('fr');
   return (
     <div
-      className="card jg-tile"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 12px', borderRadius: 'var(--radius)',
-        borderColor: etat.kind === 'prepare' ? 'var(--accent)' : 'var(--gold-dim)',
-        borderWidth: etat.kind === 'prepare' ? 1.5 : 1,
-        opacity: attenue ? 0.45 : 1,
-      }}
+      // Préparé : le liseré de la classe, posé par `.card-accent` — la forme
+      // ne change pas, seule la matière du bord.
+      className={`card${etat.kind === 'prepare' ? ' card-accent' : ''}`}
+      style={{ padding: '10px 12px', opacity: attenue ? 0.45 : 1 }}
     >
-      <button
-        onClick={onOuvrir}
-        style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
-      >
-        {/* Le nom d'abord, les médaillons APRÈS lui : devant, leur largeur
-            variable (0, 1 ou 2) décalait le nom d'une ligne à l'autre et les
-            noms ne s'alignaient plus dans la liste. Le nom prenant toute la
-            place libre, ils se rangent au bout de la ligne, au même endroit
-            sur chaque sort. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, flexGrow: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {spell.name}
-          </div>
-          <DamageTypeIcons types={damageTypesOf(spell)} size={22} />
-        </div>
-        <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
-          {detailOf(spell)} · {economyOf(spell) === 'bonus' ? 'action bonus'
-            : economyOf(spell) === 'reaction' ? 'réaction'
-            : economyOf(spell) === 'action' ? 'action' : spell.castingTime.toLocaleLowerCase('fr')}
-        </div>
-        <div className="lbl" style={{ color: COULEUR[etat.kind], marginTop: 3 }}>
-          {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` par ${sourceLisible(etat.par)}` : ''}
-          {origine ? ` · ${origine}` : ''}
-        </div>
-      </button>
-
-      {onBasculer && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
-          onClick={onBasculer}
-          aria-label={etat.kind === 'prepare' ? `Retirer ${spell.name}` : `Préparer ${spell.name}`}
+          onClick={onOuvrir}
+          aria-label={`${spell.name} — voir la fiche`}
           style={{
-            flexShrink: 0, minHeight: 'var(--tap)', minWidth: 46, borderRadius: 10,
-            border: etat.kind === 'prepare' ? 'none' : '1px solid var(--line)',
-            background: etat.kind === 'prepare' ? 'var(--accent)' : 'transparent',
-            color: etat.kind === 'prepare' ? 'var(--accent-ink)' : 'var(--muted)',
-            fontSize: 20, fontWeight: 700,
+            flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10,
+            textAlign: 'left', minHeight: 40, color: 'inherit',
           }}
         >
-          {etat.kind === 'prepare' ? '−' : '+'}
+          <DamageTypeSlot types={damageTypesOf(spell)} size={30} />
+          <span style={{ flexGrow: 1, minWidth: 0 }}>
+            <span
+              className="ttl"
+              style={{
+                display: 'block', fontSize: 16, letterSpacing: '-0.01em',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              {spell.name}
+            </span>
+            <span
+              className="lbl"
+              style={{
+                display: 'block', marginTop: 3, fontSize: 9, textTransform: 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              {detailOf(spell)} · {economie}
+            </span>
+          </span>
         </button>
-      )}
+
+        {onBasculer && (
+          <button
+            onClick={onBasculer}
+            aria-label={etat.kind === 'prepare' ? `Retirer ${spell.name}` : `Préparer ${spell.name}`}
+            className="jg-rond"
+            // Préparé : le jeton garde son métal, seul le glyphe s'allume et un
+            // liseré à la couleur de la classe l'entoure. Rempli d'accent, il
+            // faisait une colonne de gros ronds violets qui hurlait plus fort
+            // que les noms des sorts.
+            style={etat.kind === 'prepare'
+              ? { color: 'var(--accent)', borderColor: 'var(--accent)', fontSize: 20, fontWeight: 700 }
+              : { fontSize: 20, fontWeight: 700 }}
+          >
+            {etat.kind === 'prepare' ? '−' : '+'}
+          </button>
+        )}
+      </div>
+
+      {/* La nature du sort sur une seconde ligne, à la place qu'occupent les
+          pastilles de paiement en combat : elle ne dispute pas sa place au nom. */}
+      <div className="lbl" style={{ marginTop: 6, fontSize: 8, color: COULEUR[etat.kind] }}>
+        {LIBELLE[etat.kind]}{etat.kind === 'accorde' ? ` par ${sourceLisible(etat.par)}` : ''}
+        {origine ? ` · ${origine}` : ''}
+      </div>
     </div>
   );
 }
@@ -173,7 +202,12 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <header style={{
         flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
-        background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+        // Un voile flouté plutôt qu'un aplat : l'en-tête reste collé en haut
+        // pendant le défilement, il doit donc couvrir ce qui passe dessous —
+        // mais la pierre du fond continue de se deviner au travers.
+        background: 'rgba(22,25,29,.93)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid var(--line)',
         boxShadow: 'var(--raise)', padding: '11px 14px 12px',
         paddingTop: 'calc(11px + env(safe-area-inset-top))',
       }}>
@@ -370,35 +404,40 @@ export function SpellbookScreen({ sheet, derived, onToggle, dons }: {
               key={grant.id}
               className="card"
               style={{
-                padding: '10px 12px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--ok)', background: 'var(--surface)',
+                padding: '10px 12px',
+                // Accordé hors budget : le vert, seule couleur que l'appli
+                // associe déjà à « pas pris sur ton quota ».
+                boxShadow: '0 7px 18px -7px #000, inset 0 1px 0 rgba(255,235,190,.07), 0 0 0 1px var(--ok)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button
                   onClick={() => setOuvert(spell)}
-                  style={{ flexGrow: 1, minWidth: 0, textAlign: 'left', minHeight: 40 }}
+                  aria-label={`${spell.name} — voir la fiche`}
+                  style={{
+                    flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10,
+                    textAlign: 'left', minHeight: 40, color: 'inherit',
+                  }}
                 >
-                  {/* Même disposition qu'ailleurs dans cet écran : le nom
-                      d'abord, les médaillons au bout de sa ligne — voir
-                      `Ligne` un peu plus haut dans ce fichier. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, flexGrow: 1, minWidth: 0 }}>{spell.name}</div>
-                    <DamageTypeIcons types={damageTypesOf(spell)} size={22} />
-                  </div>
-                  <div className="lbl" style={{ textTransform: 'none', marginTop: 2 }}>
+                  {/* Même composition que partout : médaillon, nom, détail —
+                      voir `Ligne` un peu plus haut dans ce fichier. */}
+                  <DamageTypeSlot types={damageTypesOf(spell)} size={30} />
+                  <span style={{ flexGrow: 1, minWidth: 0 }}>
+                  <div className="ttl" style={{ fontSize: 16, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spell.name}</div>
+                  <div className="lbl" style={{ textTransform: 'none', marginTop: 3, fontSize: 9 }}>
                     {detailOf(spell)}
                   </div>
-                  <div className="lbl" style={{ color: 'var(--ok)', marginTop: 3 }}>
+                  <div className="lbl" style={{ color: 'var(--ok)', marginTop: 3, fontSize: 8 }}>
                     {grant.source}
                     {ressource ? ` · ${ressource.remaining}/${ressource.max} lancement${ressource.max > 1 ? 's' : ''}` : ''}
                     {` · recharge au repos ${grant.recharge}`}
                   </div>
                   {auDessusDeSonRang && (
-                    <div className="lbl" style={{ color: 'var(--accent)', marginTop: 3, textTransform: 'none' }}>
+                    <div className="lbl" style={{ color: 'var(--accent)', marginTop: 3, textTransform: 'none', fontSize: 8 }}>
                       Rang {spell.level} — au-delà de ses emplacements : lançable par ces lancements seulement.
                     </div>
                   )}
+                  </span>
                 </button>
                 {dons && (
                   <button

@@ -486,26 +486,20 @@ function MjOnglets({ valeur, onChanger, droite }: {
     ['combat', 'Combat'], ['rencontres', 'Rencontres'], ['journal', 'Journal'],
   ];
   return (
-    <nav style={{
-      display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px',
-      borderBottom: '1px solid var(--line)', background: 'var(--surface)',
-    }}>
+    <nav className="jg-onglets" style={{ alignItems: 'center', padding: '0 14px' }}>
       {items.map(([clef, libelle]) => (
         <button
           key={clef}
           onClick={() => onChanger(clef)}
-          className="lbl"
-          style={{
-            minHeight: 32, padding: '0 14px', borderRadius: 999,
-            background: valeur === clef ? 'var(--accent)' : 'transparent',
-            color: valeur === clef ? 'var(--accent-ink)' : 'var(--muted)',
-            fontWeight: 700,
-          }}
+          aria-pressed={valeur === clef}
+          className="jg-onglet"
         >
-          {libelle}
+          <span className="ttl" style={{ fontSize: 12, letterSpacing: '.01em' }}>{libelle}</span>
         </button>
       ))}
-      {droite && <div style={{ marginLeft: 'auto' }}>{droite}</div>}
+      {/* L'action de droite (Repos, Réglages) ne prend pas sa part de la
+          largeur : `flex: none` la sort du partage égal des onglets. */}
+      {droite && <div style={{ flex: 'none', marginLeft: 'auto', paddingLeft: 10 }}>{droite}</div>}
     </nav>
   );
 }

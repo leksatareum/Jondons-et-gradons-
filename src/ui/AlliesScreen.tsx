@@ -30,8 +30,7 @@ const crLabel = (cr: string): string => CR_LABEL[cr] ?? cr;
 function ProfilCard({ profile, action }: { profile: WildShapeProfile; action: React.ReactNode }) {
   return (
     <div className="card" style={{
-      padding: '10px 12px', borderRadius: 'var(--radius)',
-      border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+      padding: '10px 12px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -114,9 +113,8 @@ function SectionFormeSauvage({
       </div>
 
       {actif ? (
-        <div className="card" style={{
-          padding: '12px 14px', borderRadius: 'var(--radius)',
-          border: '1px solid var(--accent)', background: 'var(--accent-wash)',
+        <div className="card card-accent" style={{
+          padding: '12px 14px',
         }}>
           <div className="ttl" style={{ fontSize: 17 }}>{actif.profile.name}</div>
           <div className="lbl" style={{ textTransform: 'none', marginTop: 3 }}>
@@ -153,9 +151,8 @@ function SectionFormeSauvage({
           </button>
         </div>
       ) : courrouxActif ? (
-        <div className="card" style={{
-          padding: '12px 14px', borderRadius: 'var(--radius)',
-          border: '1px solid var(--accent)', background: 'var(--accent-wash)',
+        <div className="card card-accent" style={{
+          padding: '12px 14px',
         }}>
           <div className="ttl" style={{ fontSize: 17 }}>Courroux de la mer</div>
           <div style={{ fontSize: 13, marginTop: 6, lineHeight: 1.45 }}>
@@ -174,9 +171,8 @@ function SectionFormeSauvage({
           </button>
         </div>
       ) : formeActive ? (
-        <div className="card" style={{
-          padding: '12px 14px', borderRadius: 'var(--radius)',
-          border: '1px solid var(--accent)', background: 'var(--accent-wash)',
+        <div className="card card-accent" style={{
+          padding: '12px 14px',
         }}>
           <div className="ttl" style={{ fontSize: 17 }}>
             Forme stellaire · {CONSTELLATIONS.find((c) => c.id === formeActive.constellation)?.name}
@@ -242,8 +238,7 @@ function SectionFormeSauvage({
 
           {mer && (
             <div className="card" style={{
-              padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+              padding: '10px 12px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -263,8 +258,7 @@ function SectionFormeSauvage({
 
           {etoiles && (
             <div className="card" style={{
-              padding: '10px 12px', borderRadius: 'var(--radius)',
-              border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+              padding: '10px 12px',
             }}>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Forme stellaire</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -437,8 +431,8 @@ function CarteCompagnon({ companion, slots, onDegats, onDetacher, onRamener }: {
 }) {
   return (
     <div className="card" style={{
-      padding: '12px 14px', borderRadius: 'var(--radius)',
-      border: '1px solid var(--ok)', background: 'var(--surface)',
+      padding: '12px 14px',
+      border: '1px solid var(--ok)',
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         <div className="ttl" style={{ fontSize: 17, flexGrow: 1 }}>{companion.name}</div>
@@ -528,8 +522,7 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
             const payant = option.source === 'wild-companion';
             return (
               <div key={option.id} className="card" style={{
-                padding: '10px 12px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--gold-dim)', background: 'var(--surface)',
+                padding: '10px 12px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ flexGrow: 1, minWidth: 0 }}>

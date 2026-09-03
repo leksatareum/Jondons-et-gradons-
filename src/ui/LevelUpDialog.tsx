@@ -96,13 +96,13 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 30, background: 'var(--bg)',
+      position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(13,15,18,.95)',
       display: 'flex', flexDirection: 'column',
     }}>
       <header style={{
         flexShrink: 0, padding: '13px 16px 12px',
         paddingTop: 'calc(13px + env(safe-area-inset-top))',
-        borderBottom: '1px solid var(--gold-dim)', background: 'var(--surface)',
+        borderBottom: '1px solid var(--gold-dim)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -211,7 +211,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         onClick={() => setSousClasse(option.name)}
                         className="card"
                         style={{
-                          textAlign: 'left', padding: '11px 13px', borderRadius: 'var(--radius)',
+                          textAlign: 'left', padding: '11px 13px',
                           border: `1px solid ${sousClasse === option.name ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: sousClasse === option.name ? 'var(--accent-wash)' : 'var(--surface)',
                         }}
@@ -271,7 +271,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                           onClick={() => { setDon(feat.id); setAmelioration({}); }}
                           className="card"
                           style={{
-                            textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
+                            textAlign: 'left', padding: '10px 12px',
                             border: `1px solid ${don === feat.id ? 'var(--accent)' : 'var(--gold-dim)'}`,
                             background: don === feat.id ? 'var(--accent-wash)' : 'var(--surface)',
                           }}
@@ -352,7 +352,7 @@ export function LevelUpDialog({ sheet, onMonter, onFermer }: {
                         }}
                         className="card"
                         style={{
-                          textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
+                          textAlign: 'left', padding: '10px 12px',
                           border: `1px solid ${prise || entrante ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: prise || entrante ? 'var(--accent-wash)' : 'var(--surface)',
                         }}

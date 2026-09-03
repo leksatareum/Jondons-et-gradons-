@@ -59,7 +59,12 @@ export function TabBar({ actif, onChanger }: { actif: MainTab; onChanger: (ongle
       style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
         display: 'flex',
-        background: 'linear-gradient(180deg, var(--surface-raised), var(--bg))',
+        // Presque opaque, et floutée : à .92 le texte du rouleau se lisait
+        // au travers de la barre et venait se mêler aux libellés d'onglets.
+        // La pierre du fond doit se deviner, pas le contenu de l'écran.
+        background: 'linear-gradient(180deg, rgba(26,29,34,.97), rgba(9,10,12,.99))',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         borderTop: '1.5px solid var(--gold-dim, var(--line))',
         boxShadow: 'var(--raise)',
         paddingBottom: 'env(safe-area-inset-bottom)',

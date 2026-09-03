@@ -360,7 +360,7 @@ export function FicheScreen({
                         className="card"
                         aria-disabled={fige || undefined}
                         style={{
-                          textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--radius)',
+                          textAlign: 'left', padding: '10px 12px',
                           border: `1px solid ${actif ? 'var(--accent)' : 'var(--gold-dim)'}`,
                           background: actif
                             ? 'linear-gradient(180deg, var(--accent-wash), var(--surface))'
