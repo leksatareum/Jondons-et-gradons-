@@ -387,7 +387,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
     }}>
       <button onClick={onClose} aria-label="Fermer" style={{ flexGrow: 1 }} />
       <div style={{
-        background: 'linear-gradient(180deg, #262a31, #16181d 62%)',
+        background: 'var(--jg-voile-carte), var(--jg-ardoise)',
         borderTop: '1px solid var(--gold-dim)',
         boxShadow: '0 -12px 30px -10px #000',
         borderRadius: '16px 16px 0 0', padding: '14px 14px 0',

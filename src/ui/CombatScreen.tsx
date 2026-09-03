@@ -123,7 +123,7 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
                 flexGrow: 1, minWidth: 0, minHeight: 34, padding: '0 11px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 borderRadius: 9, border: 'none',
-                background: 'linear-gradient(155deg, #262a31, #191c21 62%)',
+                background: 'var(--jg-voile-carte), var(--jg-ardoise)',
                 boxShadow: '0 5px 14px -7px #000, inset 0 1px 0 rgba(255,235,190,.06), 0 0 0 1px rgba(150,116,58,.2)',
                 textAlign: 'left', color: 'inherit',
                 opacity: res.remaining <= 0 ? 0.4 : 1,
@@ -648,7 +648,7 @@ function ActionCard({ card, playable, retard = 0, onPlay, onOuvrirFiche }: {
         // d'action, une bordure claire la ferait lire comme une recommandation.
         borderRadius: 12,
         padding: '10px 12px',
-        background: 'linear-gradient(155deg, #262a31, #191c21 62%)',
+        background: 'var(--jg-voile-carte), var(--jg-ardoise)',
         // La carte se pose sur le fond par son OMBRE, au lieu d'être enfermée
         // dans un cadre : c'est ce qui donne de la profondeur à un écran où
         // tout était auparavant à la même distance de l'œil.
