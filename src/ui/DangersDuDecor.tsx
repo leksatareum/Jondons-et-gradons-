@@ -3,6 +3,7 @@ import {
   AVERTISSEMENT_TRANCHE, dangersPourNiveau, graviteAuNiveau,
   type Danger, type Gravite,
 } from '../content/dangers';
+import { effetsParUsure, LIBELLE_RYTHME, type EffetEnvironnement } from '../content/environnement';
 
 /**
  * Les dangers du décor et les pièges, filtrés sur le niveau du groupe.
@@ -81,13 +82,60 @@ function Fiche({ danger, niveau }: { danger: Danger; niveau: number }) {
   );
 }
 
+/**
+ * Un effet d'environnement : ce qui RONGE, par opposition au danger qui
+ * frappe. Deux choses passent avant le texte — à quelle fréquence le MJ doit
+ * s'en occuper, et si ça coûte de l'Épuisement.
+ */
+function FicheEnvironnement({ effet }: { effet: EffetEnvironnement }) {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <div className="card" style={{ padding: '11px 13px' }}>
+      <button
+        onClick={() => setOuvert((v) => !v)}
+        aria-expanded={ouvert}
+        style={{ width: '100%', textAlign: 'left', color: 'inherit' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span className="ttl" style={{ flexGrow: 1, fontSize: 15 }}>{effet.nom}</span>
+          {effet.sauvegarde && (
+            <span className="num" style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold-bright)', flexShrink: 0 }}>
+              {effet.sauvegarde.caracteristique}{' '}
+              {effet.sauvegarde.dd === 'croissant' ? 'DD ↑' : `DD ${effet.sauvegarde.dd}`}
+            </span>
+          )}
+          <span aria-hidden style={{ fontSize: 9, color: 'var(--muted)' }}>{ouvert ? '▲' : '▼'}</span>
+        </div>
+        <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--muted)', marginTop: 3 }}>
+          {effet.resume}
+        </div>
+        <div className="lbl" style={{ fontSize: 8, marginTop: 4 }}>
+          {LIBELLE_RYTHME[effet.rythme]}
+          {effet.epuisement && <span style={{ color: 'var(--vital)' }}> · épuisement</span>}
+          {' · Guide p. '}{effet.page}
+        </div>
+      </button>
+      {ouvert && (
+        <div style={{ marginTop: 9, paddingTop: 9, borderTop: '1px solid var(--line)' }}>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>{effet.effet}</p>
+          {effet.exemption && (
+            <p style={{ margin: '9px 0 0', fontSize: 12, lineHeight: 1.5, color: 'var(--ok)' }}>
+              {effet.exemption}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DangersDuDecor({ niveau, onFermer }: {
   /** Le niveau du groupe — c'est lui qui décide de la liste, pas un choix du MJ. */
   niveau: number;
   onFermer: () => void;
 }) {
-  const [genre, setGenre] = useState<'decor' | 'piege'>('decor');
-  const liste = dangersPourNiveau(niveau, genre);
+  const [onglet, setOnglet] = useState<'decor' | 'piege' | 'environnement'>('decor');
+  const liste = onglet === 'environnement' ? [] : dangersPourNiveau(niveau, onglet);
 
   return (
     <div style={{
@@ -103,15 +151,17 @@ export function DangersDuDecor({ niveau, onFermer }: {
           <h2 className="ttl" style={{ margin: 0, fontSize: 18, flexGrow: 1 }}>Le décor</h2>
           <button onClick={onFermer} aria-label="Fermer" className="jg-rond" style={{ fontSize: 18 }}>✕</button>
         </div>
+        {/* Le sous-titre suit l'onglet : annoncer « pour un groupe de niveau 2 »
+            au-dessus du climat serait faux, il ne dépend d'aucun niveau. */}
         <div className="lbl" style={{ fontSize: 9, margin: '2px 0 8px' }}>
-          pour un groupe de niveau {niveau}
+          {onglet === 'environnement' ? 'à tous les niveaux' : `pour un groupe de niveau ${niveau}`}
         </div>
         <div className="jg-onglets" style={{ borderBottom: 'none' }}>
-          {([['decor', 'Dangers'], ['piege', 'Pièges']] as const).map(([clef, libelle]) => (
+          {([['decor', 'Dangers'], ['piege', 'Pièges'], ['environnement', 'Climat']] as const).map(([clef, libelle]) => (
             <button
               key={clef}
-              onClick={() => setGenre(clef)}
-              aria-pressed={genre === clef}
+              onClick={() => setOnglet(clef)}
+              aria-pressed={onglet === clef}
               className="jg-onglet"
             >
               <span className="ttl" style={{ fontSize: 12 }}>{libelle}</span>
@@ -124,7 +174,20 @@ export function DangersDuDecor({ niveau, onFermer }: {
         flexGrow: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         padding: '13px 16px calc(20px + env(safe-area-inset-bottom))',
       }}>
-        {liste.length === 0 ? (
+        {onglet === 'environnement' ? (
+          <>
+            {/* Le climat ne se filtre PAS par niveau : le froid mord un
+                groupe de niveau 17 exactement comme un groupe de niveau 2.
+                C'est la durée qui fait le danger, pas la puissance. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {effetsParUsure().map((effet) => <FicheEnvironnement key={effet.id} effet={effet} />)}
+            </div>
+            <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.5, color: 'var(--muted)' }}>
+              Ces règles ne dépendent pas du niveau : elles usent un groupe de niveau 17
+              comme un groupe de niveau 2. C’est la durée d’exposition qui fait le danger.
+            </p>
+          </>
+        ) : liste.length === 0 ? (
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5 }}>
             Rien de prévu pour cette tranche de niveaux dans le Guide.
           </p>
@@ -134,10 +197,12 @@ export function DangersDuDecor({ niveau, onFermer }: {
           </div>
         )}
 
-        <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.5, color: 'var(--muted)' }}>
-          {AVERTISSEMENT_TRANCHE}
-        </p>
-        {genre === 'piege' && (
+        {onglet !== 'environnement' && (
+          <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.5, color: 'var(--muted)' }}>
+            {AVERTISSEMENT_TRANCHE}
+          </p>
+        )}
+        {onglet === 'piege' && (
           <p style={{ margin: '8px 0 0', fontSize: 11.5, lineHeight: 1.5, color: 'var(--muted)' }}>
             Le Guide conseille d’en user avec parcimonie : trop de pièges rendent les joueurs
             méfiants et ralentissent la partie. Les meilleurs sont une diversion vite franchie,
