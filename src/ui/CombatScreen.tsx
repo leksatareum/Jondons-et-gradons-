@@ -46,7 +46,7 @@ const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
  * coup d'œil au-dessus d'une table, et le chiffre qu'on y cherche neuf fois
  * sur dix est celui-là.
  */
-const TAILLE_ORBE = 112;
+const TAILLE_ORBE = 104;
 
 /**
  * Ce que les états actifs imposent, en une phrase.
@@ -74,42 +74,6 @@ const ECONOMY_LABEL: Record<Economy, string> = {
   action: 'Action', bonus: 'Bonus', reaction: 'Réaction', libre: 'Libre',
 };
 
-/** Une icône par onglet — étoile pour la magie, arc pour le tir, épées croisées pour le corps à corps. */
-function TabIcon({ categorie, color }: { categorie: CardCategory; color: string }) {
-  if (categorie === 'magie') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill={color} aria-hidden>
-        <path d="M12 1.5 L14.2 8.6 L21.5 8.8 L15.6 13.2 L17.7 20.4 L12 16 L6.3 20.4 L8.4 13.2 L2.5 8.8 L9.8 8.6 Z" />
-      </svg>
-    );
-  }
-  if (categorie === 'distance') {
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M5.5 20 Q2.5 12 5.5 4" />
-        <path d="M5.5 4 L19 12 L5.5 20" />
-      </svg>
-    );
-  }
-  if (categorie === 'objets') {
-    // Une fiole : goulot, bouchon, panse arrondie — potions, antitoxine,
-    // parchemins et le reste des objets à raccourci de Combat.
-    return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M10 2.5 h4 M10.5 2.5 v4.3 L6 15.4 a4.4 4.4 0 0 0 4 6.1 h4 a4.4 4.4 0 0 0 4-6.1 L13.5 6.8 V2.5" />
-        <path d="M8.2 14.5 h7.6" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M19 4 L8 15" />
-      <path d="M15.5 4 L20 4 L20 8.5" />
-      <path d="M5 18 L9 14" />
-      <path d="M4 21 L7 18" />
-    </svg>
-  );
-}
 
 /** Une pastille de paiement — une gemme taillée, dans l'esprit « Braise et fer ». */
 function Pip({ filled }: { filled: boolean }) {
@@ -141,46 +105,53 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
 }) {
   if (resources.length === 0) return null;
   return (
-    <div className="jg-tile" style={{ marginBottom: 5, borderRadius: 9, padding: '6px 10px 7px' }}>
-      <span className="jg-stud" style={{ top: 5, left: 5 }} />
-      <span className="jg-stud" style={{ top: 5, right: 5 }} />
-      <div className="lbl" style={{ marginBottom: 4, fontSize: 10, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 5 }}>
-        <svg width="6" height="6" viewBox="0 0 10 10" style={{ transform: 'rotate(45deg)', flexShrink: 0 }} aria-hidden>
-          <rect width="10" height="10" fill="var(--gold)" />
-        </svg>
-        Ressources
-      </div>
+    <div style={{ marginTop: 10 }}>
+      {/*
+        Plus de plaque rivetée ici : elle était le dernier cadre lourd d'un
+        en-tête devenu une simple colonne de chiffres, et elle pesait plus que
+        l'orbe juste au-dessus. Même grammaire que les cartes du rouleau —
+        posé par son ombre, pas enfermé dans un cadre.
+      */}
+      <div className="lbl" style={{ fontSize: 8.5, textAlign: 'center', marginBottom: 4 }}>Ressources</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {resources.map((res) => (
-          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div key={res.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               onClick={() => onDepenser?.(res.key)}
               disabled={res.remaining <= 0}
               style={{
-                flexGrow: 1, minWidth: 0, minHeight: 30, padding: '0 10px',
-                borderRadius: 7, border: '1px solid var(--gold-dim)',
-                background: 'linear-gradient(180deg, var(--surface-raised), var(--surface))',
-                textAlign: 'left', fontSize: 13, fontWeight: 700,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                flexGrow: 1, minWidth: 0, minHeight: 34, padding: '0 11px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                borderRadius: 9, border: 'none',
+                background: 'linear-gradient(155deg, #262a31, #191c21 62%)',
+                boxShadow: '0 5px 14px -7px #000, inset 0 1px 0 rgba(255,235,190,.06), 0 0 0 1px rgba(150,116,58,.2)',
+                textAlign: 'left', color: 'inherit',
                 opacity: res.remaining <= 0 ? 0.4 : 1,
               }}
             >
-              {res.name}
+              <span className="ttl" style={{
+                fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {res.name}
+              </span>
+              {/* Le compteur DANS le bouton : ce qu'il reste se lit sur la
+                  chose qu'on va toucher, pas dans une colonne d'en face. */}
+              <span className="ttl" style={{
+                flexShrink: 0, fontSize: 14,
+                color: res.remaining > 0 ? 'var(--gold-bright)' : 'var(--muted)',
+              }}>
+                {res.remaining}/{res.max}
+              </span>
             </button>
-            {/* Le compteur, juste en face du bouton : ce qu'il reste, sans avoir à compter des pastilles. */}
-            <div className="num" style={{
-              minWidth: 38, textAlign: 'center', fontSize: 15, fontWeight: 700,
-              color: res.remaining > 0 ? 'var(--gold-bright)' : 'var(--muted)',
-            }}>
-              {res.remaining}/{res.max}
-            </div>
             {res.spent > 0 && (
               <button
                 onClick={() => onRestaurer?.(res.key)}
                 aria-label={`Rendre une utilisation de ${res.name}`}
+                title="Rendre une utilisation"
                 style={{
-                  flexShrink: 0, minHeight: 30, minWidth: 30,
-                  borderRadius: 7, border: '1px solid var(--gold-dim)', color: 'var(--gold)', fontSize: 14, fontWeight: 700,
+                  flexShrink: 0, width: 34, height: 34, borderRadius: '50%',
+                  border: '1px solid var(--gold-dim)', background: 'none',
+                  color: 'var(--gold)', fontSize: 14, fontWeight: 700,
                 }}
               >
                 ↺
@@ -194,60 +165,76 @@ function RessourcesTracker({ resources, onDepenser, onRestaurer }: {
 }
 
 /**
- * Le récapitulatif des emplacements de sorts restants, tous rangs confondus.
+ * La ligne vitale : CA, initiative, et ce qu'il reste d'emplacements.
+ *
+ * Trois blocs qui occupaient trois hauteurs — un écusson accroché à l'orbe,
+ * une ligne « Initiative » perdue au bout des sauvegardes, un bandeau
+ * « Emplacements de sorts » à lui seul — tiennent maintenant sur une seule
+ * ligne sous l'orbe, séparés par de simples filets. Ce sont trois chiffres
+ * de même nature : ce qu'on relit entre deux tours sans y toucher.
  *
  * Chaque carte de sort rappelle déjà CE QU'ELLE coûterait (`ActionCard`,
- * les pastilles en bas de carte) — mais recompter ce qui reste au rang 2
- * demandait de rouvrir chaque sort de rang 2 un par un. Une ligne de pastilles
- * compactes, dans la zone figée, répond à « il me reste quoi ? » d'un coup
- * d'œil, sans dupliquer la logique de paiement (elle reste sur la carte).
+ * les pastilles en bas de carte) ; ici c'est le total restant, qui demandait
+ * autrement de rouvrir chaque sort de rang 2 un par un.
  *
- * Rien à afficher pour un personnage sans magie : `slots` est vide, ou ne
+ * Un personnage sans magie n'a pas d'emplacements : `slots` est vide, ou ne
  * contient que des rangs à `max: 0` (progression de multiclassé pas encore
- * arrivée à ce rang) — les deux sont filtrés.
+ * arrivée à ce rang) — les deux sont filtrés, et la ligne se réduit alors à
+ * CA et initiative.
  */
-function SpellSlotsSummary({ slots }: { slots: DerivedSlot[] }) {
+function LigneVitale({ armorClass, initiative, slots }: {
+  armorClass: number; initiative: number; slots: DerivedSlot[];
+}) {
   const visibles = slots.filter((slot) => slot.max > 0);
-  if (visibles.length === 0) return null;
+
+  const filet = (
+    <span aria-hidden style={{ width: 1, height: 14, background: 'var(--line)', margin: '0 5px' }} />
+  );
+  const bloc = (label: string, valeur: string, couleur?: string, titre?: string) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} title={titre}>
+      <span className="lbl" style={{ fontSize: 9 }}>{label}</span>
+      <span className="ttl" style={{ fontSize: 17, lineHeight: 1, color: couleur }}>{valeur}</span>
+    </span>
+  );
+
   return (
-    <div style={{ marginBottom: 5 }}>
-      <div className="lbl" style={{ marginBottom: 2, fontSize: 10 }}>Emplacements de sorts</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {visibles.map((slot) => (
-          <div
-            key={`${slot.pact ? 'pacte' : 'rang'}-${slot.level}`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
-              borderRadius: 999, border: '1px solid var(--gold-dim)',
-              background: 'rgba(0,0,0,.25)', opacity: slot.remaining > 0 ? 1 : 0.55,
-            }}
-          >
-            <span className="lbl" style={{ fontSize: 9 }}>{slot.pact ? 'Pacte' : `Rang ${slot.level}`}</span>
-            <span className="num" style={{
-              fontSize: 12, fontWeight: 700,
-              color: slot.remaining > 0 ? 'var(--gold-bright)' : 'var(--muted)',
-            }}>
-              {slot.remaining}/{slot.max}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center',
+      rowGap: 4,
+    }}>
+      {bloc('CA', String(armorClass), 'var(--gold-bright)', 'Classe d’armure')}
+      {filet}
+      {bloc('Init', sign(initiative), undefined, 'Modificateur d’initiative')}
+      {visibles.map((slot) => (
+        <span key={`${slot.pact ? 'pacte' : 'rang'}-${slot.level}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {filet}
+          {bloc(
+            slot.pact ? 'Pacte' : `Rang ${slot.level}`,
+            `${slot.remaining}/${slot.max}`,
+            // Épuisé : la valeur passe en gris plutôt que de disparaître —
+            // « il ne me reste rien au rang 1 » est une information.
+            slot.remaining > 0 ? 'var(--accent)' : 'var(--muted)',
+          )}
+        </span>
+      ))}
     </div>
   );
 }
 
 /**
- * L'orbe de vie, avec l'écusson de CA accroché dessus.
+ * L'orbe de vie — seule au centre, sans rien accroché dessus.
  *
- * Les deux vivaient en deux boîtes côte à côte ; ils partagent maintenant un
- * seul repère visuel — l'écusson EST accroché à l'orbe, pas juste posé à
- * côté — parce que « combien de PV, quelle CA » est la première paire de
- * chiffres qu'on relit à chaque coup encaissé. Le niveau du liquide suit
- * `current / max` en direct ; `onChange` et les cibles tactiles des boutons
- * n'ont pas changé.
+ * L'écusson de CA y était fixé ; il couvrait « sur 17 » et faisait de l'orbe
+ * un panneau composite au lieu d'un objet. La CA est descendue sur la ligne
+ * vitale juste dessous (`LigneVitale`), avec l'initiative et les
+ * emplacements : ce sont trois chiffres qu'on relit, pas qu'on touche, et
+ * l'orbe reste la seule chose qu'on regarde.
+ *
+ * Le niveau du liquide suit `current / max` en direct ; les boutons « + » et
+ * « − » gardent leurs cibles tactiles sur les flancs.
  */
-function HitPoints({ current, max, armorClass, temporary, onChange }: {
-  current: number; max: number; armorClass: number; temporary: number; onChange: (delta: number) => void;
+function HitPoints({ current, max, temporary, onChange }: {
+  current: number; max: number; temporary: number; onChange: (delta: number) => void;
 }) {
   const hauteur = max > 0 ? Math.max(0, Math.min(100, Math.round((current / max) * 100))) : 0;
 
@@ -382,20 +369,21 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
 
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <div style={{ textAlign: 'center', marginTop: -2 }}>
-            <div className="num" style={{
-              fontSize: 40, fontWeight: 800, lineHeight: .9, color: '#fff',
-              textShadow: '0 2px 5px rgba(0,0,0,.95), 0 0 26px rgba(255,120,90,.9)',
+            {/* En serif, pas en `.num` : c'est le seul chiffre de l'écran
+                qui n'est pas une valeur de règle à comparer mais un état —
+                il a droit à la police des titres. */}
+            <div className="ttl" style={{
+              fontSize: 34, lineHeight: 1, color: '#fff',
+              textShadow: '0 2px 6px #000, 0 0 16px rgba(0,0,0,.9)',
             }}>
               {current}
             </div>
-            {/* « sur 17 PV » n'était plus lisible : le blason de CA lui passait
-                dessus quand l'orbe était petit. L'orbe agrandi lui rend sa
-                place, et le blason a reculé hors du verre. */}
+            {/* Redevenu lisible : le blason de CA n'est plus posé dessus. */}
             <div className="lbl" style={{
-              marginTop: 4, color: 'rgba(255,225,215,.85)', fontSize: 9.5,
-              textShadow: '0 1px 3px rgba(0,0,0,.9)',
+              marginTop: 3, color: '#e9dcd8', fontSize: 9,
+              textShadow: '0 1px 3px #000',
             }}>
-              {temporary > 0 ? `+${temporary} temp. · ${max} PV` : `sur ${max} PV`}
+              {temporary > 0 ? `+${temporary} temp. · sur ${max}` : `sur ${max}`}
             </div>
           </div>
         </div>
@@ -403,72 +391,49 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         {step(-1, 'Retirer un point de vie', 'left')}
         {step(+1, 'Rendre un point de vie', 'right')}
 
-        {/* Le blason de CA s'accroche au BORD BAS-DROIT de la bague, plus sur
-            le verre : posé dessus, il couvrait « sur 17 PV ». Il reste sous le
-            bouton « + » (centré à mi-hauteur) sans le mordre, et se lit
-            maintenant comme une pièce rapportée sur l'orbe plutôt que comme
-            une tache dedans. */}
-        <div style={{ position: 'absolute', right: -6, bottom: -8, width: 44, height: 48 }}>
-          <div style={{
-            position: 'absolute', inset: 0,
-            clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
-            background: 'conic-gradient(from 200deg, #4a3413, var(--gold-bright) 24%, #3a280f 48%, var(--gold) 72%, #4a3413)',
-            filter: 'drop-shadow(0 3px 6px rgba(0,0,0,.85))',
-          }} />
-          <div style={{
-            position: 'absolute', inset: 2,
-            clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
-            background: 'linear-gradient(180deg, #3b2c1a, #17100a)',
-            display: 'grid', placeItems: 'center', boxShadow: 'inset 0 2px 7px rgba(0,0,0,.9)',
-          }}>
-            <div style={{ marginTop: -4, textAlign: 'center' }}>
-              <div className="num" style={{ fontSize: 17, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
-                {armorClass}
-              </div>
-              <div className="lbl" style={{ fontSize: 6.5, color: 'var(--muted)' }}>CA</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
+/**
+ * Les six sauvegardes, sur une seule ligne.
+ *
+ * Elles occupaient six tuiles gravées en pleine largeur, hautes comme des
+ * boutons — pour six chiffres qu'on ne touche jamais. Réduites à des jetons
+ * posés côte à côte, elles rendent leur hauteur au rouleau de cartes sans
+ * rien perdre : les maîtrisées gardent la couleur de la classe, qui reste le
+ * seul point à repérer d'un coup d'œil.
+ *
+ * Le libellé « Jets de sauvegarde » est au-dessus, chez l'appelant : une
+ * rangée de six chiffres sans titre ne dit pas ce qu'on regarde.
+ */
 function SaveStrip({ modifiers, proficient, bonus, malusD20 = 0 }: {
   modifiers: Record<AbilityId, number>; proficient: string[]; bonus: number;
   /** Pénalité d'Épuisement : une sauvegarde est un test d20 comme un autre. */
   malusD20?: number;
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 4 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 3 }}>
       {ABILITY_ORDER.map((ability) => {
         const isProficient = proficient.includes(ability);
         const total = modifiers[ability] + (isProficient ? bonus : 0) - malusD20;
         return (
-          <div
+          <span
             key={ability}
-            className="jg-rune"
             title={`Sauvegarde de ${ABILITY_NAMES[ability]}`}
             style={{
-              border: isProficient ? '1.5px solid var(--accent)' : '1px solid var(--gold-dim)',
-              background: isProficient
-                ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.45))'
-                : 'linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.42))',
-              boxShadow: isProficient
-                ? '0 0 9px -1px var(--accent-glow), inset 0 1px 2px rgba(0,0,0,.4)'
-                : 'inset 0 1px 2px rgba(0,0,0,.4)',
+              display: 'inline-flex', alignItems: 'baseline', gap: 4,
+              padding: '3px 7px', borderRadius: 5,
+              background: isProficient ? 'var(--accent-glow)' : 'transparent',
+              color: isProficient ? 'var(--accent)' : 'var(--muted)',
             }}
           >
-            <div className="lbl" style={{ fontSize: 8, color: isProficient ? 'var(--accent)' : undefined }}>
+            <span className="ttl" style={{ fontSize: 12 }}>{sign(total)}</span>
+            <span className="lbl" style={{ fontSize: 8, color: 'inherit' }}>
               {ABILITY_ABBREVIATIONS[ability]}
-            </div>
-            <div className="num" style={{
-              fontSize: 12, fontWeight: isProficient ? 700 : 600,
-              color: isProficient ? 'var(--accent)' : undefined,
-            }}>
-              {sign(total)}
-            </div>
-          </div>
+            </span>
+          </span>
         );
       })}
     </div>
@@ -1005,6 +970,16 @@ export function CombatScreen({
     <div style={{
       height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       paddingBottom: TAB_BAR_CLEARANCE, boxSizing: 'border-box',
+      // Une braise en haut, une ombre en bas, sur un fond qui s'assombrit :
+      // l'écran a une source de lumière, et tout ce qui y est posé — l'orbe
+      // d'abord, les cartes ensuite — s'éloigne d'elle en descendant. C'est
+      // ce dégradé, plus qu'une bordure, qui sépare le haut « objet » du bas
+      // « liste » : l'en-tête n'a donc plus de fond ni de trait à lui.
+      background: `
+        radial-gradient(120% 60% at 50% -8%, rgba(224,122,106,.13), transparent 60%),
+        radial-gradient(90% 50% at 50% 108%, rgba(0,0,0,.85), transparent),
+        linear-gradient(#15171b, #0e1013)
+      `,
       // Surcharge la matière socle par celle de la classe — seuls ces jetons
       // bougent (voir `theme.css`) : la structure et le rouge vital restent
       // fixes, quelle que soit la classe regardée. `--accent-wash` reste
@@ -1021,16 +996,9 @@ export function CombatScreen({
     }}>
 
       {/* ───── Zone figée : ne défile jamais ───── */}
-      {/* Une lueur chaude en haut, qui s'éteint vers le bas : l'écran a une
-          source de lumière, et tout ce qui y est posé (l'orbe, puis les
-          cartes) s'assombrit à mesure qu'on descend. C'est ce dégradé, plus
-          que n'importe quelle bordure, qui sépare le haut « objet » du bas
-          « liste ». */}
       <header style={{
-        flexShrink: 0, borderBottom: '1px solid var(--line)',
-        background: 'radial-gradient(120% 100% at 50% -10%, rgba(120,74,38,.30), transparent 62%), var(--surface)',
-        boxShadow: 'var(--raise)', padding: '8px 14px 8px',
-        paddingTop: 'calc(8px + env(safe-area-inset-top))',
+        flexShrink: 0, padding: '14px 14px 10px',
+        paddingTop: 'calc(14px + env(safe-area-inset-top))',
       }}>
         {/*
           Pas de nom ni de classe ici : la Fiche les porte désormais en tête,
@@ -1038,44 +1006,38 @@ export function CombatScreen({
           Dans un en-tête qui ne défile jamais, une ligne purement décorative
           se paie sur toute la hauteur restante.
 
-          L'en-tête entier est resserré au maximum : c'est le rouleau de
-          cartes en dessous qui doit gagner la hauteur, pas l'orbe.
+          Tout est centré sur une seule colonne, du plus gros au plus petit :
+          l'orbe, puis les trois chiffres qu'on relit (CA, initiative,
+          emplacements), puis les six sauvegardes. Chaque bloc est plus
+          discret que celui du dessus — c'est cette décroissance, et non des
+          cadres, qui dit dans quel ordre lire.
         */}
-        <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9 }}>
           <HitPoints
             current={derived.currentHp}
             max={derived.maxHp}
-            armorClass={derived.armorClass}
             temporary={derived.temporaryHp}
             onChange={(delta) => onSpendHp?.(delta)}
           />
-        </div>
 
-        <div style={{ marginBottom: 5 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-            <div className="lbl" style={{ flexGrow: 1, fontSize: 10 }}>Jets de sauvegarde</div>
-            {/* Le modificateur d'initiative n'apparaissait nulle part sur
-                l'écran de combat — seulement déductible de la case DEX de la
-                Fiche. Sur la ligne des sauvegardes plutôt qu'une ligne à lui
-                seul : l'en-tête n'a plus de hauteur à céder. */}
-            <div className="lbl" style={{ fontSize: 10 }}>Initiative {sign(derived.modifiers.dex)}</div>
-          </div>
-          <SaveStrip
-            modifiers={derived.modifiers}
-            proficient={derived.saveProficiencies}
-            bonus={derived.proficiencyBonus}
-            malusD20={derived.exhaustion.d20Penalty}
+          <LigneVitale
+            armorClass={derived.armorClass}
+            initiative={derived.modifiers.dex}
+            slots={derived.spellcasting.slots}
           />
-        </div>
 
-        {/*
-          Le rappel par carte dit ce QU'UN sort précis coûterait ; celui-ci dit
-          ce qu'il RESTE, tous rangs confondus, sans avoir à ouvrir chaque
-          carte pour le recompter. Une seule ligne de pastilles compactes —
-          l'en-tête est déjà tendu au maximum, pas question de lui reprendre
-          la hauteur qu'on vient de lui rendre.
-        */}
-        <SpellSlotsSummary slots={derived.spellcasting.slots} />
+          {/* Le titre au-dessus des six chiffres : sans lui, une rangée de
+              « +2 CON +3 SAG » ne dit pas de QUOI ce sont les bonus. */}
+          <div style={{ textAlign: 'center' }}>
+            <div className="lbl" style={{ fontSize: 8.5, marginBottom: 3 }}>Jets de sauvegarde</div>
+            <SaveStrip
+              modifiers={derived.modifiers}
+              proficient={derived.saveProficiencies}
+              bonus={derived.proficiencyBonus}
+              malusD20={derived.exhaustion.d20Penalty}
+            />
+          </div>
+        </div>
 
         {/* ───── États ─────
             Posés par le MJ, lus ici. Ce qu'ils imposent est rappelé sous
@@ -1084,7 +1046,7 @@ export function CombatScreen({
             subit. */}
         {etatsActifs(etats).length > 0 && (
           <div style={{
-            marginBottom: 10, border: '1px solid var(--accent)',
+            margin: '10px 0', border: '1px solid var(--accent)',
             borderRadius: 'var(--radius-sm)', padding: '7px 10px',
           }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -1247,28 +1209,27 @@ export function CombatScreen({
         avantage, pas une concession.
       */}
       <div style={{
-        flexShrink: 0, background: 'var(--surface)', borderBottom: '1.5px solid var(--gold-dim)',
-        padding: '6px 14px 6px', display: 'flex', gap: 6,
+        flexShrink: 0, borderBottom: '1px solid var(--line)',
+        padding: '0 14px', display: 'flex',
       }}>
+        {/*
+          Des onglets soulignés, pas des boutons encadrés. Quatre cadres dorés
+          côte à côte juste sous l'orbe se disputaient l'attention avec elle,
+          et l'icône devant chaque mot ajoutait un dessin par onglet là où le
+          mot suffit. Un seul trait dit lequel est ouvert.
+        */}
         {CARD_CATEGORIES.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setOnglet(id)}
+            aria-pressed={onglet === id}
             style={{
-              flexGrow: 1, minHeight: 34, borderRadius: '8px 8px 4px 4px', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', gap: 5,
-              background: onglet === id
-                ? 'linear-gradient(180deg, var(--accent-wash), rgba(0,0,0,.3))'
-                : 'linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.3))',
-              boxShadow: onglet === id
-                ? '0 0 0 1.5px var(--gold), inset 0 1px 0 rgba(255,235,190,.3), 0 0 16px -4px var(--accent-glow)'
-                : '0 0 0 1px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.08)',
+              flex: 1, minHeight: 'var(--tap)', padding: '9px 0', background: 'none',
+              border: 'none', borderBottom: `2px solid ${onglet === id ? 'var(--gold)' : 'transparent'}`,
               color: onglet === id ? 'var(--gold-bright)' : 'var(--muted)',
-              fontSize: 12, fontWeight: 700,
             }}
           >
-            <TabIcon categorie={id} color={onglet === id ? 'var(--gold-bright)' : 'var(--muted)'} />
-            <span className="ttl" style={{ fontSize: 11, letterSpacing: '.03em' }}>
+            <span className="ttl" style={{ fontSize: 12, letterSpacing: '.01em' }}>
               {label}{comptesParCategorie[id] > 0 ? ` ${comptesParCategorie[id]}` : ''}
             </span>
           </button>
