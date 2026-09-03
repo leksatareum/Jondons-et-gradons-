@@ -206,6 +206,27 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   box-shadow: inset 0 1px 0 rgba(255, 235, 190, .22), inset 0 0 0 1px rgba(0, 0, 0, .5), 0 0 0 1px var(--gold-dim);
 }
 
+/**
+ * Le petit bouton rond des cartes de combat : un jeton de métal, pas une
+ * barre.
+ *
+ * La grande cible du doigt, c'est désormais la carte elle-même (qui ouvre la
+ * fiche) ; le rond n'a plus qu'à porter le geste qui ENGAGE — lancer,
+ * attaquer, équiper. Il peut donc être petit, tant qu'il reste au-dessus du
+ * minimum tactile (40 px, la taille d'une pulpe de pouce), et laisser l'orbe
+ * de vie être la seule chose massive de l'écran.
+ */
+.jg-rond {
+  flex-shrink: 0;
+  width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold-bright);
+  background: radial-gradient(circle at 36% 28%, #2c3138, #14161a);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, .16), 0 3px 9px -4px #000;
+}
+
 .jg-rune { text-align: center; padding: 3px 0; border-radius: 3px 3px 7px 7px; }
 
 /**

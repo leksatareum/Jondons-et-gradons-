@@ -75,14 +75,28 @@ export function economyOf(spell: Spell): Economy {
 export const concentre = (spell: Spell): boolean =>
   spell.duration.toLocaleLowerCase('fr').startsWith('concentration');
 
-/** Ligne de détail : ce qu'on relit avant de lancer, pas la description entière. */
-export function detailOf(spell: Spell): string {
+/**
+ * Ligne de détail : ce qu'on relit avant de lancer, pas la description entière.
+ *
+ * `court` abrège « concentration » en « conc. ». Réservé à la carte de
+ * combat, où la ligne tient sur un rang à côté du nom, des chiffres et du
+ * bouton : le mot entier y passait à la ligne et faisait grandir la carte
+ * d'un cran. Le grimoire, lui, a toute la largeur — il garde le mot.
+ *
+ * Un symbole a été essayé à la place (œil, spirale, point cerclé) : aucun ne
+ * se comprend sans qu'on l'ait appris une fois. Cinq caractères lisibles
+ * valent mieux qu'un pictogramme à deviner.
+ */
+export function detailOf(spell: Spell, options: { court?: boolean } = {}): string {
   return [
     spell.level === 0 ? 'sort mineur' : `rang ${spell.level}`,
     spell.range,
-    concentre(spell) ? 'concentration' : null,
+    concentre(spell) ? (options.court ? 'conc.' : 'concentration') : null,
   ].filter(Boolean).join(' · ');
 }
+
+/** Toutes les cartes de combat abrègent — voir `detailOf`. */
+const COURT = { court: true } as const;
 
 /**
  * L'emplacement le plus bas qui suffit. Conservé pour ce qu'il dit : c'est
@@ -256,7 +270,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
-      detail: noteInvocation ? `${detailOf(spell)} · ${noteInvocation}` : detailOf(spell),
+      detail: noteInvocation ? `${detailOf(spell, COURT)} · ${noteInvocation}` : detailOf(spell, COURT),
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
       ...jetDuSort(spell, chosen.sourceClass || mainClass, derived),
     });
@@ -272,7 +286,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
-      detail: detailOf(spell),
+      detail: detailOf(spell, COURT),
       ...(standing.kind === 'accorde' ? { granted: true, grantedBy: sourceLisible(standing.par) } : {}),
       ...(paiements.length ? { resources: paiements } : {}),
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
@@ -293,7 +307,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
-      detail: detailOf(spell),
+      detail: detailOf(spell, COURT),
       granted: true,
       grantedBy: `ton Arcanum de rang ${arcanum.rank}`,
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),
@@ -338,7 +352,7 @@ export function cardsFromCharacter(sheet: CharacterSheet, derived: DerivedCharac
       name: spell.name,
       economy: economyOf(spell),
       category: 'magie',
-      detail: detailOf(spell),
+      detail: detailOf(spell, COURT),
       granted: true,
       grantedBy: grant.source,
       ...(typesDeDegats.length ? { damageTypes: typesDeDegats } : {}),

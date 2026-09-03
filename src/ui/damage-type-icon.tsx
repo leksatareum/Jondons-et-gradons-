@@ -39,15 +39,13 @@ export function DamageTypeIcon({ type, size = 16 }: { type: string; size?: numbe
       title={`Dégâts ${type}`}
       aria-label={`Dégâts ${type}`}
       role="img"
-      style={{
-        display: 'inline-flex', flexShrink: 0, width: size, height: size, borderRadius: '50%',
-        boxShadow: '0 0 0 1px rgba(0,0,0,.35)', overflow: 'hidden',
-      }}
+      // Ni cercle de rognage ni cerne noir : les PNG sont détourés en disque,
+      // avec leur propre bord de métal. Le cerne les doublait d'un halo sombre,
+      // et le rognage ne servait plus qu'à masquer des coins qui n'existent
+      // plus.
+      style={{ display: 'inline-flex', flexShrink: 0, width: size, height: size }}
     >
-      {/* `object-fit: cover` inscrit le médaillon carré dans le cercle — les
-          quatre coins (fond noir hors du cadre bronze) se retrouvent hors
-          cadrage, comme prévu par le recadrage circulaire des images sources. */}
-      <img src={src} alt="" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img src={src} alt="" width={size} height={size} style={{ width: '100%', height: '100%' }} />
     </span>
   );
 }
@@ -58,6 +56,38 @@ export function DamageTypeIcons({ types, size }: { types: string[] | undefined; 
   return (
     <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0 }}>
       {types.map((type) => <DamageTypeIcon key={type} type={type} size={size} />)}
+    </span>
+  );
+}
+
+/**
+ * Les mêmes badges, dans un emplacement de LARGEUR FIXE — pour la carte de
+ * combat, où le médaillon précède le nom.
+ *
+ * Cette largeur constante est ce qui autorise le médaillon à passer devant le
+ * nom : sans elle, une carte à deux types décalerait son titre plus loin que
+ * ses voisines et la colonne des noms se mettrait à zigzaguer — c'est
+ * exactement le défaut qui l'avait fait reléguer derrière le nom la première
+ * fois. Les cartes sans type gardent l'emplacement vide, au même titre.
+ *
+ * Cinq sorts du catalogue sur 389 portent deux types : ils se chevauchent
+ * légèrement plutôt que d'élargir l'emplacement pour tout le monde.
+ */
+export function DamageTypeSlot({ types, size = 30 }: { types: string[] | undefined; size?: number }) {
+  const liste = types ?? [];
+  return (
+    <span
+      aria-hidden={liste.length === 0}
+      style={{
+        display: 'inline-flex', flexShrink: 0, width: size, height: size,
+        alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      {liste.map((type, index) => (
+        <span key={type} style={{ marginLeft: index > 0 ? -size * 0.42 : 0, display: 'inline-flex' }}>
+          <DamageTypeIcon type={type} size={liste.length > 1 ? size * 0.78 : size} />
+        </span>
+      ))}
     </span>
   );
 }

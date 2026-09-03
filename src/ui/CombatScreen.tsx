@@ -8,11 +8,12 @@ import {
 } from './combat-layout';
 import { deBonusMarque, MARQUE_CHASSEUR_SPELL_ID, type CibleMarquee } from '../model/rodeur';
 import { BENEDICTION_TENEBREUX_CARD_ID } from '../model/occultiste';
-import { spellById } from '../content/spell-catalogue';
+import { spellById, type Spell } from '../content/spell-catalogue';
 import { etatsActifs, resumeDesEtats } from '../model/etats';
 import { themeDeClasse } from '../content/class-themes';
 import { TAB_BAR_CLEARANCE } from './TabBar';
-import { DamageTypeIcons } from './damage-type-icon';
+import { DamageTypeIcons, DamageTypeSlot } from './damage-type-icon';
+import { FicheDeSort } from './FicheDeSort';
 import { NombreQuiRoule } from './NombreQuiRoule';
 import { DeathSavesPanel } from './DeathSavesPanel';
 import type { EtatDeMort, ResultatJet } from '../model/death-state';
@@ -36,8 +37,16 @@ import verreOrbe from '../assets/orbe/verre.webp';
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`);
 
-/** Le diamètre de l'orbe de vie, en pixels — le CSS en a besoin aussi. */
-const TAILLE_ORBE = 76;
+/**
+ * Le diamètre de l'orbe de vie, en pixels — le CSS en a besoin aussi.
+ *
+ * C'est la seule chose massive de l'écran, et c'est voulu : les cartes se
+ * posent par leur ombre, le bouton d'action s'est réduit à un jeton rond, et
+ * tout ce qui a été repris là est rendu ici. Un écran de combat se lit d'un
+ * coup d'œil au-dessus d'une table, et le chiffre qu'on y cherche neuf fois
+ * sur dix est celui-là.
+ */
+const TAILLE_ORBE = 112;
 
 /**
  * Ce que les états actifs imposent, en une phrase.
@@ -286,8 +295,8 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
       // verticale de l'orbe) : pas de raison de descendre sous une cible
       // tactile correcte pour le geste le plus répété de tout l'écran.
       style={{
-        position: 'absolute', top: '50%', [side]: -34, marginTop: -17,
-        width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center',
+        position: 'absolute', top: '50%', [side]: -40, marginTop: -18,
+        width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center',
         background: 'radial-gradient(circle at 35% 28%, var(--surface-raised), #150e09)',
         boxShadow: '0 0 0 1.5px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,.18), 0 3px 8px rgba(0,0,0,.6)',
         color: 'var(--gold)',
@@ -300,8 +309,24 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
   );
 
   return (
-    <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
+    <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', padding: '6px 0 4px' }}>
       <div style={{ position: 'relative' }}>
+        {/* La braise derrière l'orbe : elle déborde largement de la bague et
+            se perd dans le fond. C'est ce qui fait que l'orbe a l'air POSÉ sur
+            l'écran plutôt que collé dessus — sans elle, la bague dorée se
+            découpait net sur un aplat gris, et c'est précisément ce qui
+            faisait « appli de jeu bon marché ». */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: TAILLE_ORBE * 2.1, height: TAILLE_ORBE * 2.1,
+            // Pas de `z-index` : la bague est déjà `position: relative` et vient
+            // APRÈS dans le document, donc elle se peint par-dessus toute seule.
+            transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+            background: 'radial-gradient(circle, rgba(214,73,60,.20), rgba(214,73,60,.07) 42%, transparent 66%)',
+          }}
+        />
         <div className="jg-orb-ring">
           {/* La taille est posée ICI, en pixels, et redite au CSS : le liquide
               est une image ancrée en bas qu'il faut dimensionner sur l'ORBE
@@ -344,7 +369,7 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
             aria-hidden
             className="num jg-anim-float-away"
             style={{
-              position: 'absolute', top: 34, zIndex: 2, pointerEvents: 'none',
+              position: 'absolute', top: 46, zIndex: 2, pointerEvents: 'none',
               ...(effet.delta < 0 ? { left: 'calc(100% + 4px)' } : { left: -4 }),
               fontSize: 21, fontWeight: 800, whiteSpace: 'nowrap',
               color: effet.delta < 0 ? 'var(--vital-bright, var(--vital))' : 'var(--ok)',
@@ -358,12 +383,18 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
           <div style={{ textAlign: 'center', marginTop: -2 }}>
             <div className="num" style={{
-              fontSize: 25, fontWeight: 800, lineHeight: .9, color: '#fff',
-              textShadow: '0 2px 4px rgba(0,0,0,.95), 0 0 20px rgba(255,120,90,.9)',
+              fontSize: 40, fontWeight: 800, lineHeight: .9, color: '#fff',
+              textShadow: '0 2px 5px rgba(0,0,0,.95), 0 0 26px rgba(255,120,90,.9)',
             }}>
               {current}
             </div>
-            <div className="lbl" style={{ marginTop: 2, color: 'rgba(255,225,215,.8)', fontSize: 7.5 }}>
+            {/* « sur 17 PV » n'était plus lisible : le blason de CA lui passait
+                dessus quand l'orbe était petit. L'orbe agrandi lui rend sa
+                place, et le blason a reculé hors du verre. */}
+            <div className="lbl" style={{
+              marginTop: 4, color: 'rgba(255,225,215,.85)', fontSize: 9.5,
+              textShadow: '0 1px 3px rgba(0,0,0,.9)',
+            }}>
               {temporary > 0 ? `+${temporary} temp. · ${max} PV` : `sur ${max} PV`}
             </div>
           </div>
@@ -372,11 +403,12 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
         {step(-1, 'Retirer un point de vie', 'left')}
         {step(+1, 'Rendre un point de vie', 'right')}
 
-        {/* Le blason de CA doit rester à gauche du bouton « + », qui commence
-            pile au bord droit de l'orbe (right: -34, largeur 34) : un blason
-            qui déborde à droite comme avant (right: -13) mordait dessus,
-            visible et cliquable au même endroit. */}
-        <div style={{ position: 'absolute', right: 3, bottom: -6, width: 40, height: 45 }}>
+        {/* Le blason de CA s'accroche au BORD BAS-DROIT de la bague, plus sur
+            le verre : posé dessus, il couvrait « sur 17 PV ». Il reste sous le
+            bouton « + » (centré à mi-hauteur) sans le mordre, et se lit
+            maintenant comme une pièce rapportée sur l'orbe plutôt que comme
+            une tache dedans. */}
+        <div style={{ position: 'absolute', right: -6, bottom: -8, width: 44, height: 48 }}>
           <div style={{
             position: 'absolute', inset: 0,
             clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
@@ -390,10 +422,10 @@ function HitPoints({ current, max, armorClass, temporary, onChange }: {
             display: 'grid', placeItems: 'center', boxShadow: 'inset 0 2px 7px rgba(0,0,0,.9)',
           }}>
             <div style={{ marginTop: -4, textAlign: 'center' }}>
-              <div className="num" style={{ fontSize: 15, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
+              <div className="num" style={{ fontSize: 17, fontWeight: 800, lineHeight: 1, color: 'var(--gold-bright)', textShadow: '0 1px 3px #000' }}>
                 {armorClass}
               </div>
-              <div className="lbl" style={{ fontSize: 6, color: 'var(--muted)' }}>CA</div>
+              <div className="lbl" style={{ fontSize: 6.5, color: 'var(--muted)' }}>CA</div>
             </div>
           </div>
         </div>
@@ -505,13 +537,53 @@ export function SkillsGrid({ skills }: { skills: DerivedSkill[] }) {
   );
 }
 
-function ActionCard({ card, playable, retard = 0, onPlay }: {
+/**
+ * Le glyphe du bouton rond, selon ce que la carte va faire.
+ *
+ * Il remplace les mots « Attaquer » / « Utiliser » / « Équiper », qui
+ * répétaient à trois centimètres près ce que le titre disait déjà, et qui
+ * empilés faisaient un mur de boutons identiques. Le symbole, lui, ajoute une
+ * information que le titre ne porte pas : ce sort demande-t-il un jet
+ * d'attaque, ou se lance-t-il sans viser ?
+ */
+function GlypheDAction({ card }: { card: PlayableCard }) {
+  if (card.equipWeaponId) {
+    // Une main qui saisit : on prend l'arme, on ne frappe pas encore.
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M4 13V6a1.5 1.5 0 0 1 3 0v5m0-1V4.5a1.5 1.5 0 0 1 3 0V10m0-.5V5a1.5 1.5 0 0 1 3 0v6m0-2.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5H9l-5-5" />
+      </svg>
+    );
+  }
+  if (card.toHit !== undefined) {
+    // Une lame qui part en diagonale : il faudra toucher.
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5 19 19 5M19 5v5M19 5h-5" />
+      </svg>
+    );
+  }
+  // Une étoile : ça part, sans viser.
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2.6l2.2 6.1 6.2 2.3-6.2 2.3L12 19.4l-2.2-6.1L3.6 11l6.2-2.3z" />
+    </svg>
+  );
+}
+
+function ActionCard({ card, playable, retard = 0, onPlay, onOuvrirFiche }: {
   card: PlayableCard;
   /** Jouable maintenant : pleinement lisible et actionnable. */
   playable: boolean;
   /** Décalage d'entrée, en ms — le rang de la carte dans la pile. */
   retard?: number;
   onPlay: (card: PlayableCard) => void;
+  /**
+   * Ouvre la fiche du sort. Absent quand la carte n'en a pas — une arme, un
+   * objet du sac : il n'y a alors rien à ouvrir, et le corps de la carte ne
+   * se comporte pas comme un bouton pour ne rien promettre.
+   */
+  onOuvrirFiche?: (card: PlayableCard) => void;
 }) {
   /**
    * Les chiffres de la carte, une valeur par ligne, calés à droite.
@@ -534,129 +606,144 @@ function ActionCard({ card, playable, retard = 0, onPlay }: {
   // disponible. Quand il y en a plusieurs, le joueur tranchera.
   const paiementAffiche = card.resources?.find((res) => res.remaining > 0) ?? card.resources?.[0];
   const boutonLabel = card.equipWeaponId ? 'Équiper' : card.toHit !== undefined ? 'Attaquer' : 'Utiliser';
+
+  /*
+    Le corps de la carte OUVRE la fiche du sort ; seul le bouton rond le
+    lance. Deux gestes séparés sur deux cibles séparées : relire une portée ne
+    doit jamais risquer de dépenser un emplacement, et c'est ce qui permet au
+    bouton d'être petit — la grande cible, c'est la carte.
+
+    Un bouton dans un bouton n'existe pas en HTML : le corps est donc un
+    `<button>` frère du rond, pas son parent.
+  */
+  const corps = (
+    <>
+      {/* Le médaillon PRÉCÈDE le nom, dans un emplacement de largeur fixe
+          (`DamageTypeSlot`) : c'est cette largeur constante qui garde les
+          titres alignés d'une carte à l'autre — le défaut qui l'avait fait
+          reléguer derrière le nom autrefois. */}
+      <DamageTypeSlot types={card.damageTypes} size={30} />
+      <span style={{ flexGrow: 1, minWidth: 0 }}>
+        <span
+          className="ttl"
+          style={{
+            display: 'block', fontSize: 16, letterSpacing: '-0.01em',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}
+        >
+          {card.name}
+        </span>
+        <span
+          className="lbl"
+          style={{
+            display: 'block', marginTop: 3, fontSize: 9,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}
+        >
+          {ECONOMY_LABEL[card.economy]}
+          {card.detail && <span style={{ textTransform: 'none' }}> · {card.detail}</span>}
+          {playable && (card.resources?.length ?? 0) > 1 && (
+            <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
+          )}
+        </span>
+      </span>
+      {chiffres.length > 0 && (
+        // Calés à droite, en chiffres tabulaires : la colonne ne tremble pas
+        // d'une carte à l'autre. En sans, jamais dans la serif des titres —
+        // elle est faite pour les noms, pas pour des valeurs qu'on lit en une
+        // fraction de seconde.
+        <span
+          className="num"
+          style={{
+            flexShrink: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.3,
+            color: 'var(--accent)', textAlign: 'right',
+          }}
+        >
+          {chiffres.map((valeur) => <span key={valeur} style={{ display: 'block' }}>{valeur}</span>)}
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div
       // Les cartes jouables se déroulent une à une à l'ouverture de l'onglet.
       // Rien pour celles qui ne le sont pas : elles sont rangées, pas
       // annoncées — et leur estompage (`opacity: .42`) se ferait de toute
       // façon écraser par la fin d'une animation d'entrée.
-      className={`card jg-tile${playable ? ' jg-anim-rise' : ''}`}
+      className={`card${playable ? ' jg-anim-rise' : ''}`}
       style={{
         animationDelay: playable ? `${retard}ms` : undefined,
-        // AUCUNE carte n'est mise en avant. La première jouable avait
-        // longtemps une bordure claire, un titre plus grand et ses chiffres
-        // en gros : ça la faisait lire comme une recommandation de l'appli,
-        // alors que ce n'est qu'un tri par économie d'action — l'ordre suffit
-        // à le dire. Ses chiffres n'ont pas disparu pour autant, ils sont
-        // passés sur TOUTES les cartes qui en ont (voir plus bas) : les
-        // enlever avec la mise en avant aurait fait perdre les dégâts d'une
-        // arme, qui ne s'affichent nulle part ailleurs.
-        borderColor: 'var(--gold-dim)',
-        borderWidth: 1,
-        borderStyle: card.granted ? 'dashed' : 'solid',
+        // AUCUNE carte n'est mise en avant : l'ordre suffit à dire l'économie
+        // d'action, une bordure claire la ferait lire comme une recommandation.
         borderRadius: 12,
-        // Resserré (14 → 11) une fois les chiffres repliés dans la ligne
-        // de détail : à deux lignes, l'ancien rembourrage laissait
-        // beaucoup de vide en haut et en bas pour rien.
-        padding: playable ? '11px 13px' : '10px 13px',
-        // Seul ce qui n'est PAS jouable est atténué. Une carte jouable reste
-        // pleinement lisible, même quand elle n'est pas la première.
+        padding: '10px 12px',
+        background: 'linear-gradient(155deg, #262a31, #191c21 62%)',
+        // La carte se pose sur le fond par son OMBRE, au lieu d'être enfermée
+        // dans un cadre : c'est ce qui donne de la profondeur à un écran où
+        // tout était auparavant à la même distance de l'œil.
+        boxShadow: card.granted
+          ? '0 7px 18px -7px #000, inset 0 1px 0 rgba(255,235,190,.07), 0 0 0 1px var(--accent)'
+          : '0 7px 18px -7px #000, inset 0 1px 0 rgba(255,235,190,.07), 0 0 0 1px rgba(150,116,58,.2)',
         opacity: playable ? 1 : 0.42,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Le nom est TOUJOURS le premier élément de la ligne — c'est ce qui
-            le fait démarrer au même endroit d'une carte à l'autre. Les
-            médaillons le SUIVENT (ils l'ont précédé un temps : une carte à
-            deux types décalait alors son nom plus loin qu'une carte sans
-            type, et les noms ne s'alignaient plus). Comme le nom prend toute
-            la place libre, ils se rangent juste avant les pastilles, au même
-            endroit sur chaque carte. */}
-        <div
-          className="ttl"
-          style={{
-            fontSize: 15, flexGrow: 1, minWidth: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}
-        >
-          {card.name}
-        </div>
-        <DamageTypeIcons types={card.damageTypes} size={22} />
-        {playable && paiementAffiche && (
-          // Le rappel d'emplacement rejoint la ligne du nom — à côté du
-          // bouton, plutôt qu'en dessous : c'est ce qui gardait ces cartes
-          // larges quand toutes les autres avaient déjà rétréci.
-          <div style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3,
-            padding: '4px 6px', borderRadius: 999,
-            border: '1px solid var(--gold-dim)', background: 'rgba(0,0,0,.4)',
-            boxShadow: 'inset 0 2px 6px rgba(0,0,0,.75)',
-          }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onOuvrirFiche ? (
+          <button
+            onClick={() => onOuvrirFiche(card)}
+            aria-label={`${card.name} — voir la fiche`}
+            style={{
+              flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10,
+              textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit',
+            }}
+          >
+            {corps}
+          </button>
+        ) : (
+          <div style={{ flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            {corps}
+          </div>
+        )}
+
+        {playable && (
+          <button
+            onClick={() => onPlay(card)}
+            className="jg-rond"
+            aria-label={`${boutonLabel} : ${card.name}`}
+            title={boutonLabel}
+          >
+            <GlypheDAction card={card} />
+          </button>
+        )}
+      </div>
+
+      {playable && paiementAffiche && (
+        // Ce que ça coûtera, sous la ligne principale : l'information se lit
+        // avant d'appuyer, mais elle ne dispute pas sa place au nom.
+        <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span className="lbl" style={{ fontSize: 8 }}>{paiementAffiche.label}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             {/* Au-delà de six pastilles on ne compte plus : on chiffre. */}
             {paiementAffiche.max > 6 ? (
-              <span className="num" style={{ fontSize: 12, fontWeight: 700 }}>
+              <span className="num" style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold-bright)' }}>
                 {paiementAffiche.remaining}/{paiementAffiche.max}
               </span>
             ) : Array.from({ length: paiementAffiche.max }, (_, index) => (
               <Pip key={index} filled={index < paiementAffiche.remaining} />
             ))}
-          </div>
-        )}
-        {playable && (
-          // Le bouton vit sur la ligne du nom, en petit — « Clair de lune
-          // (Utiliser) » — plutôt qu'en pleine largeur tout en bas de la
-          // carte : c'est ce qui la faisait paraître si haute.
-          <button
-            onClick={() => onPlay(card)}
-            className="jg-btn-cold"
-            style={{
-              flexShrink: 0, minHeight: 30, padding: '0 12px', borderRadius: 999,
-              border: '1.5px solid var(--accent)', fontSize: 11, fontWeight: 700,
-            }}
-          >
-            {boutonLabel}
-          </button>
-        )}
-      </div>
-
-      <div className="lbl" style={{ marginTop: 3, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span style={{ flexGrow: 1, minWidth: 0 }}>
-          <span>{ECONOMY_LABEL[card.economy]}</span>
-          {card.detail && (
-            <span style={{ textTransform: 'none', color: 'var(--muted)' }}> · {card.detail}</span>
-          )}
-          {playable && (card.resources?.length ?? 0) > 1 && (
-            // Plusieurs ressources peuvent payer ce sort (multiclasse,
-            // lancements gratuits d'un Rôdeur…) : le choix se fait à l'appui
-            // sur « Utiliser », cette mention rappelle juste qu'il existe.
-            <span style={{ textTransform: 'none', color: 'var(--accent)' }}> · au choix</span>
-          )}
-        </span>
-        {chiffres.length > 0 && (
-          // Calés à DROITE, sous le bouton : c'est la même colonne pour
-          // toutes les cartes, donc le même endroit où poser l'œil — au lieu
-          // de suivre la fin d'un texte de longueur variable.
-          <span
-            className="num"
-            style={{
-              flexShrink: 0, textTransform: 'none', fontSize: 12.5, fontWeight: 700,
-              color: 'var(--accent)', textAlign: 'right', lineHeight: 1.35,
-            }}
-          >
-            {chiffres.map((valeur) => <div key={valeur}>{valeur}</div>)}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {card.granted && (
-        <div className="lbl" style={{ textTransform: 'none', marginTop: 2, color: 'var(--accent)' }}>
+        <div className="lbl" style={{ textTransform: 'none', marginTop: 4, fontSize: 9, color: 'var(--accent)' }}>
           {/* La provenance vient de la carte quand elle en a une : « accordé
               par ton don » ne dit pas d'où, et c'est précisément ce que le
               joueur cherchera à la séance suivante. */}
           {card.grantedBy ? `accordé par ${card.grantedBy} · hors budget` : 'accordé · hors budget'}
         </div>
       )}
-
     </div>
   );
 }
@@ -862,6 +949,21 @@ export function CombatScreen({
   >(null);
   const [transfert, setTransfert] = useState(false);
 
+  /**
+   * La fiche de sort, ouverte en touchant le CORPS de la carte — la même
+   * fiche que dans le grimoire (voir `FicheDeSort`), pour ne pas avoir à
+   * quitter le combat quand on ne se souvient plus de la portée.
+   *
+   * Seules les cartes qui ont vraiment un sort derrière elles l'ouvrent :
+   * une arme (`equiper-…`) ou un objet (`objet-…`) n'a rien à montrer, et
+   * son corps reste inerte plutôt que d'ouvrir une fiche vide.
+   */
+  const [ficheOuverte, setFicheOuverte] = useState<Spell | null>(null);
+  const ouvrirLaFiche = (card: PlayableCard) => {
+    const sort = spellById(card.id);
+    if (sort) setFicheOuverte(sort);
+  };
+
   const confirmer = (card: PlayableCard, paiement?: PayableResource, cible?: CibleMarquee) => {
     setSpent((current) => ({ ...current, [card.economy]: true }));
     if (card.equipWeaponId) onEquiperArme?.(card.equipWeaponId);
@@ -919,8 +1021,14 @@ export function CombatScreen({
     }}>
 
       {/* ───── Zone figée : ne défile jamais ───── */}
+      {/* Une lueur chaude en haut, qui s'éteint vers le bas : l'écran a une
+          source de lumière, et tout ce qui y est posé (l'orbe, puis les
+          cartes) s'assombrit à mesure qu'on descend. C'est ce dégradé, plus
+          que n'importe quelle bordure, qui sépare le haut « objet » du bas
+          « liste ». */}
       <header style={{
-        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+        flexShrink: 0, borderBottom: '1px solid var(--line)',
+        background: 'radial-gradient(120% 100% at 50% -10%, rgba(120,74,38,.30), transparent 62%), var(--surface)',
         boxShadow: 'var(--raise)', padding: '8px 14px 8px',
         paddingTop: 'calc(8px + env(safe-area-inset-top))',
       }}>
@@ -1224,6 +1332,7 @@ export function CombatScreen({
           <ActionCard
             key={card.id} card={card} playable
             retard={Math.min(index, 5) * 55} onPlay={play}
+            onOuvrirFiche={spellById(card.id) ? ouvrirLaFiche : undefined}
           />
         ))}
 
@@ -1236,7 +1345,10 @@ export function CombatScreen({
           </div>
         )}
         {!aTerre && muted.map((card) => (
-          <ActionCard key={card.id} card={card} playable={false} onPlay={play} />
+          <ActionCard
+            key={card.id} card={card} playable={false} onPlay={play}
+            onOuvrirFiche={spellById(card.id) ? ouvrirLaFiche : undefined}
+          />
         ))}
 
         {!aTerre && featured.length === 0 && muted.length === 0 && (
@@ -1318,6 +1430,10 @@ export function CombatScreen({
           }}
           onFermer={() => setTransfert(false)}
         />
+      )}
+
+      {ficheOuverte && (
+        <FicheDeSort spell={ficheOuverte} onFermer={() => setFicheOuverte(null)} />
       )}
     </div>
   );
