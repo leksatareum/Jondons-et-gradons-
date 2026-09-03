@@ -10,6 +10,7 @@ import { AddAdversaryDialog } from './AddAdversaryDialog';
 import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basics';
 import { FinDeCombat } from './FinDeCombat';
 import { AideDuMJ } from './AideDuMJ';
+import { DangersDuDecor } from './DangersDuDecor';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -547,6 +548,7 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
   const [retraitToutEnCours, setRetraitToutEnCours] = useState(false);
   const [finEnCours, setFinEnCours] = useState(false);
   const [aideEnCours, setAideEnCours] = useState(false);
+  const [decorEnCours, setDecorEnCours] = useState(false);
 
   /**
    * La difficulté de ce qui est SUR LA TABLE, en direct.
@@ -723,6 +725,21 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
             DD
           </button>
 
+          {/* Le décor : un piège ou un danger s'improvise en plein donjon,
+              pas seulement en préparant une rencontre. */}
+          <button
+            onClick={() => setDecorEnCours(true)}
+            aria-label="Dangers du décor et pièges"
+            title="Le décor"
+            className="jg-rond"
+            style={{ width: 44, height: 44, color: 'var(--muted)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2 L22 20 H2 Z" />
+              <path d="M12 9v5M12 17.2v.1" />
+            </svg>
+          </button>
+
           {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour.
               Lancer passe d'abord par la saisie des initiatives : sans elle,
               le premier round partait sur l'ordre d'ajout, joueurs à zéro. */}
@@ -777,6 +794,8 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
       )}
 
       {aideEnCours && <AideDuMJ onFermer={() => setAideEnCours(false)} />}
+
+      {decorEnCours && <DangersDuDecor niveau={groupe.niveau} onFermer={() => setDecorEnCours(false)} />}
 
       {retraitToutEnCours && (
         <ConfirmerRetraitTout

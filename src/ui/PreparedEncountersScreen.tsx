@@ -9,6 +9,7 @@ import {
 import type { StoredEncounterTemplate } from '../sync/campaign-sync';
 import { dupliquerCombatant, withDistinctNames, type Combatant } from '../domain/encounter';
 import { TAB_BAR_CLEARANCE } from './TabBar';
+import { DangersDuDecor } from './DangersDuDecor';
 
 /**
  * Rencontres préparées à l'avance.
@@ -311,8 +312,9 @@ function JaugeDeDifficulte({ evaluation, niveau, taille, sansProfil }: {
  * moment où on compose, pas rangés dans un écran de règles qu'on n'ouvre
  * jamais.
  */
-function LeviersDeScene() {
+function LeviersDeScene({ niveau }: { niveau: number }) {
   const [ouvert, setOuvert] = useState(false);
+  const [dangersOuverts, setDangersOuverts] = useState(false);
   return (
     <div style={{ marginTop: 10 }}>
       <button
@@ -333,10 +335,24 @@ function LeviersDeScene() {
               <div style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--muted)', marginTop: 2 }}>
                 {levier.texte}
               </div>
+              {/* Le levier « danger du décor » était le seul du lot à ne
+                  renvoyer à rien : un conseil qui dit d'y penser sans aider à
+                  le faire. Il ouvre maintenant les dangers du Guide, filtrés
+                  sur le niveau du groupe. */}
+              {levier.titre === 'Un danger du décor' && (
+                <button
+                  onClick={() => setDangersOuverts(true)}
+                  className="jg-btn-cold"
+                  style={{ marginTop: 8, minHeight: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 700 }}
+                >
+                  Voir les dangers et les pièges
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
+      {dangersOuverts && <DangersDuDecor niveau={niveau} onFermer={() => setDangersOuverts(false)} />}
     </div>
   );
 }
@@ -443,7 +459,7 @@ function NouvelleRencontre({ modele, groupe, onEnregistrer, onFermer }: {
           taille={groupe.taille}
           sansProfil={sansProfil}
         />
-        <LeviersDeScene />
+        <LeviersDeScene niveau={groupe.niveau} />
 
         {combatants.length === 0 ? (
           <div className="lbl" style={{ textTransform: 'none', color: 'var(--muted)', marginTop: 8 }}>
