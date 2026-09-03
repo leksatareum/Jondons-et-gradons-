@@ -47,8 +47,19 @@ function HpBar({ combatant }: { combatant: Combatant }) {
   // Le rouge n'apparaît qu'en dessous de la moitié : il garde son sens d'alerte.
   const color = ratio > 0.5 ? 'var(--ok)' : ratio > 0 ? 'var(--accent)' : 'var(--vital)';
   return (
-    <div style={{ height: 4, borderRadius: 3, background: 'var(--gold-dim)', overflow: 'hidden', display: 'flex' }}>
-      <div style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: color }} />
+    // Une rainure CREUSÉE dans la carte, pas un trait posé dessus : le fond
+    // de la barre est sombre avec son ombre interne, comme l'orbe de vie du
+    // joueur. En clair sur du sombre, la piste vide se lisait aussi fort que
+    // le remplissage et une créature à 1 PV avait l'air pleine.
+    <div style={{
+      height: 5, borderRadius: 999, overflow: 'hidden', display: 'flex',
+      background: 'rgba(0,0,0,.45)',
+      boxShadow: 'inset 0 1px 2px rgba(0,0,0,.8), 0 0 0 1px rgba(150,116,58,.25)',
+    }}>
+      <div style={{
+        width: `${Math.max(0, Math.min(1, ratio)) * 100}%`, background: color,
+        boxShadow: `0 0 8px -1px ${color}`,
+      }} />
       {tempRatio > 0 && (
         <div style={{ width: `${tempRatio * 100}%`, background: 'var(--ok)', opacity: 0.55 }} />
       )}
@@ -77,10 +88,8 @@ function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenShee
 
   return (
     <div
-      className="card"
+      className={`card${active ? ' card-accent' : ''}`}
       style={{
-        background: active ? 'var(--surface-raised)' : 'var(--surface)',
-        border: active ? '1.5px solid var(--accent)' : '1px solid var(--gold-dim)',
         padding: active ? '13px 14px' : '10px 12px',
         opacity: down ? 0.45 : 1,
       }}
@@ -222,9 +231,10 @@ function CombatantRow({ combatant, active, running, onTarget, onNext, onOpenShee
       {active && (
         <button
           onClick={onNext}
+          className="jg-btn-hot"
           style={{
             marginTop: 11, width: '100%', minHeight: 'var(--tap)', borderRadius: 10,
-            background: 'var(--accent)', color: 'var(--accent-ink)', fontSize: 13, fontWeight: 700,
+            fontSize: 13, fontWeight: 700,
           }}
         >
           Suivant
@@ -365,7 +375,9 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
     }}>
       <button onClick={onClose} aria-label="Fermer" style={{ flexGrow: 1 }} />
       <div style={{
-        background: 'var(--surface)', borderTop: '1px solid var(--gold-dim)',
+        background: 'linear-gradient(180deg, #262a31, #16181d 62%)',
+        borderTop: '1px solid var(--gold-dim)',
+        boxShadow: '0 -12px 30px -10px #000',
         borderRadius: '16px 16px 0 0', padding: '14px 14px 0',
         paddingBottom: 'calc(14px + env(safe-area-inset-bottom))',
       }}>
@@ -432,10 +444,8 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
             <button
               key={key}
               onClick={() => press(key)}
-              style={{
-                minHeight: 52, borderRadius: 10, background: 'var(--surface-raised)',
-                border: '1px solid var(--gold-dim)', fontSize: 18, fontWeight: 600,
-              }}
+              className="card"
+              style={{ minHeight: 52, borderRadius: 10, fontSize: 18, fontWeight: 600 }}
             >
               {key}
             </button>
@@ -447,7 +457,9 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
             onClick={() => send('degats')}
             style={{
               flexGrow: 1, minHeight: 52, borderRadius: 11,
-              background: 'var(--vital)', color: 'var(--bg)', fontSize: 14, fontWeight: 700,
+              background: 'var(--vital)', color: '#2a0f03', fontSize: 14, fontWeight: 700,
+              textShadow: '0 1px 0 rgba(255,220,170,.4)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 2px rgba(0,0,0,.3), 0 5px 16px -5px var(--vital), 0 0 0 1px #2a1707',
             }}
           >
             Dégâts
@@ -456,7 +468,9 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
             onClick={() => send('soins')}
             style={{
               flexGrow: 1, minHeight: 52, borderRadius: 11,
-              border: '1.5px solid var(--ok)', color: 'var(--ok)', fontSize: 14, fontWeight: 700,
+              color: 'var(--ok)', fontSize: 14, fontWeight: 700,
+              background: 'linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.25))',
+              boxShadow: 'inset 0 1px 0 rgba(200,255,215,.18), inset 0 0 0 1px rgba(0,0,0,.5), 0 0 0 1px var(--ok)',
             }}
           >
             Soins
@@ -601,7 +615,12 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <header style={{
-        flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--gold-dim)',
+        flexShrink: 0,
+        // Un voile flouté plutôt qu'un aplat : la dalle de pierre du fond se
+        // devine au travers, comme sur tous les autres en-têtes de l'appli.
+        background: 'rgba(22,25,29,.93)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid var(--gold-dim)',
         boxShadow: 'var(--raise)', padding: '11px 14px 12px',
         paddingTop: 'calc(11px + env(safe-area-inset-top))',
       }}>
@@ -626,10 +645,8 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
             <button
               onClick={() => setState(previousTurn)}
               aria-label="Tour précédent"
-              style={{
-                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
-                display: 'grid', placeItems: 'center',
-              }}
+              className="jg-rond"
+              style={{ width: 44, height: 44 }}
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M15 18l-6-6 6-6" />
@@ -641,10 +658,8 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
             <button
               onClick={() => setRetraitToutEnCours(true)}
               aria-label="Retirer tous les adversaires"
-              style={{
-                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
-                display: 'grid', placeItems: 'center', color: 'var(--muted)',
-              }}
+              className="jg-rond"
+              style={{ width: 44, height: 44, color: 'var(--muted)' }}
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
@@ -655,11 +670,8 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
           <button
             onClick={() => setAjoutEnCours(true)}
             aria-label="Ajouter un adversaire"
-            style={{
-              width: 44, height: 44, borderRadius: 10, border: '1px solid var(--gold-dim)',
-              display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 700,
-              color: 'var(--muted)',
-            }}
+            className="jg-rond"
+            style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, color: 'var(--muted)' }}
           >
             +
           </button>
@@ -670,12 +682,8 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
           <button
             onClick={() => (running ? setState(endEncounter) : setInitiativesEnCours(true))}
             disabled={!running && state.combatants.length === 0}
-            style={{
-              minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-              background: running ? 'transparent' : 'var(--accent)',
-              color: running ? 'var(--muted)' : 'var(--accent-ink)',
-              border: running ? '1px solid var(--gold-dim)' : 'none',
-            }}
+            className={running ? 'jg-btn-cold' : 'jg-btn-hot'}
+            style={{ minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}
           >
             {running ? 'Terminer' : 'Lancer'}
           </button>
