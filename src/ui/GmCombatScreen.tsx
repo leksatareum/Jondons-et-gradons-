@@ -8,6 +8,10 @@ import { basculerEtat, etatsActifs, etatsDe } from '../model/etats';
 import { InitiativeDialog } from './InitiativeDialog';
 import { AddAdversaryDialog } from './AddAdversaryDialog';
 import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basics';
+import { FinDeCombat } from './FinDeCombat';
+import { AideDuMJ } from './AideDuMJ';
+import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
+import { PHB_CREATURES } from '../content/creatures';
 
 /**
  * Écran de combat du MJ.
@@ -36,6 +40,14 @@ import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basic
  */
 
 const nouvelId = () => `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** Les mêmes mots et les mêmes couleurs que la jauge des rencontres préparées. */
+const LABEL_DIFFICULTE: Record<string, string> = {
+  faible: 'faible', moderee: 'modérée', elevee: 'élevée', 'au-dela': 'au-delà',
+};
+const COULEUR_DIFFICULTE: Record<string, string> = {
+  faible: 'var(--ok)', moderee: 'var(--gold-bright)', elevee: 'var(--accent)', 'au-dela': 'var(--vital)',
+};
 
 function HpBar({ combatant }: { combatant: Combatant }) {
   const ratio = combatant.maxHp > 0 ? remainingHp(combatant) / combatant.maxHp : 0;
@@ -500,8 +512,14 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
+export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
   state: EncounterState;
+  /**
+   * Le groupe réel de la campagne (niveau moyen, effectif), calculé sur les
+   * fiches. Sert à deux choses ici : situer en direct la difficulté de ce qui
+   * est SUR LA TABLE, et partager les PX en fin de combat.
+   */
+  groupe: { niveau: number; taille: number };
   onChange: (suivant: EncounterState) => void;
   /**
    * Ouvre la fiche d'un combattant du groupe. Le MJ y a les mêmes pouvoirs que
@@ -527,6 +545,23 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
   const [initiativesEnCours, setInitiativesEnCours] = useState(false);
   const [retraitToutEnCours, setRetraitToutEnCours] = useState(false);
+  const [finEnCours, setFinEnCours] = useState(false);
+  const [aideEnCours, setAideEnCours] = useState(false);
+
+  /**
+   * La difficulté de ce qui est SUR LA TABLE, en direct.
+   *
+   * Une rencontre préparée est pesée avant la séance ; mais on y ajoute des
+   * renforts en cours de route, et à ce moment-là le MJ n'a plus aucun
+   * repère. Seules les créatures venues du bestiaire comptent : une créature
+   * tapée à la main n'a pas de facteur de puissance, donc pas de coût.
+   */
+  const evaluation = useMemo(() => {
+    const profils = creaturesHostiles(state.combatants)
+      .map((combatant) => PHB_CREATURES.find((creature) => creature.id === combatant.templateId))
+      .filter((creature): creature is NonNullable<typeof creature> => Boolean(creature));
+    return evaluerRencontre(profils, groupe.niveau, groupe.taille);
+  }, [state.combatants, groupe.niveau, groupe.taille]);
   const setState = (suivant: EncounterState | ((courant: EncounterState) => EncounterState)) =>
     onChange(typeof suivant === 'function' ? suivant(state) : suivant);
 
@@ -676,11 +711,23 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
             +
           </button>
 
+          {/* Le pense-bête des DD, à portée de pouce. C'est ce qu'on cherche
+              vingt fois par soirée et qu'on finit par inventer. */}
+          <button
+            onClick={() => setAideEnCours(true)}
+            aria-label="Quel degré de difficulté ?"
+            title="Degrés de difficulté"
+            className="jg-rond"
+            style={{ width: 44, height: 44, fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}
+          >
+            DD
+          </button>
+
           {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour.
               Lancer passe d'abord par la saisie des initiatives : sans elle,
               le premier round partait sur l'ordre d'ajout, joueurs à zéro. */}
           <button
-            onClick={() => (running ? setState(endEncounter) : setInitiativesEnCours(true))}
+            onClick={() => (running ? setFinEnCours(true) : setInitiativesEnCours(true))}
             disabled={!running && state.combatants.length === 0}
             className={running ? 'jg-btn-cold' : 'jg-btn-hot'}
             style={{ minHeight: 44, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 700 }}
@@ -689,12 +736,47 @@ export function GmCombatScreen({ state, onChange, onOpenSheet, onDegatsJoueur, c
           </button>
         </div>
 
+        {/* Ce que vaut ce qui est sur la table, en une ligne. Le détail vit
+            dans l'écran des rencontres préparées ; ici il n'y a de place que
+            pour le verdict, et c'est tout ce qu'on lit en pleine séance. */}
+        {evaluation.difficulte && evaluation.difficulte !== 'aucune' && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 9 }}>
+            <span className="lbl" style={{ fontSize: 9 }}>Difficulté</span>
+            <span className="ttl" style={{ fontSize: 14, color: COULEUR_DIFFICULTE[evaluation.difficulte] }}>
+              {LABEL_DIFFICULTE[evaluation.difficulte]}
+            </span>
+            <span className="num" style={{ fontSize: 11, color: 'var(--muted)' }}>
+              {evaluation.xp} PX
+            </span>
+            {evaluation.avertissements.some((a) => a.gravite === 'danger') && (
+              <span
+                title={evaluation.avertissements.find((a) => a.gravite === 'danger')?.texte}
+                style={{ fontSize: 12, color: 'var(--vital)' }}
+              >
+                ⚠
+              </span>
+            )}
+          </div>
+        )}
+
         {!running && (
           <div className="lbl" style={{ textTransform: 'none', marginTop: 9 }}>
             Les joueurs restent sur leur fiche tant que le combat n'est pas lancé.
           </div>
         )}
       </header>
+
+      {finEnCours && (
+        <FinDeCombat
+          combatants={state.combatants}
+          joueurs={groupe.taille}
+          niveauGroupe={groupe.niveau}
+          onTerminer={() => { setFinEnCours(false); setState(endEncounter); }}
+          onFermer={() => setFinEnCours(false)}
+        />
+      )}
+
+      {aideEnCours && <AideDuMJ onFermer={() => setAideEnCours(false)} />}
 
       {retraitToutEnCours && (
         <ConfirmerRetraitTout

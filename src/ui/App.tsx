@@ -685,6 +685,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
       {vue === 'combat' ? (
         <GmCombatScreen
           state={affiche}
+          groupe={groupe}
           onChange={changer}
           onDegatsJoueur={appliquerVitalJoueur}
           concentrationParNom={concentrationParNom}
