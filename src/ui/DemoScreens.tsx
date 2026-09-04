@@ -33,7 +33,16 @@ export function DemoScreens() {
       <>
         <GmCombatScreen
           campaignId="demo"
-          groupe={{ niveau: 3, taille: 4, charismes: [15, 12, 10, 8] }}
+          groupe={{
+            niveau: 3,
+            taille: 4,
+            personnages: [
+              { nom: 'Alderic', cha: 15, con: 2 },
+              { nom: 'Brise', cha: 12, con: 1 },
+              { nom: 'Corvin', cha: 10, con: 0 },
+              { nom: 'Dun', cha: 8, con: -1 },
+            ],
+          }}
           state={rencontre}
           onChange={setRencontre}
         />

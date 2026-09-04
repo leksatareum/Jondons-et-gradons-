@@ -12,6 +12,7 @@ import { FinDeCombat } from './FinDeCombat';
 import { AideDuMJ } from './AideDuMJ';
 import { DangersDuDecor } from './DangersDuDecor';
 import { CarnetDePnj } from './CarnetDePnj';
+import { Poursuite } from './Poursuite';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -519,12 +520,18 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   /** La table en cours : le carnet de PNJ est rangé par campagne. */
   campaignId: string;
   /**
-   * Le groupe réel de la campagne (niveau moyen, effectif, Charismes), calculé
-   * sur les fiches. Sert à trois choses ici : situer en direct la difficulté de
-   * ce qui est SUR LA TABLE, partager les PX en fin de combat, et fixer les
-   * bornes de loyauté d'un PNJ sans que le MJ ait un chiffre à saisir.
+   * Le groupe réel de la campagne, calculé sur les fiches. Sert à quatre
+   * choses ici : situer en direct la difficulté de ce qui est SUR LA TABLE,
+   * partager les PX en fin de combat, fixer les bornes de loyauté d'un PNJ sur
+   * le plus haut Charisme, et compter les Pointes d'une poursuite sur la
+   * Constitution de chacun — aucun de ces chiffres n'est à saisir.
    */
-  groupe: { niveau: number; taille: number; charismes: number[] };
+  groupe: {
+    niveau: number;
+    taille: number;
+    /** `con` est déjà le MODIFICATEUR, pas le score : c'est lui qui sert partout. */
+    personnages: { nom: string; cha: number; con: number }[];
+  };
   onChange: (suivant: EncounterState) => void;
   /**
    * Ouvre la fiche d'un combattant du groupe. Le MJ y a les mêmes pouvoirs que
@@ -554,6 +561,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   const [aideEnCours, setAideEnCours] = useState(false);
   const [decorEnCours, setDecorEnCours] = useState(false);
   const [pnjEnCours, setPnjEnCours] = useState(false);
+  const [poursuiteEnCours, setPoursuiteEnCours] = useState(false);
 
   /**
    * La difficulté de ce qui est SUR LA TABLE, en direct.
@@ -817,6 +825,21 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
               <path d="M4.8 20.5a7.2 7.2 0 0 1 14.4 0" />
             </svg>
           </button>
+
+          {/* La poursuite : elle démarre quand quelqu'un décide de fuir, ce
+              qui n'est jamais prévu à l'avance. */}
+          <button
+            onClick={() => setPoursuiteEnCours(true)}
+            aria-label="Règles de poursuite"
+            title="La poursuite"
+            className="jg-rond"
+            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 12h11M10.5 7.5 15 12l-4.5 4.5" />
+              <path d="M19 4.5v15" />
+            </svg>
+          </button>
         </div>
 
         {!running && (
@@ -844,9 +867,13 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
         <CarnetDePnj
           campaignId={campaignId}
           niveau={groupe.niveau}
-          charismes={groupe.charismes}
+          charismes={groupe.personnages.map((personnage) => personnage.cha)}
           onFermer={() => setPnjEnCours(false)}
         />
+      )}
+
+      {poursuiteEnCours && (
+        <Poursuite personnages={groupe.personnages} onFermer={() => setPoursuiteEnCours(false)} />
       )}
 
       {retraitToutEnCours && (
