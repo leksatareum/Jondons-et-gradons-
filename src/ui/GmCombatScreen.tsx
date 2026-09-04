@@ -13,6 +13,7 @@ import { AideDuMJ } from './AideDuMJ';
 import { DangersDuDecor } from './DangersDuDecor';
 import { CarnetDePnj } from './CarnetDePnj';
 import { Poursuite } from './Poursuite';
+import { LeGuide, type OutilDuGuide } from './LeGuide';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -562,6 +563,19 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   const [decorEnCours, setDecorEnCours] = useState(false);
   const [pnjEnCours, setPnjEnCours] = useState(false);
   const [poursuiteEnCours, setPoursuiteEnCours] = useState(false);
+  const [menuDuGuide, setMenuDuGuide] = useState(false);
+
+  /**
+   * Le menu se referme derrière l'outil choisi : on ne le retrouve pas
+   * empilé sous l'écran qu'on vient d'ouvrir, ni au retour.
+   */
+  const ouvrirOutil = (outil: OutilDuGuide) => {
+    setMenuDuGuide(false);
+    if (outil === 'dd') setAideEnCours(true);
+    if (outil === 'decor') setDecorEnCours(true);
+    if (outil === 'gens') setPnjEnCours(true);
+    if (outil === 'poursuite') setPoursuiteEnCours(true);
+  };
 
   /**
    * La difficulté de ce qui est SUR LA TABLE, en direct.
@@ -727,25 +741,24 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
         </div>
 
         {/*
-          La seconde ligne : le verdict à gauche, les pense-bêtes à droite.
+          La seconde ligne : le verdict à gauche, ce qui se consulte à droite.
           Tout tenait sur une seule ligne jusqu'à trois outils ; au quatrième,
           la rangée mesurait 441 px sur un écran de 390 et le nom du combattant
-          actif était écrasé à zéro — le MJ ne voyait plus à qui c'était.
-          Sortir les consultations de la ligne d'action rend sa place au titre
-          et laisse de quoi en ajouter d'autres.
+          actif était écrasé à zéro. Sortir les consultations de la ligne
+          d'action a rendu sa place au titre — mais aligner un rond de plus par
+          pense-bête a fini par produire un mur de cercles identiques, où rien
+          ne distinguait le triangle du décor de la silhouette des PNJ.
+
+          D'où « Le Guide », une porte unique et NOMMÉE : le menu derrière
+          donne à chaque outil un nom et une phrase, ce qu'un rond ne peut pas
+          porter, et la rangée ne grandira plus quand il y en aura un sixième.
+          Les ACTIONS, elles, restent à un appui — elles se font en plein
+          combat, alors qu'une consultation se lit.
         */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9 }}>
           {/* Ce que vaut ce qui est sur la table. Le détail vit dans l'écran
               des rencontres préparées ; ici il n'y a de place que pour le
               verdict, et c'est tout ce qu'on lit en pleine séance. */}
-          {/*
-            Le verdict passe sur deux lignes quand il ne tient pas : mesuré à
-            170 px de place pour 174 à 198 px de texte selon le mot et le
-            total de PX. Chaque morceau reste insécable — « au-/delà » et
-            « 300/PX » coupés en deux étaient illisibles — et les deux lignes
-            tiennent dans la hauteur que les boutons imposent déjà : le repli
-            ne coûte donc rien à l'écran.
-          */}
           <div style={{
             flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center',
             flexWrap: 'wrap', columnGap: 7, rowGap: 0,
@@ -776,69 +789,28 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
               onClick={() => setRetraitToutEnCours(true)}
               aria-label="Retirer tous les adversaires"
               className="jg-rond"
-              style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
+              style={{ width: 44, height: 44, flexShrink: 0, color: 'var(--muted)' }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
               </svg>
             </button>
           )}
 
-          {/* Le pense-bête des DD, à portée de pouce. C'est ce qu'on cherche
-              vingt fois par soirée et qu'on finit par inventer. */}
           <button
-            onClick={() => setAideEnCours(true)}
-            aria-label="Quel degré de difficulté ?"
-            title="Degrés de difficulté"
-            className="jg-rond"
-            style={{ width: 40, height: 40, flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}
+            onClick={() => setMenuDuGuide(true)}
+            aria-label="Le Guide : ce qu’on cherche en pleine séance"
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7,
+              minHeight: 44, padding: '0 13px', borderRadius: 999,
+              border: '1px solid var(--gold-dim)', background: 'transparent', color: 'var(--muted)',
+            }}
           >
-            DD
-          </button>
-
-          {/* Le décor : un piège ou un danger s'improvise en plein donjon,
-              pas seulement en préparant une rencontre. */}
-          <button
-            onClick={() => setDecorEnCours(true)}
-            aria-label="Dangers du décor et pièges"
-            title="Le décor"
-            className="jg-rond"
-            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 2 L22 20 H2 Z" />
-              <path d="M12 9v5M12 17.2v.1" />
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 4.5h6a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h6v14h-6a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H4Z" />
+              <path d="M12 5.5v13" />
             </svg>
-          </button>
-
-          {/* Les gens : un PNJ se tire en pleine scène, quand les joueurs
-              adressent la parole à quelqu'un qui n'était pas prévu. */}
-          <button
-            onClick={() => setPnjEnCours(true)}
-            aria-label="Carnet de personnages non-joueurs"
-            title="Les gens"
-            className="jg-rond"
-            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="8" r="3.6" />
-              <path d="M4.8 20.5a7.2 7.2 0 0 1 14.4 0" />
-            </svg>
-          </button>
-
-          {/* La poursuite : elle démarre quand quelqu'un décide de fuir, ce
-              qui n'est jamais prévu à l'avance. */}
-          <button
-            onClick={() => setPoursuiteEnCours(true)}
-            aria-label="Règles de poursuite"
-            title="La poursuite"
-            className="jg-rond"
-            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 12h11M10.5 7.5 15 12l-4.5 4.5" />
-              <path d="M19 4.5v15" />
-            </svg>
+            <span className="ttl" style={{ fontSize: 13 }}>Le Guide</span>
           </button>
         </div>
 
@@ -858,6 +830,8 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
           onFermer={() => setFinEnCours(false)}
         />
       )}
+
+      {menuDuGuide && <LeGuide onChoisir={ouvrirOutil} onFermer={() => setMenuDuGuide(false)} />}
 
       {aideEnCours && <AideDuMJ onFermer={() => setAideEnCours(false)} />}
 
