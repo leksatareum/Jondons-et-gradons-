@@ -14,6 +14,7 @@ import { DangersDuDecor } from './DangersDuDecor';
 import { CarnetDePnj } from './CarnetDePnj';
 import { Poursuite } from './Poursuite';
 import { LeGuide, type OutilDuGuide } from './LeGuide';
+import { ObjetsMagiques } from './ObjetsMagiques';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -563,6 +564,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   const [decorEnCours, setDecorEnCours] = useState(false);
   const [pnjEnCours, setPnjEnCours] = useState(false);
   const [poursuiteEnCours, setPoursuiteEnCours] = useState(false);
+  const [objetsEnCours, setObjetsEnCours] = useState(false);
   const [menuDuGuide, setMenuDuGuide] = useState(false);
 
   /**
@@ -575,6 +577,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
     if (outil === 'decor') setDecorEnCours(true);
     if (outil === 'gens') setPnjEnCours(true);
     if (outil === 'poursuite') setPoursuiteEnCours(true);
+    if (outil === 'objets') setObjetsEnCours(true);
   };
 
   /**
@@ -849,6 +852,8 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
       {poursuiteEnCours && (
         <Poursuite personnages={groupe.personnages} onFermer={() => setPoursuiteEnCours(false)} />
       )}
+
+      {objetsEnCours && <ObjetsMagiques onFermer={() => setObjetsEnCours(false)} />}
 
       {retraitToutEnCours && (
         <ConfirmerRetraitTout

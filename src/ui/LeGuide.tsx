@@ -19,7 +19,7 @@
  * se lit, et supporte très bien d'en coûter deux.
  */
 
-export type OutilDuGuide = 'dd' | 'decor' | 'gens' | 'poursuite';
+export type OutilDuGuide = 'dd' | 'decor' | 'gens' | 'poursuite' | 'objets';
 
 type Entree = {
   id: OutilDuGuide;
@@ -70,6 +70,16 @@ const ENTREES: Entree[] = [
       <svg width="19" height="19" viewBox="0 0 24 24" {...trait} aria-hidden>
         <path d="M3 12h11M10.5 7.5 15 12l-4.5 4.5" />
         <path d="M19 4.5v15" />
+      </svg>
+    ),
+  },
+  {
+    id: 'objets',
+    nom: 'Les objets magiques',
+    quoi: 'Les 51 objets communs du Guide, cherchables par leur nom.',
+    icone: (
+      <svg width="19" height="19" viewBox="0 0 24 24" {...trait} aria-hidden>
+        <path d="M12 3.2 14.4 9l6.1.4-4.7 3.9 1.5 5.9L12 16.1 6.7 19.2l1.5-5.9L3.5 9.4 9.6 9Z" />
       </svg>
     ),
   },
