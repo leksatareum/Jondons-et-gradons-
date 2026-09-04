@@ -76,7 +76,7 @@ const ENTREES: Entree[] = [
   {
     id: 'objets',
     nom: 'Les objets magiques',
-    quoi: 'Les 51 objets communs du Guide, cherchables par leur nom.',
+    quoi: 'Les 141 objets communs et peu communs, à filtrer pour composer un butin.',
     icone: (
       <svg width="19" height="19" viewBox="0 0 24 24" {...trait} aria-hidden>
         <path d="M12 3.2 14.4 9l6.1.4-4.7 3.9 1.5 5.9L12 16.1 6.7 19.2l1.5-5.9L3.5 9.4 9.6 9Z" />

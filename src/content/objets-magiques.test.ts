@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  chercherObjet, LIBELLE_CATEGORIE, LIBELLE_RARETE, OBJETS_MAGIQUES, objetsParRarete,
+  categoriesPresentes, chercherObjet, filtrerObjets,
+  LIBELLE_CATEGORIE, LIBELLE_RARETE, OBJETS_MAGIQUES, objetsParRarete,
 } from './objets-magiques';
 
 describe('cohérence du catalogue', () => {
@@ -21,14 +22,23 @@ describe('cohérence du catalogue', () => {
     }
   });
 
-  it('ne contient que du commun dans ce lot', () => {
-    // Le fichier annonce un lot de communs. Si une autre rareté s'y glisse,
-    // l'écran l'affichera sous un titre qui ment.
-    expect(OBJETS_MAGIQUES.every((o) => o.rarete === 'commun')).toBe(true);
+  it('ne contient que les deux raretés annoncées', () => {
+    // Le fichier annonce le commun et le peu commun. Si une autre rareté s'y
+    // glisse, l'écran l'affichera sous un filtre qui ment.
+    expect(OBJETS_MAGIQUES.every((o) => o.rarete === 'commun' || o.rarete === 'peu-commun')).toBe(true);
   });
 
-  it('porte les 51 objets communs du Guide', () => {
+  it('porte les 51 communs et les 90 peu communs du Guide', () => {
     expect(objetsParRarete('commun')).toHaveLength(51);
+    expect(objetsParRarete('peu-commun')).toHaveLength(90);
+  });
+
+  it('n’y range pas l’armure +1, qui est RARE en 2024', () => {
+    // Le réflexe est de la classer avec l'arme +1 et le bouclier +1, qui sont
+    // peu communs. Le scan est formel : « Armor (...), Rare (+1) ».
+    expect(OBJETS_MAGIQUES.some((o) => /^Armure \+1/.test(o.nom))).toBe(false);
+    expect(OBJETS_MAGIQUES.some((o) => /^Arme \+1/.test(o.nom))).toBe(true);
+    expect(OBJETS_MAGIQUES.some((o) => /^Bouclier \+1/.test(o.nom))).toBe(true);
   });
 
   it('donne un effet à chacun, pas seulement un nom', () => {
@@ -110,5 +120,55 @@ describe('le tri et la recherche', () => {
 
   it('rend une liste vide plutôt que n’importe quoi', () => {
     expect(chercherObjet('zzzz')).toEqual([]);
+  });
+
+  it('trouve un objet peu commun aussi bien qu’un commun', () => {
+    expect(chercherObjet('sac sans fond').map((o) => o.id)).toEqual(['sac-sans-fond']);
+    expect(chercherObjet('perle').length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('les filtres du butin', () => {
+  it('croise la rareté et la catégorie', () => {
+    const potions = filtrerObjets({ raretes: ['peu-commun'], categories: ['potion'] });
+    expect(potions.length).toBeGreaterThan(5);
+    expect(potions.every((o) => o.rarete === 'peu-commun' && o.categorie === 'potion')).toBe(true);
+  });
+
+  it('sépare ce qui coûte une harmonisation de ce qui n’en coûte pas', () => {
+    // Un personnage n'en porte que trois : c'est la question qu'on se pose
+    // vraiment en choisissant quoi donner.
+    const avec = filtrerObjets({ harmonisation: true });
+    const sans = filtrerObjets({ harmonisation: false });
+    expect(avec.every((o) => o.harmonisation !== undefined)).toBe(true);
+    expect(sans.every((o) => o.harmonisation === undefined)).toBe(true);
+    expect(avec.length + sans.length).toBe(OBJETS_MAGIQUES.length);
+  });
+
+  it('combine la recherche avec les filtres, sans les ignorer', () => {
+    // Le piège classique : taper un nom et voir revenir des objets d'une
+    // rareté qu'on avait justement écartée.
+    expect(filtrerObjets({ question: 'perle', raretes: ['peu-commun'] })
+      .every((o) => o.rarete === 'peu-commun')).toBe(true);
+  });
+
+  it('rend tout quand on ne demande rien', () => {
+    expect(filtrerObjets({})).toHaveLength(OBJETS_MAGIQUES.length);
+    expect(filtrerObjets({ raretes: [], categories: [] })).toHaveLength(OBJETS_MAGIQUES.length);
+  });
+
+  it('compte les catégories, les plus fournies d’abord', () => {
+    const presentes = categoriesPresentes();
+    expect(presentes[0]!.categorie).toBe('merveilleux');
+    expect(presentes.reduce((somme, e) => somme + e.nombre, 0)).toBe(OBJETS_MAGIQUES.length);
+    // Aucune catégorie déclarée mais vide : un filtre qui ne rend rien est un
+    // bouton mort.
+    expect(presentes.every((e) => e.nombre > 0)).toBe(true);
+  });
+
+  it('compte les catégories du sous-ensemble qu’on lui donne', () => {
+    const communs = objetsParRarete('commun');
+    const presentes = categoriesPresentes(communs);
+    expect(presentes.reduce((somme, e) => somme + e.nombre, 0)).toBe(communs.length);
   });
 });
