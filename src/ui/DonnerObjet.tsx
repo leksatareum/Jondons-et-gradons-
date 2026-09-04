@@ -58,11 +58,12 @@ function Pastille({ actif, onClic, children }: {
 function ChoixDuDestinataire({ objet, personnages, onDonner, onAnnuler }: {
   objet: ObjetADonner;
   personnages: { id: string; nom: string }[];
-  onDonner: (ids: string[], quantite: number) => void;
+  onDonner: (ids: string[], quantite: number, mot: string) => void;
   onAnnuler: () => void;
 }) {
   const [choisis, setChoisis] = useState<string[]>([]);
   const [quantite, setQuantite] = useState(1);
+  const [mot, setMot] = useState('');
 
   const basculer = (id: string) =>
     setChoisis((liste) => (liste.includes(id) ? liste.filter((x) => x !== id) : [...liste, id]));
@@ -155,8 +156,24 @@ function ChoixDuDestinataire({ objet, personnages, onDonner, onAnnuler }: {
               </button>
             </div>
 
+            {/* Le mot qui accompagne l'objet. C'est lui que le joueur verra
+                dans son pop-up : « tu la trouves serrée dans la main du
+                chef » vaut mieux qu'une ligne apparue sans raison. */}
+            <input
+              value={mot}
+              onChange={(evenement) => setMot(evenement.target.value)}
+              placeholder="Un mot avec l’objet (facultatif)"
+              aria-label="Un mot avec l’objet"
+              maxLength={200}
+              style={{
+                width: '100%', marginTop: 11, minHeight: 40, padding: '0 12px',
+                borderRadius: 9, border: '1px solid var(--line)',
+                background: 'rgba(255,255,255,.04)', color: 'inherit', fontSize: 13.5,
+              }}
+            />
+
             <button
-              onClick={() => onDonner(choisis, quantite)}
+              onClick={() => onDonner(choisis, quantite, mot)}
               disabled={choisis.length === 0}
               className="jg-btn-hot"
               style={{
@@ -179,7 +196,7 @@ function ChoixDuDestinataire({ objet, personnages, onDonner, onAnnuler }: {
 
 export function DonnerObjet({ personnages, onDonner, onFermer, objetInitial }: {
   personnages: { id: string; nom: string }[];
-  onDonner: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonner: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }, mot?: string) => void;
   onFermer: () => void;
   /** Ouvre directement le choix du destinataire — quand on arrive depuis la fiche d'un objet. */
   objetInitial?: ObjetADonner;
@@ -195,10 +212,10 @@ export function DonnerObjet({ personnages, onDonner, onFermer, objetInitial }: {
     [question, provenances],
   );
 
-  const donner = (ids: string[], quantite: number) => {
+  const donner = (ids: string[], quantite: number, mot: string) => {
     if (!enCours) return;
     const ligne = ligneDeSac(enCours, quantite);
-    for (const id of ids) onDonner(id, ligne);
+    for (const id of ids) onDonner(id, ligne, mot);
     const noms = personnages.filter((p) => ids.includes(p.id)).map((p) => p.nom).join(', ');
     setDernier(`${ligne.qty > 1 ? `${ligne.qty} × ` : ''}${enCours.nom} → ${noms}`);
     setEnCours(null);

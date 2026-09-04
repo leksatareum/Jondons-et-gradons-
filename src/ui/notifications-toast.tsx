@@ -32,6 +32,8 @@ export function useToastsDeCampagne(snapshot: CampaignSnapshot, moi: string): {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const vuJournal = useRef<Set<string> | null>(null);
   const vuMessages = useRef<Set<string> | null>(null);
+  /** Jamais `null` : contrairement aux deux autres, on n'ignore pas le premier instantané. */
+  const vuDons = useRef<Set<string>>(new Set());
 
   const ajouter = (nouveaux: Toast[]) => {
     if (nouveaux.length === 0) return;
@@ -80,6 +82,35 @@ export function useToastsDeCampagne(snapshot: CampaignSnapshot, moi: string): {
     })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot.messages, moi]);
+
+  /**
+   * Un objet reçu — du MJ ou d'un autre joueur.
+   *
+   * Deux choses le distinguent des deux effets ci-dessus, et les deux
+   * comptent :
+   *
+   * 1. Il NE SAUTE PAS le premier instantané. Pour une entrée de journal,
+   *    l'ignorer au démarrage évite de redécouvrir tout l'historique ; ici
+   *    c'est l'inverse — un objet donné pendant qu'on avait l'appli fermée
+   *    attend justement dans cette première lecture, et c'est le seul moment
+   *    où l'on peut l'annoncer.
+   * 2. La ligne est EFFACÉE dès qu'elle est reçue (voir `App`, l'effet qui
+   *    dépose l'objet dans le sac). On l'annonce donc à sa première
+   *    apparition, sans quoi il n'y aurait plus rien à annoncer.
+   */
+  useEffect(() => {
+    const dejaVus = vuDons.current;
+    const nouveaux = snapshot.itemTransfers.filter(
+      (don) => don.recipientId === moi && !dejaVus.has(don.id),
+    );
+    for (const don of nouveaux) dejaVus.add(don.id);
+    ajouter(nouveaux.map((don) => ({
+      id: `don-${don.id}`,
+      titre: don.qty > 1 ? `${don.qty} × ${don.itemName}` : don.itemName,
+      corps: don.itemNote?.trim() || 'Un objet vient d’arriver dans ton sac.',
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot.itemTransfers, moi]);
 
   const fermer = (id: string) => setToasts((courant) => courant.filter((entree) => entree.id !== id));
 

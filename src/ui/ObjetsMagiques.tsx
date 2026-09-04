@@ -124,7 +124,7 @@ export function ObjetsMagiques({ onFermer, personnages, onDonnerObjet }: {
   onFermer: () => void;
   /** Absents quand l'écran est ouvert hors table : la fiche n'affiche alors pas « Donner à… ». */
   personnages?: { id: string; nom: string }[];
-  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }, mot?: string) => void;
 }) {
   const [question, setQuestion] = useState('');
   const [raretes, setRaretes] = useState<Rarete[]>([]);

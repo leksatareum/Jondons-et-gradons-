@@ -556,7 +556,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
    * FICHE, pas celui du combattant — on écrit ce qu'il possède, pas une copie
    * de la rencontre.
    */
-  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }, mot?: string) => void;
   /**
    * Le nom du sort en cours de concentration, par nom de personnage — lu sur
    * chaque fiche, jamais sur le combattant : `live.concentration` du joueur,

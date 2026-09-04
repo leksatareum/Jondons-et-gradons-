@@ -105,7 +105,7 @@ export function DistribuerButin({ nom, butin, personnages, onDonnerObjet, onDonn
   nom: string;
   butin: ButinPrepare;
   personnages: { id: string; nom: string }[];
-  onDonnerObjet: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonnerObjet: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }, mot?: string) => void;
   onDonnerOr: (ficheId: string, montant: number) => void;
   onFermer: () => void;
 }) {
@@ -122,11 +122,14 @@ export function DistribuerButin({ nom, butin, personnages, onDonnerObjet, onDonn
   const donnerLigne = (ids: string[]) => {
     if (!enCours) return;
     for (const id of ids) {
+      // Le mot n'a pas à être tapé ici : le nom de la rencontre le dit déjà,
+      // et c'est ce que le joueur verra apparaître (« Trouvé dans : Le
+      // repaire gobelin ») plutôt qu'une ligne surgie de nulle part.
       onDonnerObjet(id, {
         name: enCours.nom,
         qty: enCours.qty,
         ...(enCours.catalogId ? { catalogId: enCours.catalogId } : {}),
-      });
+      }, `Trouvé dans : ${nom}`);
     }
     setDistribue((actuel) => ({ ...actuel, [enCours.id]: nomsDe(ids) }));
     setEnCours(null);

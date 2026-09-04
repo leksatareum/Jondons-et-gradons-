@@ -21,11 +21,12 @@ import {
 } from '../sync/cache-local';
 import { withParty } from './roster';
 import {
-  createEncounter, createEncounterTemplate, createJournalEntry, createMessage, deleteEncounterTemplate,
+  createEncounter, createEncounterTemplate, createItemTransfer, createJournalEntry, createMessage, deleteEncounterTemplate,
   deleteItemTransfer, deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry,
   saveSheet,
 } from '../sync/mutations';
 import { addItem, recevoirItem, setGold } from '../model/inventory';
+import { routeDuDon } from '../domain/don-du-mj';
 import type { ButinPrepare } from '../domain/butin-prepare';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
@@ -361,6 +362,7 @@ function Table({ client, compte, campagne }: {
             client={client}
             sync={sync}
             campaignId={campagne.campaignId}
+            mjUserId={compte.userId}
             snapshot={snapshot}
             onOuvrirFiche={setFicheOuverte}
             vue={ecranMj}
@@ -522,10 +524,12 @@ const vide: EncounterState = { turnIndex: -1, round: 0, combatants: [] };
  *   réseau, puis la ligne renvoyée par la base reprend la main. Sans lui, tenir
  *   « Suivant » deux fois de suite perdrait le premier appui.
  */
-function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDeclencher }: {
+function EcranMj({ client, sync, campaignId, mjUserId, snapshot, onOuvrirFiche, vue, onDeclencher }: {
   client: SupabaseClient;
   sync: CampaignSync;
   campaignId: string;
+  /** Le compte du MJ : c'est lui qui SIGNE le transfert d'un objet donné. */
+  mjUserId: string;
   snapshot: CampaignSnapshot;
   onOuvrirFiche: (sheetId: string) => void;
   /** Combat en cours, ou composition des rencontres préparées — les deux partagent la même rencontre en cours. */
@@ -681,9 +685,29 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
    * ligne apparaître dans son sac sans rien avoir à taper, et un consommable
    * y arrive fonctionnel (voir `catalogIdPourLeSac`).
    */
-  const donnerObjet = (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => {
+  const donnerObjet = (
+    ficheId: string,
+    ligne: { name: string; qty: number; catalogId?: string },
+    mot?: string,
+  ) => {
     const fiche = snapshot.sheets.find((entry) => entry.id === ficheId);
     if (!fiche) return;
+    const route = routeDuDon(fiche, mjUserId);
+    if (route.voie === 'transfert') {
+      // Le même chemin qu'un objet donné entre joueurs : il porte un mot, il
+      // se reçoit, et il fait apparaître un pop-up. Écrire la fiche
+      // directement le posait en SILENCE dans le sac.
+      void createItemTransfer(client, sync, campaignId, mjUserId, {
+        recipientId: route.destinataire,
+        name: ligne.name,
+        qty: ligne.qty,
+        ...(ligne.catalogId ? { catalogId: ligne.catalogId } : {}),
+        ...(mot?.trim() ? { note: mot.trim() } : {}),
+      });
+      return;
+    }
+    // Fiche sans propriétaire, ou fiche du MJ : personne à prévenir, donc
+    // écriture directe (voir `don-du-mj.ts`).
     void saveSheet(client, sync, fiche.id, addItem(fiche.data, ligne));
   };
 

@@ -548,7 +548,7 @@ export function PreparedEncountersScreen({ templates, groupe, personnages, onCre
   onDeclencher: (combatants: Combatant[]) => void;
   /** Les joueurs de la table, pour distribuer le butin. Absents hors table. */
   personnages?: { id: string; nom: string }[];
-  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }, mot?: string) => void;
   onDonnerOr?: (ficheId: string, montant: number) => void;
 }) {
   // `'nouvelle'` pour une création, une rencontre existante pour l'édition, `null` pour rien d'ouvert.
