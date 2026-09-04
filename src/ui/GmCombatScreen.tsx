@@ -11,6 +11,7 @@ import { ABILITY_ABBREVIATIONS, ABILITY_ORDER } from '../content/character-basic
 import { FinDeCombat } from './FinDeCombat';
 import { AideDuMJ } from './AideDuMJ';
 import { DangersDuDecor } from './DangersDuDecor';
+import { CarnetDePnj } from './CarnetDePnj';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -513,14 +514,17 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
+export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
   state: EncounterState;
+  /** La table en cours : le carnet de PNJ est rangé par campagne. */
+  campaignId: string;
   /**
-   * Le groupe réel de la campagne (niveau moyen, effectif), calculé sur les
-   * fiches. Sert à deux choses ici : situer en direct la difficulté de ce qui
-   * est SUR LA TABLE, et partager les PX en fin de combat.
+   * Le groupe réel de la campagne (niveau moyen, effectif, Charismes), calculé
+   * sur les fiches. Sert à trois choses ici : situer en direct la difficulté de
+   * ce qui est SUR LA TABLE, partager les PX en fin de combat, et fixer les
+   * bornes de loyauté d'un PNJ sans que le MJ ait un chiffre à saisir.
    */
-  groupe: { niveau: number; taille: number };
+  groupe: { niveau: number; taille: number; charismes: number[] };
   onChange: (suivant: EncounterState) => void;
   /**
    * Ouvre la fiche d'un combattant du groupe. Le MJ y a les mêmes pouvoirs que
@@ -549,6 +553,7 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
   const [finEnCours, setFinEnCours] = useState(false);
   const [aideEnCours, setAideEnCours] = useState(false);
   const [decorEnCours, setDecorEnCours] = useState(false);
+  const [pnjEnCours, setPnjEnCours] = useState(false);
 
   /**
    * La difficulté de ce qui est SUR LA TABLE, en direct.
@@ -691,19 +696,6 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
             </button>
           )}
 
-          {nombreAdversaires > 0 && (
-            <button
-              onClick={() => setRetraitToutEnCours(true)}
-              aria-label="Retirer tous les adversaires"
-              className="jg-rond"
-              style={{ width: 44, height: 44, color: 'var(--muted)' }}
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
-              </svg>
-            </button>
-          )}
-
           <button
             onClick={() => setAjoutEnCours(true)}
             aria-label="Ajouter un adversaire"
@@ -711,33 +703,6 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
             style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, color: 'var(--muted)' }}
           >
             +
-          </button>
-
-          {/* Le pense-bête des DD, à portée de pouce. C'est ce qu'on cherche
-              vingt fois par soirée et qu'on finit par inventer. */}
-          <button
-            onClick={() => setAideEnCours(true)}
-            aria-label="Quel degré de difficulté ?"
-            title="Degrés de difficulté"
-            className="jg-rond"
-            style={{ width: 44, height: 44, fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}
-          >
-            DD
-          </button>
-
-          {/* Le décor : un piège ou un danger s'improvise en plein donjon,
-              pas seulement en préparant une rencontre. */}
-          <button
-            onClick={() => setDecorEnCours(true)}
-            aria-label="Dangers du décor et pièges"
-            title="Le décor"
-            className="jg-rond"
-            style={{ width: 44, height: 44, color: 'var(--muted)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M12 2 L22 20 H2 Z" />
-              <path d="M12 9v5M12 17.2v.1" />
-            </svg>
           </button>
 
           {/* C'est ce bouton, et lui seul, qui met les joueurs en tour par tour.
@@ -753,28 +718,106 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
           </button>
         </div>
 
-        {/* Ce que vaut ce qui est sur la table, en une ligne. Le détail vit
-            dans l'écran des rencontres préparées ; ici il n'y a de place que
-            pour le verdict, et c'est tout ce qu'on lit en pleine séance. */}
-        {evaluation.difficulte && evaluation.difficulte !== 'aucune' && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 9 }}>
-            <span className="lbl" style={{ fontSize: 9 }}>Difficulté</span>
-            <span className="ttl" style={{ fontSize: 14, color: COULEUR_DIFFICULTE[evaluation.difficulte] }}>
-              {LABEL_DIFFICULTE[evaluation.difficulte]}
-            </span>
-            <span className="num" style={{ fontSize: 11, color: 'var(--muted)' }}>
-              {evaluation.xp} PX
-            </span>
-            {evaluation.avertissements.some((a) => a.gravite === 'danger') && (
-              <span
-                title={evaluation.avertissements.find((a) => a.gravite === 'danger')?.texte}
-                style={{ fontSize: 12, color: 'var(--vital)' }}
-              >
-                ⚠
-              </span>
+        {/*
+          La seconde ligne : le verdict à gauche, les pense-bêtes à droite.
+          Tout tenait sur une seule ligne jusqu'à trois outils ; au quatrième,
+          la rangée mesurait 441 px sur un écran de 390 et le nom du combattant
+          actif était écrasé à zéro — le MJ ne voyait plus à qui c'était.
+          Sortir les consultations de la ligne d'action rend sa place au titre
+          et laisse de quoi en ajouter d'autres.
+        */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9 }}>
+          {/* Ce que vaut ce qui est sur la table. Le détail vit dans l'écran
+              des rencontres préparées ; ici il n'y a de place que pour le
+              verdict, et c'est tout ce qu'on lit en pleine séance. */}
+          {/*
+            Le verdict passe sur deux lignes quand il ne tient pas : mesuré à
+            170 px de place pour 174 à 198 px de texte selon le mot et le
+            total de PX. Chaque morceau reste insécable — « au-/delà » et
+            « 300/PX » coupés en deux étaient illisibles — et les deux lignes
+            tiennent dans la hauteur que les boutons imposent déjà : le repli
+            ne coûte donc rien à l'écran.
+          */}
+          <div style={{
+            flexGrow: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+            flexWrap: 'wrap', columnGap: 7, rowGap: 0,
+          }}>
+            {evaluation.difficulte && evaluation.difficulte !== 'aucune' && (
+              <>
+                <span className="lbl" style={{ fontSize: 9, whiteSpace: 'nowrap' }}>Difficulté</span>
+                <span className="ttl" style={{ fontSize: 14, whiteSpace: 'nowrap', color: COULEUR_DIFFICULTE[evaluation.difficulte] }}>
+                  {LABEL_DIFFICULTE[evaluation.difficulte]}
+                </span>
+                <span className="num" style={{ fontSize: 11, whiteSpace: 'nowrap', color: 'var(--muted)' }}>
+                  {evaluation.xp} PX
+                </span>
+                {evaluation.avertissements.some((a) => a.gravite === 'danger') && (
+                  <span
+                    title={evaluation.avertissements.find((a) => a.gravite === 'danger')?.texte}
+                    style={{ fontSize: 12, color: 'var(--vital)' }}
+                  >
+                    ⚠
+                  </span>
+                )}
+              </>
             )}
           </div>
-        )}
+
+          {nombreAdversaires > 0 && (
+            <button
+              onClick={() => setRetraitToutEnCours(true)}
+              aria-label="Retirer tous les adversaires"
+              className="jg-rond"
+              style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 7h16M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+              </svg>
+            </button>
+          )}
+
+          {/* Le pense-bête des DD, à portée de pouce. C'est ce qu'on cherche
+              vingt fois par soirée et qu'on finit par inventer. */}
+          <button
+            onClick={() => setAideEnCours(true)}
+            aria-label="Quel degré de difficulté ?"
+            title="Degrés de difficulté"
+            className="jg-rond"
+            style={{ width: 40, height: 40, flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}
+          >
+            DD
+          </button>
+
+          {/* Le décor : un piège ou un danger s'improvise en plein donjon,
+              pas seulement en préparant une rencontre. */}
+          <button
+            onClick={() => setDecorEnCours(true)}
+            aria-label="Dangers du décor et pièges"
+            title="Le décor"
+            className="jg-rond"
+            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2 L22 20 H2 Z" />
+              <path d="M12 9v5M12 17.2v.1" />
+            </svg>
+          </button>
+
+          {/* Les gens : un PNJ se tire en pleine scène, quand les joueurs
+              adressent la parole à quelqu'un qui n'était pas prévu. */}
+          <button
+            onClick={() => setPnjEnCours(true)}
+            aria-label="Carnet de personnages non-joueurs"
+            title="Les gens"
+            className="jg-rond"
+            style={{ width: 40, height: 40, flexShrink: 0, color: 'var(--muted)' }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="8" r="3.6" />
+              <path d="M4.8 20.5a7.2 7.2 0 0 1 14.4 0" />
+            </svg>
+          </button>
+        </div>
 
         {!running && (
           <div className="lbl" style={{ textTransform: 'none', marginTop: 9 }}>
@@ -796,6 +839,15 @@ export function GmCombatScreen({ state, groupe, onChange, onOpenSheet, onDegatsJ
       {aideEnCours && <AideDuMJ onFermer={() => setAideEnCours(false)} />}
 
       {decorEnCours && <DangersDuDecor niveau={groupe.niveau} onFermer={() => setDecorEnCours(false)} />}
+
+      {pnjEnCours && (
+        <CarnetDePnj
+          campaignId={campaignId}
+          niveau={groupe.niveau}
+          charismes={groupe.charismes}
+          onFermer={() => setPnjEnCours(false)}
+        />
+      )}
 
       {retraitToutEnCours && (
         <ConfirmerRetraitTout

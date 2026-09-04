@@ -33,7 +33,7 @@ import { poserEtat } from '../model/etats';
 import { ETAT_AUTO_AU_LANCER } from '../model/spell-self-etat';
 import { heal, takeDamage } from '../model/damage';
 import { deriveCharacter } from '../model/derive';
-import { totalLevel } from '../model/character';
+import { effectiveAbilities, totalLevel } from '../model/character';
 import { GmRestDialog, reposDeGroupe } from './GmRestDialog';
 
 /**
@@ -626,9 +626,13 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
    */
   const groupe = useMemo(() => {
     const niveaux = snapshot.sheets.map((fiche) => totalLevel(fiche.data)).filter((n) => n > 0);
-    if (niveaux.length === 0) return { niveau: 0, taille: 0 };
+    // Le Charisme sert à la loyauté des PNJ (Guide p. 89) : le maximum est le
+    // plus haut du groupe. On prend le score EFFECTIF, augmentations comprises
+    // — c'est celui que le joueur lit sur sa fiche.
+    const charismes = snapshot.sheets.map((fiche) => effectiveAbilities(fiche.data).cha);
+    if (niveaux.length === 0) return { niveau: 0, taille: 0, charismes };
     const moyenne = niveaux.reduce((somme, n) => somme + n, 0) / niveaux.length;
-    return { niveau: Math.round(moyenne), taille: niveaux.length };
+    return { niveau: Math.round(moyenne), taille: niveaux.length, charismes };
   }, [snapshot.sheets]);
 
   /**
@@ -685,6 +689,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
       {vue === 'combat' ? (
         <GmCombatScreen
           state={affiche}
+          campaignId={campaignId}
           groupe={groupe}
           onChange={changer}
           onDegatsJoueur={appliquerVitalJoueur}

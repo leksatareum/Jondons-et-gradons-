@@ -31,7 +31,12 @@ export function DemoScreens() {
   if (view === 'mj') {
     return (
       <>
-        <GmCombatScreen groupe={{ niveau: 3, taille: 4 }} state={rencontre} onChange={setRencontre} />
+        <GmCombatScreen
+          campaignId="demo"
+          groupe={{ niveau: 3, taille: 4, charismes: [15, 12, 10, 8] }}
+          state={rencontre}
+          onChange={setRencontre}
+        />
         <button onClick={() => setView('joueur')} style={switcher}>vue joueur</button>
       </>
     );
