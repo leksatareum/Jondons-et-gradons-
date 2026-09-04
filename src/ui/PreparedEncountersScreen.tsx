@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { BUTIN_VIDE, butinEstVide, type ButinPrepare } from '../domain/butin-prepare';
+import { EditeurDeButin } from './EditeurDeButin';
+import { DistribuerButin } from './DistribuerButin';
 import { AddAdversaryDialog, attaquesDuTemplate, caracteristiquesDuTemplate, competencesDuTemplate, dexModOf, maitriseDuTemplate, sauvegardesDuTemplate } from './AddAdversaryDialog';
 import { PHB_CREATURES, type CreatureTemplate } from '../content/creatures';
 import {
@@ -362,11 +365,12 @@ function NouvelleRencontre({ modele, groupe, onEnregistrer, onFermer }: {
   modele?: StoredEncounterTemplate;
   /** Le vrai groupe de la campagne — jamais saisi à la main (voir `JaugeDeDifficulte`). */
   groupe: { niveau: number; taille: number };
-  onEnregistrer: (name: string, combatants: Combatant[]) => void;
+  onEnregistrer: (name: string, combatants: Combatant[], butin: ButinPrepare) => void;
   onFermer: () => void;
 }) {
   const [nom, setNom] = useState(modele?.name ?? '');
   const [combatants, setCombatants] = useState<Combatant[]>(modele?.combatants ?? []);
+  const [butin, setButin] = useState<ButinPrepare>(modele?.butin ?? BUTIN_VIDE);
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
 
   /**
@@ -504,8 +508,10 @@ function NouvelleRencontre({ modele, groupe, onEnregistrer, onFermer }: {
           </div>
         )}
 
+        <EditeurDeButin butin={butin} taille={groupe.taille} onChanger={setButin} />
+
         <button
-          onClick={() => pret && onEnregistrer(nom.trim(), combatants)}
+          onClick={() => pret && onEnregistrer(nom.trim(), combatants, butin)}
           disabled={!pret}
           style={{
             width: '100%', minHeight: 52, marginTop: 20, borderRadius: 'var(--radius-sm)',
@@ -525,7 +531,7 @@ function NouvelleRencontre({ modele, groupe, onEnregistrer, onFermer }: {
   );
 }
 
-export function PreparedEncountersScreen({ templates, groupe, onCreer, onModifier, onSupprimer, onDeclencher }: {
+export function PreparedEncountersScreen({ templates, groupe, personnages, onCreer, onModifier, onSupprimer, onDeclencher, onDonnerObjet, onDonnerOr }: {
   /**
    * Le groupe réel de la campagne, calculé sur les fiches (voir `App`) : son
    * niveau moyen et son effectif. C'est ce qui permet à la jauge de
@@ -535,14 +541,19 @@ export function PreparedEncountersScreen({ templates, groupe, onCreer, onModifie
    */
   groupe: { niveau: number; taille: number };
   templates: StoredEncounterTemplate[];
-  onCreer: (name: string, combatants: Combatant[]) => void;
-  onModifier: (id: string, name: string, combatants: Combatant[]) => void;
+  onCreer: (name: string, combatants: Combatant[], butin: ButinPrepare) => void;
+  onModifier: (id: string, name: string, combatants: Combatant[], butin: ButinPrepare) => void;
   onSupprimer: (id: string) => void;
   /** Copie les créatures du modèle dans la rencontre en cours. */
   onDeclencher: (combatants: Combatant[]) => void;
+  /** Les joueurs de la table, pour distribuer le butin. Absents hors table. */
+  personnages?: { id: string; nom: string }[];
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+  onDonnerOr?: (ficheId: string, montant: number) => void;
 }) {
   // `'nouvelle'` pour une création, une rencontre existante pour l'édition, `null` pour rien d'ouvert.
   const [edition, setEdition] = useState<StoredEncounterTemplate | 'nouvelle' | null>(null);
+  const [butinOuvert, setButinOuvert] = useState<StoredEncounterTemplate | null>(null);
 
   return (
     <div style={{ paddingBottom: TAB_BAR_CLEARANCE }}>
@@ -570,6 +581,34 @@ export function PreparedEncountersScreen({ templates, groupe, onCreer, onModifie
             }}>
               <div className="ttl" style={{ fontSize: 15 }}>{template.name}</div>
               <ResumeCombattants combatants={template.combatants} />
+
+              {/* Le butin, quand il y en a un : une ligne qui dit ce qu'il
+                  reste à distribuer, et le bouton qui le fait. Sans elle,
+                  un butin préparé se retrouve oublié dans la fiche. */}
+              {!butinEstVide(template.butin) && (
+                <button
+                  onClick={() => setButinOuvert(template)}
+                  disabled={!personnages || !onDonnerObjet || !onDonnerOr}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    minHeight: 38, marginTop: 9, padding: '0 11px', borderRadius: 9,
+                    border: '1px solid var(--gold-dim)', background: 'rgba(214,150,74,.08)',
+                    color: 'inherit', textAlign: 'left',
+                  }}
+                >
+                  <span className="lbl" style={{ fontSize: 8.5, color: 'var(--gold)', flexShrink: 0 }}>Butin</span>
+                  <span style={{ flexGrow: 1, minWidth: 0, fontSize: 12, color: 'var(--muted)',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[
+                      template.butin.or > 0 ? `${template.butin.or} po` : null,
+                      ...template.butin.objets.map((ligne) =>
+                        (ligne.qty > 1 ? `${ligne.qty} × ${ligne.nom}` : ligne.nom)),
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                  <span aria-hidden style={{ flexShrink: 0, fontSize: 12, color: 'var(--muted)' }}>›</span>
+                </button>
+              )}
+
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button
                   onClick={() => onDeclencher(template.combatants.map((combatant) => ({ ...combatant, id: nouvelId() })))}
@@ -612,12 +651,23 @@ export function PreparedEncountersScreen({ templates, groupe, onCreer, onModifie
         <NouvelleRencontre
           modele={edition === 'nouvelle' ? undefined : edition}
           groupe={groupe}
-          onEnregistrer={(name, combatants) => {
-            if (edition === 'nouvelle') onCreer(name, combatants);
-            else onModifier(edition.id, name, combatants);
+          onEnregistrer={(name, combatants, butin) => {
+            if (edition === 'nouvelle') onCreer(name, combatants, butin);
+            else onModifier(edition.id, name, combatants, butin);
             setEdition(null);
           }}
           onFermer={() => setEdition(null)}
+        />
+      )}
+
+      {butinOuvert && personnages && onDonnerObjet && onDonnerOr && (
+        <DistribuerButin
+          nom={butinOuvert.name}
+          butin={butinOuvert.butin}
+          personnages={personnages}
+          onDonnerObjet={onDonnerObjet}
+          onDonnerOr={onDonnerOr}
+          onFermer={() => setButinOuvert(null)}
         />
       )}
     </div>

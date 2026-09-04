@@ -7,6 +7,7 @@ import type { SyncRow } from './supabase-transport';
 import type { SouscriptionPush } from '../notifications/push';
 import type { CharacterSheet } from '../model/character';
 import type { Combatant, EncounterState } from '../domain/encounter';
+import { BUTIN_VIDE, type ButinPrepare } from '../domain/butin-prepare';
 
 /**
  * Les écritures.
@@ -273,10 +274,11 @@ export async function createEncounterTemplate(
   campaignId: string,
   name: string,
   combatants: Combatant[],
+  butin: ButinPrepare = BUTIN_VIDE,
 ): Promise<SyncRow> {
   const { data, error } = await client
     .from(ENCOUNTER_TEMPLATES_TABLE)
-    .insert({ campaign_id: campaignId, name, combatants })
+    .insert({ campaign_id: campaignId, name, combatants, butin })
     .select()
     .single();
   if (error) throw new WriteError(ENCOUNTER_TEMPLATES_TABLE, error.message);
@@ -290,7 +292,7 @@ export const saveEncounterTemplate = (
   client: SupabaseClient,
   sync: CampaignSync | null,
   id: string,
-  patch: { name?: string; combatants?: Combatant[] },
+  patch: { name?: string; combatants?: Combatant[]; butin?: ButinPrepare },
 ): Promise<SyncRow> => writeRow(client, sync, ENCOUNTER_TEMPLATES_TABLE, id, patch);
 
 export const deleteEncounterTemplate = (

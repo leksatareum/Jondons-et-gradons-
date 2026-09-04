@@ -25,7 +25,8 @@ import {
   deleteItemTransfer, deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry,
   saveSheet,
 } from '../sync/mutations';
-import { addItem, recevoirItem } from '../model/inventory';
+import { addItem, recevoirItem, setGold } from '../model/inventory';
+import type { ButinPrepare } from '../domain/butin-prepare';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
@@ -686,11 +687,22 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
     void saveSheet(client, sync, fiche.id, addItem(fiche.data, ligne));
   };
 
-  const creerRencontre = (name: string, combatants: Combatant[]) => {
-    void createEncounterTemplate(client, sync, campaignId, name, combatants);
+  /**
+   * L'or que le MJ verse à un joueur : il s'AJOUTE à sa bourse, il ne la
+   * remplace pas. Écraser le total ferait disparaître ce que le joueur avait
+   * mis de côté.
+   */
+  const donnerOr = (ficheId: string, montant: number) => {
+    const fiche = snapshot.sheets.find((entry) => entry.id === ficheId);
+    if (!fiche || montant <= 0) return;
+    void saveSheet(client, sync, fiche.id, setGold(fiche.data, (fiche.data.gold ?? 0) + montant));
   };
-  const modifierRencontre = (id: string, name: string, combatants: Combatant[]) => {
-    void saveEncounterTemplate(client, sync, id, { name, combatants });
+
+  const creerRencontre = (name: string, combatants: Combatant[], butin: ButinPrepare) => {
+    void createEncounterTemplate(client, sync, campaignId, name, combatants, butin);
+  };
+  const modifierRencontre = (id: string, name: string, combatants: Combatant[], butin: ButinPrepare) => {
+    void saveEncounterTemplate(client, sync, id, { name, combatants, butin });
   };
   const supprimerRencontre = (id: string) => {
     void deleteEncounterTemplate(client, sync, id);
@@ -725,6 +737,9 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
         <PreparedEncountersScreen
           templates={snapshot.encounterTemplates}
           groupe={groupe}
+          personnages={groupe.personnages}
+          onDonnerObjet={donnerObjet}
+          onDonnerOr={donnerOr}
           onCreer={creerRencontre}
           onModifier={modifierRencontre}
           onSupprimer={supprimerRencontre}

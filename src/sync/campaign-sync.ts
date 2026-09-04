@@ -4,6 +4,7 @@ import { applySyncEvent, createSupabaseTransport, type SyncEvent, type SyncRow }
 import { VersionedStore } from './versioned-store';
 import type { CharacterSheet } from '../model/character';
 import type { Combatant, EncounterState } from '../domain/encounter';
+import { lireButin, type ButinPrepare } from '../domain/butin-prepare';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -81,6 +82,12 @@ export interface StoredEncounterTemplate {
   name: string;
   /** Toujours côté créature : voir la migration 0007. */
   combatants: Combatant[];
+  /**
+   * Ce que la rencontre laisse derrière elle, préparé avec elle.
+   * Toujours une forme lisible, jamais une absence — `lireButin` redresse
+   * ce que la base rend (migration 0016).
+   */
+  butin: ButinPrepare;
 }
 
 export interface JournalEntry {
@@ -176,6 +183,7 @@ const toEncounterTemplate = (row: SyncRow): StoredEncounterTemplate => ({
   version: row.version,
   name: String(row.name ?? ''),
   combatants: (row.combatants as Combatant[] | null) ?? [],
+  butin: lireButin(row.butin),
 });
 
 const toJournalEntry = (row: SyncRow): JournalEntry => ({
