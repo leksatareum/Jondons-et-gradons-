@@ -37,10 +37,10 @@ export function DemoScreens() {
             niveau: 3,
             taille: 4,
             personnages: [
-              { nom: 'Alderic', cha: 15, con: 2 },
-              { nom: 'Brise', cha: 12, con: 1 },
-              { nom: 'Corvin', cha: 10, con: 0 },
-              { nom: 'Dun', cha: 8, con: -1 },
+              { id: 'demo-1', nom: 'Alderic', cha: 15, con: 2 },
+              { id: 'demo-2', nom: 'Brise', cha: 12, con: 1 },
+              { id: 'demo-3', nom: 'Corvin', cha: 10, con: 0 },
+              { id: 'demo-4', nom: 'Dun', cha: 8, con: -1 },
             ],
           }}
           state={rencontre}

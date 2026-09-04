@@ -37,7 +37,7 @@ export type Rarete = 'commun' | 'peu-commun' | 'rare' | 'tres-rare' | 'legendair
 
 export type CategorieObjet =
   | 'arme' | 'munition' | 'armure' | 'bouclier'
-  | 'potion' | 'baguette' | 'baton' | 'anneau' | 'sceptre' | 'merveilleux';
+  | 'potion' | 'parchemin' | 'baguette' | 'baton' | 'anneau' | 'sceptre' | 'merveilleux';
 
 export type ObjetMagique = {
   id: string;
@@ -76,6 +76,7 @@ export const LIBELLE_CATEGORIE: Record<CategorieObjet, string> = {
   armure: 'Armure',
   bouclier: 'Bouclier',
   potion: 'Potion',
+  parchemin: 'Parchemin',
   baguette: 'Baguette',
   baton: 'Bâton',
   anneau: 'Anneau',
@@ -877,6 +878,92 @@ export const OBJETS_MAGIQUES: ObjetMagique[] = [
     harmonisation: '',
     effet: 'En les portant, tu gagnes un bonus aux jets d’attaque et de dégâts de tes attaques à mains nues, déterminé par la rareté des bandes '
       + '(peu communes pour +1, rares pour +2, très rares pour +3).',
+  },
+
+  // ═════════ Ceux dont la rareté vit dans un TABLEAU ═════════
+  //
+  // Ces dix-là avaient échappé au premier passage, et pour une raison qui se
+  // répète : leur rareté n'est pas sur la ligne de type sous le nom, elle est
+  // dans un tableau à l'intérieur de l'entrée — « Potion of Healing … Common »,
+  // « Cantrip … Common ». L'ancre automatique ne pouvait pas les voir.
+  //
+  // Ils ont été retrouvés en cherchant les entrées marquées « Rarity Varies »
+  // dans tout le chapitre, puis en lisant chaque tableau. C'est ce passage qui
+  // a rattrapé la POTION DE SOINS et le PARCHEMIN DE SORT — les deux objets
+  // qu'un MJ donne le plus souvent.
+  {
+    id: 'potion-de-soins', nom: 'Potion de soins', categorie: 'potion', rarete: c, page: 288,
+    effet: 'Tu récupères 2d4 + 2 points de vie en la buvant. Le liquide rouge scintille quand on l’agite. '
+      + 'Trois versions plus puissantes existent : supérieure (4d4 + 4, peu commune), extra (8d4 + 8, rare) et suprême (10d4 + 20, très rare).',
+  },
+  {
+    id: 'parchemin-de-sort-mineur', nom: 'Parchemin de sort (tour de magie ou niveau 1)', categorie: 'parchemin', rarete: c, page: 305,
+    effet: 'Un parchemin porte les mots d’un seul sort, en écriture chiffrée. Si le sort est sur ta liste, tu peux le lire et le lancer sans composante matérielle — '
+      + 'le lancer prend son temps d’incantation habituel, et le parchemin tombe en poussière. Interrompu, il n’est pas perdu. '
+      + 'Si le sort est sur ta liste mais d’un niveau que tu ne peux pas lancer, fais un test de ta caractéristique d’incantation, DD 10 + le niveau du sort ; '
+      + 'raté, le sort disparaît sans autre effet. '
+      + 'Pour un tour de magie ou un sort de niveau 1 : DD de sauvegarde 13, bonus d’attaque +5.',
+  },
+  {
+    id: 'potion-de-soins-superieure', nom: 'Potion de soins supérieure', categorie: 'potion', rarete: pc, page: 288,
+    effet: 'Tu récupères 4d4 + 4 points de vie en la buvant. Le liquide rouge scintille quand on l’agite.',
+  },
+  {
+    id: 'parchemin-de-sort-moyen', nom: 'Parchemin de sort (niveau 2 ou 3)', categorie: 'parchemin', rarete: pc, page: 305,
+    effet: 'Mêmes règles que le parchemin de niveau inférieur : lisible seulement si le sort est sur ta liste, lancé sans composante matérielle, '
+      + 'le parchemin tombe en poussière. Au-dessus de ton niveau de lancement, test de ta caractéristique d’incantation DD 10 + le niveau du sort. '
+      + 'Niveau 2 : DD de sauvegarde 13, bonus d’attaque +5. Niveau 3 : DD 15, bonus +7.',
+  },
+  {
+    id: 'potion-de-force-de-geant-collines', nom: 'Potion de force de géant (des collines)', categorie: 'potion', rarete: pc, page: 288,
+    effet: 'Ton score de Force passe à 21 pendant 1 heure. Sans effet si ta Force est déjà égale ou supérieure. '
+      + 'Le liquide transparent contient un éclat de lumière qui ressemble à un ongle de géant. '
+      + 'Les versions supérieures — givre ou pierre (23), feu (25), nuages (27), tempête (29) — sont rares ou davantage.',
+  },
+  {
+    id: 'armure-ensorcelee', nom: 'Armure ensorcelée (tour de magie ou niveau 1)', categorie: 'armure', rarete: pc, page: 258,
+    support: 'toute armure légère, intermédiaire ou lourde',
+    harmonisation: '',
+    effet: 'Un sort d’Abjuration ou d’Illusion est lié à cette armure, fixé à sa fabrication. Elle a 6 charges et en récupère 1d6 à l’aube. '
+      + 'En la portant, tu peux dépenser 1 charge pour lancer ce sort. '
+      + 'Avec un tour de magie ou un sort de niveau 1 : DD de sauvegarde 13, bonus d’attaque +5. '
+      + 'Au-delà, l’armure devient rare (niveaux 2-3) puis très rare (4-5).',
+  },
+  {
+    id: 'arme-ensorcelee', nom: 'Arme ensorcelée (tour de magie ou niveau 1)', categorie: 'arme', rarete: pc, page: 258,
+    support: 'toute arme simple ou de guerre',
+    harmonisation: '',
+    effet: 'Un sort d’Invocation, de Divination, d’Évocation, de Nécromancie ou de Transmutation est lié à cette arme, fixé à sa fabrication. '
+      + 'Elle a 6 charges et en récupère 1d6 à l’aube. En la tenant, tu peux dépenser 1 charge pour lancer ce sort. '
+      + 'Avec un tour de magie ou un sort de niveau 1 : DD de sauvegarde 13, bonus d’attaque +5. '
+      + 'Au-delà, l’arme devient rare (niveaux 2-3) puis très rare (4-5).',
+  },
+  {
+    id: 'baton-ensorcele', nom: 'Bâton ensorcelé (tour de magie ou niveau 1)', categorie: 'baton', rarete: pc, page: 258,
+    harmonisation: 'un lanceur de sorts',
+    effet: 'Un sort est lié à ce bâton, fixé à sa fabrication. Il a 6 charges et en récupère 1d6 à l’aube. '
+      + 'En le tenant, tu peux dépenser 1 charge pour lancer ce sort. '
+      + 'Avec un tour de magie ou un sort de niveau 1 : DD de sauvegarde 13, bonus d’attaque +5. '
+      + 'Au-delà, le bâton devient rare (niveaux 2-3) puis très rare (4-5).',
+  },
+  {
+    id: 'jeton-plume-de-quaal', nom: 'Jeton-plume de Quaal (ancre, éventail ou arbre)', categorie: 'merveilleux', rarete: pc, page: 290,
+    effet: 'Cet objet ressemble à une plume et sert une seule fois. Trois de ses six types sont peu communs. '
+      + 'ANCRE : action Magie pour la toucher à un bateau ; pendant 24 heures, rien ne peut le déplacer. La retoucher met fin à l’effet et le jeton disparaît. '
+      + 'ÉVENTAIL : à bord d’un bateau, action Magie pour le lancer à 3 m en l’air ; un éventail géant apparaît et lève un vent qui gonfle les voiles d’un navire, '
+      + '+8 km/h pendant 8 heures. Tu peux le congédier par une action Magie. '
+      + 'ARBRE : en extérieur, action Magie pour le toucher à un espace libre au sol ; un chêne non magique de 18 m de haut y pousse. '
+      + 'Les trois autres types — oiseau, cygne, fouet — sont rares.',
+  },
+  {
+    id: 'instrument-des-bardes', nom: 'Instrument des bardes (luth de Doss, bandore de Fochlucan, cistre de Mac-Fuirmidh)', categorie: 'merveilleux', rarete: pc, page: 272,
+    harmonisation: 'un barde',
+    effet: 'Meilleur en tout point qu’un instrument ordinaire. Sept types existent, chacun nommé d’après un collège bardique ; trois sont peu communs. '
+      + 'Qui tente d’en jouer sans y être harmonisé doit réussir une sauvegarde de Sagesse DD 15, sinon 2d4 dégâts psychiques. '
+      + 'Tous permettent de lancer Vol, Invisibilité, Lévitation et Protection contre le mal et le bien, plus les sorts propres à l’instrument : '
+      + 'le LUTH DE DOSS ajoute Amitié avec les animaux et Protection contre l’énergie (feu seulement) ; '
+      + 'la BANDORE DE FOCHLUCAN ajoute Protection contre le poison, Enchevêtrement et Lueurs féeriques ; '
+      + 'le CISTRE DE MAC-FUIRMIDH ajoute Gourdin magique et Communication avec les animaux.',
   },
 ];
 

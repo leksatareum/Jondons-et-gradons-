@@ -25,7 +25,7 @@ import {
   deleteItemTransfer, deleteJournalEntry, deleteMessage, saveEncounter, saveEncounterTemplate, saveJournalEntry,
   saveSheet,
 } from '../sync/mutations';
-import { recevoirItem } from '../model/inventory';
+import { addItem, recevoirItem } from '../model/inventory';
 import type { CampaignSnapshot, CampaignSync } from '../sync/campaign-sync';
 import { addCombatants, replaceCombatant, type Combatant, type EncounterState } from '../domain/encounter';
 import { spellById } from '../content/spell-catalogue';
@@ -634,7 +634,8 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
     // fiche.
     const personnages = snapshot.sheets.map((fiche) => {
       const scores = effectiveAbilities(fiche.data);
-      return { nom: fiche.data.name, cha: scores.cha, con: abilityModifier(scores.con) };
+      // `id` est celui de la FICHE : c'est par lui que le MJ écrit dans un sac.
+      return { id: fiche.id, nom: fiche.data.name, cha: scores.cha, con: abilityModifier(scores.con) };
     });
     if (niveaux.length === 0) return { niveau: 0, taille: 0, personnages };
     const moyenne = niveaux.reduce((somme, n) => somme + n, 0) / niveaux.length;
@@ -672,6 +673,19 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
     void saveSheet(client, sync, fiche.id, suivante);
   };
 
+  /**
+   * Le MJ glisse un objet dans le sac d'un joueur.
+   *
+   * Écrit la vraie fiche, comme les dégâts — pas une copie. Le joueur voit la
+   * ligne apparaître dans son sac sans rien avoir à taper, et un consommable
+   * y arrive fonctionnel (voir `catalogIdPourLeSac`).
+   */
+  const donnerObjet = (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => {
+    const fiche = snapshot.sheets.find((entry) => entry.id === ficheId);
+    if (!fiche) return;
+    void saveSheet(client, sync, fiche.id, addItem(fiche.data, ligne));
+  };
+
   const creerRencontre = (name: string, combatants: Combatant[]) => {
     void createEncounterTemplate(client, sync, campaignId, name, combatants);
   };
@@ -699,6 +713,7 @@ function EcranMj({ client, sync, campaignId, snapshot, onOuvrirFiche, vue, onDec
           groupe={groupe}
           onChange={changer}
           onDegatsJoueur={appliquerVitalJoueur}
+          onDonnerObjet={donnerObjet}
           concentrationParNom={concentrationParNom}
           onOpenSheet={(combatantId) => {
             // L'identifiant du combattant issu du groupe EST celui de la fiche

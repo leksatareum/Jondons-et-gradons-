@@ -19,7 +19,7 @@
  * se lit, et supporte très bien d'en coûter deux.
  */
 
-export type OutilDuGuide = 'dd' | 'decor' | 'gens' | 'poursuite' | 'objets';
+export type OutilDuGuide = 'dd' | 'decor' | 'gens' | 'poursuite' | 'objets' | 'donner';
 
 type Entree = {
   id: OutilDuGuide;
@@ -76,10 +76,22 @@ const ENTREES: Entree[] = [
   {
     id: 'objets',
     nom: 'Les objets magiques',
-    quoi: 'Les 141 objets communs et peu communs, à filtrer pour composer un butin.',
+    quoi: 'Les 151 objets communs et peu communs, à filtrer pour composer un butin.',
     icone: (
       <svg width="19" height="19" viewBox="0 0 24 24" {...trait} aria-hidden>
         <path d="M12 3.2 14.4 9l6.1.4-4.7 3.9 1.5 5.9L12 16.1 6.7 19.2l1.5-5.9L3.5 9.4 9.6 9Z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'donner',
+    nom: 'Donner un objet',
+    quoi: 'Le poser directement dans le sac d’un joueur — potion, parchemin, outils, butin.',
+    icone: (
+      <svg width="19" height="19" viewBox="0 0 24 24" {...trait} aria-hidden>
+        <path d="M4 8.5h16v11H4Z" />
+        <path d="M2.6 5h18.8v3.5H2.6ZM12 5v14.5" />
+        <path d="M12 5c-1.6-2.6-5.4-1.9-5 .6.3 1.9 3.4 1.4 5-.6Zm0 0c1.6-2.6 5.4-1.9 5 .6-.3 1.9-3.4 1.4-5-.6Z" />
       </svg>
     ),
   },

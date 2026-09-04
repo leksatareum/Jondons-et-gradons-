@@ -4,6 +4,8 @@ import {
   NOTE_COMMUNS, OBJETS_MAGIQUES, RAPPEL_HARMONISATION,
   type CategorieObjet, type ObjetMagique, type Rarete,
 } from '../content/objets-magiques';
+import { catalogueADonner, type ObjetADonner } from '../domain/don-d-objet';
+import { DonnerObjet } from './DonnerObjet';
 
 /**
  * Les objets magiques du Guide — pour choisir ce qu'on donne.
@@ -55,7 +57,7 @@ function Pastille({ actif, onClic, children }: {
   );
 }
 
-function Fiche({ objet }: { objet: ObjetMagique }) {
+function Fiche({ objet, onDonner }: { objet: ObjetMagique; onDonner?: () => void }) {
   const [ouvert, setOuvert] = useState(false);
 
   return (
@@ -99,17 +101,42 @@ function Fiche({ objet }: { objet: ObjetMagique }) {
             </p>
           )}
           <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>{objet.effet}</p>
+
+          {/* Le geste qui suit le choix. Sans lui, il faut dicter le nom au
+              joueur, qui le tape — et une potion mal orthographiée n'est plus
+              reconnue comme buvable. */}
+          {onDonner && (
+            <button
+              onClick={onDonner}
+              className="jg-btn-hot"
+              style={{ width: '100%', minHeight: 40, borderRadius: 9, marginTop: 11, fontSize: 13, fontWeight: 700 }}
+            >
+              Donner à…
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function ObjetsMagiques({ onFermer }: { onFermer: () => void }) {
+export function ObjetsMagiques({ onFermer, personnages, onDonnerObjet }: {
+  onFermer: () => void;
+  /** Absents quand l'écran est ouvert hors table : la fiche n'affiche alors pas « Donner à… ». */
+  personnages?: { id: string; nom: string }[];
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
+}) {
   const [question, setQuestion] = useState('');
   const [raretes, setRaretes] = useState<Rarete[]>([]);
   const [categories, setCategories] = useState<CategorieObjet[]>([]);
   const [harmonisation, setHarmonisation] = useState<boolean | undefined>(undefined);
+  /** L'objet qu'on est en train de donner — il ouvre le choix du destinataire. */
+  const [aDonner, setADonner] = useState<ObjetADonner | null>(null);
+
+  const peutDonner = Boolean(personnages && onDonnerObjet);
+  /** La même entrée que celle de l'écran de don, pour que l'objet parte avec son identifiant de sac. */
+  const entreeDuDon = (objet: ObjetMagique): ObjetADonner | null =>
+    catalogueADonner().find((entree) => entree.clef === `mag:${objet.id}`) ?? null;
 
   const resultats = useMemo(
     () => filtrerObjets({ question, raretes, categories, harmonisation }),
@@ -232,7 +259,13 @@ export function ObjetsMagiques({ onFermer }: { onFermer: () => void }) {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {resultats.map((objet) => <Fiche key={objet.id} objet={objet} />)}
+            {resultats.map((objet) => (
+              <Fiche
+                key={objet.id}
+                objet={objet}
+                onDonner={peutDonner ? () => setADonner(entreeDuDon(objet)) : undefined}
+              />
+            ))}
           </div>
         )}
 
@@ -243,6 +276,15 @@ export function ObjetsMagiques({ onFermer }: { onFermer: () => void }) {
           {NOTE_COMMUNS}
         </p>
       </div>
+
+      {aDonner && personnages && onDonnerObjet && (
+        <DonnerObjet
+          personnages={personnages}
+          onDonner={onDonnerObjet}
+          objetInitial={aDonner}
+          onFermer={() => setADonner(null)}
+        />
+      )}
     </div>
   );
 }

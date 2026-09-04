@@ -15,6 +15,7 @@ import { CarnetDePnj } from './CarnetDePnj';
 import { Poursuite } from './Poursuite';
 import { LeGuide, type OutilDuGuide } from './LeGuide';
 import { ObjetsMagiques } from './ObjetsMagiques';
+import { DonnerObjet } from './DonnerObjet';
 import { creaturesHostiles, evaluerRencontre } from '../domain/encounter-generator';
 import { PHB_CREATURES } from '../content/creatures';
 
@@ -517,7 +518,7 @@ function DamagePad({ target, onApply, onBasculerEtat, onDupliquer, onSupprimer, 
  * local gardait le geste du MJ dans l'onglet du MJ, et les écrans des joueurs
  * ne basculaient jamais.
  */
-export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenSheet, onDegatsJoueur, concentrationParNom }: {
+export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenSheet, onDegatsJoueur, onDonnerObjet, concentrationParNom }: {
   state: EncounterState;
   /** La table en cours : le carnet de PNJ est rangé par campagne. */
   campaignId: string;
@@ -531,8 +532,11 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   groupe: {
     niveau: number;
     taille: number;
-    /** `con` est déjà le MODIFICATEUR, pas le score : c'est lui qui sert partout. */
-    personnages: { nom: string; cha: number; con: number }[];
+    /**
+     * `id` est celui de la FICHE — c'est par lui que le MJ écrit dans un sac.
+     * `con` est déjà le MODIFICATEUR, pas le score : c'est lui qui sert partout.
+     */
+    personnages: { id: string; nom: string; cha: number; con: number }[];
   };
   onChange: (suivant: EncounterState) => void;
   /**
@@ -547,6 +551,12 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
    * `combatantFromSheet`) — le même lien que celui d'`onOpenSheet`.
    */
   onDegatsJoueur?: (combatantId: string, delta: number) => void;
+  /**
+   * Glisse un objet dans le sac d'un joueur. `ficheId` est l'identifiant de sa
+   * FICHE, pas celui du combattant — on écrit ce qu'il possède, pas une copie
+   * de la rencontre.
+   */
+  onDonnerObjet?: (ficheId: string, ligne: { name: string; qty: number; catalogId?: string }) => void;
   /**
    * Le nom du sort en cours de concentration, par nom de personnage — lu sur
    * chaque fiche, jamais sur le combattant : `live.concentration` du joueur,
@@ -565,6 +575,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
   const [pnjEnCours, setPnjEnCours] = useState(false);
   const [poursuiteEnCours, setPoursuiteEnCours] = useState(false);
   const [objetsEnCours, setObjetsEnCours] = useState(false);
+  const [donEnCours, setDonEnCours] = useState(false);
   const [menuDuGuide, setMenuDuGuide] = useState(false);
 
   /**
@@ -578,6 +589,7 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
     if (outil === 'gens') setPnjEnCours(true);
     if (outil === 'poursuite') setPoursuiteEnCours(true);
     if (outil === 'objets') setObjetsEnCours(true);
+    if (outil === 'donner') setDonEnCours(true);
   };
 
   /**
@@ -853,7 +865,21 @@ export function GmCombatScreen({ state, campaignId, groupe, onChange, onOpenShee
         <Poursuite personnages={groupe.personnages} onFermer={() => setPoursuiteEnCours(false)} />
       )}
 
-      {objetsEnCours && <ObjetsMagiques onFermer={() => setObjetsEnCours(false)} />}
+      {objetsEnCours && (
+        <ObjetsMagiques
+          onFermer={() => setObjetsEnCours(false)}
+          personnages={onDonnerObjet ? groupe.personnages : undefined}
+          onDonnerObjet={onDonnerObjet}
+        />
+      )}
+
+      {donEnCours && onDonnerObjet && (
+        <DonnerObjet
+          personnages={groupe.personnages}
+          onDonner={onDonnerObjet}
+          onFermer={() => setDonEnCours(false)}
+        />
+      )}
 
       {retraitToutEnCours && (
         <ConfirmerRetraitTout

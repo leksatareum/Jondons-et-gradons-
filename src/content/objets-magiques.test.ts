@@ -28,9 +28,31 @@ describe('cohérence du catalogue', () => {
     expect(OBJETS_MAGIQUES.every((o) => o.rarete === 'commun' || o.rarete === 'peu-commun')).toBe(true);
   });
 
-  it('porte les 51 communs et les 90 peu communs du Guide', () => {
-    expect(objetsParRarete('commun')).toHaveLength(51);
-    expect(objetsParRarete('peu-commun')).toHaveLength(90);
+  it('porte les 53 communs et les 98 peu communs du Guide', () => {
+    expect(objetsParRarete('commun')).toHaveLength(53);
+    expect(objetsParRarete('peu-commun')).toHaveLength(98);
+  });
+
+  it('n’oublie pas ceux dont la rareté vit dans un tableau', () => {
+    // Ces dix-là n'ont pas de ligne « Potion, Common » sous leur nom : leur
+    // rareté est dans un tableau à l'intérieur de l'entrée. Le premier
+    // passage, qui s'ancrait sur la ligne de type, les avait tous ratés —
+    // dont les deux que l'on donne le plus souvent.
+    for (const id of [
+      'potion-de-soins', 'parchemin-de-sort-mineur',
+      'potion-de-soins-superieure', 'parchemin-de-sort-moyen',
+      'potion-de-force-de-geant-collines',
+      'armure-ensorcelee', 'arme-ensorcelee', 'baton-ensorcele',
+      'jeton-plume-de-quaal', 'instrument-des-bardes',
+    ]) {
+      expect(OBJETS_MAGIQUES.some((o) => o.id === id), id).toBe(true);
+    }
+  });
+
+  it('chiffre les soins de la potion la plus donnée', () => {
+    // Un MJ qui ouvre cette fiche veut le nombre de dés, pas une description.
+    expect(OBJETS_MAGIQUES.find((o) => o.id === 'potion-de-soins')!.effet).toContain('2d4 + 2');
+    expect(OBJETS_MAGIQUES.find((o) => o.id === 'potion-de-soins-superieure')!.effet).toContain('4d4 + 4');
   });
 
   it('n’y range pas l’armure +1, qui est RARE en 2024', () => {
