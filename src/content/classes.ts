@@ -2,10 +2,20 @@
  * Les douze classes du PHB 2024. Repêché de
  * `table-connectee/src/App.jsx` (`CLASSES`). Confiance haute sur les
  * bases (dé de vie, sauvegardes, type de lanceur, armures/bouclier —
- * inchangés depuis 2014), confiance moyenne sur les niveaux
- * d'augmentation de caractéristiques et le nombre de maîtrises d'armes
- * (spécificités 2024 que je connais mais n'ai pas revérifiées page à page)
- * — pas confirmé page à page dans l'ensemble.
+ * inchangés depuis 2014).
+ *
+ * Le nombre de maîtrises d'armes connues au niveau 1 a été revérifié page à
+ * page contre le scan du Manuel des Joueurs pour les douze classes — table
+ * des aptitudes de chacune, ou paragraphe « Weapon Mastery » quand le
+ * nombre n'y figurait pas. Les douze correspondent : Barbare 2 (p. 51),
+ * Guerrier 3 (p. 90), Paladin 2 (p. 109), Rôdeur 2 (p. 119), Roublard 2
+ * (p. 128-129) ; Druide, Barde, Clerc, Moine, Ensorceleur, Occultiste et
+ * Magicien n'ont aucune maîtrise — le Moine, en particulier, s'appuie sur
+ * son dé d'arts martiaux plutôt que sur la maîtrise des armes.
+ *
+ * Les niveaux d'augmentation de caractéristiques suivent tous le même socle
+ * (4, 8, 12, 16, 19), sauf le Guerrier (+6, +14) et le Roublard (+10) — les
+ * deux seules exceptions du jeu, déjà dans les données.
  *
  * `sub` est la sous-classe pré-sélectionnée par défaut à la création dans
  * l'ancienne app, pas une donnée canonique du jeu : ne t'y fie pas comme

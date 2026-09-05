@@ -9,6 +9,7 @@ import type { LinkedCreature, CharacterSheet } from '../model/character';
 import type { DerivedCharacter, DerivedSlot } from '../model/derive';
 import type { WildShapeProfile } from '../domain/wild-shape';
 import type { LinkedCreatureOption } from '../domain/linked-creatures';
+import { normaliserNom } from '../domain/nom-normalise';
 
 /**
  * Formes et créatures liées.
@@ -483,9 +484,17 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
   // du paiement au lieu de lier tout de suite. Les autres sources n'ont pas
   // ce détour — elles n'ont rien à payer.
   const [paiementOuvertPour, setPaiementOuvertPour] = useState<string | null>(null);
+  const [recherche, setRecherche] = useState('');
   const options = availableCompanions(sheet);
   const lies = sheet.companions ?? [];
   if (options.length === 0 && lies.length === 0) return null;
+  // Le Pacte de la Chaîne à lui seul propose déjà une bonne vingtaine de
+  // familiers, patron compris — chercher un nom vite tapé bat le défilement
+  // dès qu'il y en a plus qu'une poignée. Insensible aux accents et à la
+  // casse : on tape « corbeau » comme on veut.
+  const optionsFiltrees = recherche.trim()
+    ? options.filter((option) => normaliserNom(option.name).includes(normaliserNom(recherche)))
+    : options;
   const chargeFormeSauvage = derived.resources.find((entry) => entry.key === WILD_SHAPE_RESOURCE_KEY);
 
   return (
@@ -518,7 +527,23 @@ function SectionCompagnon({ sheet, derived, onLier, onDegats, onDetacher, onRame
               border: '1px solid var(--gold-dim)', background: 'var(--surface)', fontSize: 14,
             }}
           />
-          {options.map((option: LinkedCreatureOption) => {
+          {options.length > 6 && (
+            <input
+              type="search"
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              placeholder={`Chercher parmi ${options.length}…`}
+              aria-label="Chercher une créature à lier"
+              style={{
+                minHeight: 'var(--tap)', padding: '0 12px', borderRadius: 10,
+                border: '1px solid var(--gold-dim)', background: 'var(--surface)', fontSize: 14,
+              }}
+            />
+          )}
+          {optionsFiltrees.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '4px 0' }}>Rien de ce nom.</p>
+          )}
+          {optionsFiltrees.map((option: LinkedCreatureOption) => {
             const payant = option.source === 'wild-companion';
             return (
               <div key={option.id} className="card" style={{
